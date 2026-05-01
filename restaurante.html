@@ -8,14 +8,15 @@
 body {
   font-family: Arial;
   margin: 0;
-  background: #f2f2f2;
+  background: linear-gradient(135deg, #111, #222);
+  color: white;
 }
 
 .header {
-  background: #111;
-  color: white;
   padding: 20px;
   text-align: center;
+  font-size: 22px;
+  font-weight: bold;
 }
 
 .container {
@@ -23,10 +24,10 @@ body {
 }
 
 .card {
-  background: white;
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(10px);
   padding: 20px;
   border-radius: 12px;
-  margin-bottom: 20px;
 }
 
 input {
@@ -34,83 +35,121 @@ input {
   padding: 12px;
   margin-top: 10px;
   border-radius: 8px;
-  border: 1px solid #ccc;
+  border: none;
+  outline: none;
 }
 
 button {
   width: 100%;
   padding: 15px;
   margin-top: 15px;
-  background: black;
-  color: white;
+  background: #00ff88;
+  color: black;
   border: none;
   border-radius: 10px;
   font-size: 16px;
   cursor: pointer;
+  font-weight: bold;
 }
 
-.sucesso { color: green; }
-.erro { color: red; }
+button:disabled {
+  opacity: 0.6;
+}
+
+.sucesso { color: #00ff88; margin-top:10px; }
+.erro { color: #ff4d4d; margin-top:10px; }
+
+.status {
+  font-size: 13px;
+  margin-top: 8px;
+  opacity: 0.7;
+}
 </style>
 </head>
 
 <body>
 
-<div class="header">
-  <h2 id="nomeRestaurante">Carregando...</h2>
-</div>
+<div class="header" id="nomeRestaurante">Carregando...</div>
 
 <div class="container">
-
   <div class="card">
     <h3>Novo Pedido</h3>
 
     <input id="endereco" placeholder="Endereço de entrega">
     <input id="valor" type="number" placeholder="Valor total">
 
-    <button onclick="criarPedido()">Enviar Pedido</button>
+    <button id="btn" onclick="criarPedido()">Enviar Pedido</button>
 
+    <div class="status" id="gpsStatus">Obtendo localização...</div>
     <div id="msg"></div>
   </div>
-
 </div>
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, doc, getDoc, addDoc, collection } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  addDoc,
+  collection
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBwgR-CXLl676ga05qFfuuGQZyJEx6KwGQ",
   authDomain: "chegueidelivery-90259.firebaseapp.com",
-  projectId: "chegueidelivery-90259",
-  storageBucket: "chegueidelivery-90259.firebasestorage.app",
-  messagingSenderId: "930909516939",
-  appId: "1:930909516939:web:2f8258c80396c4cdf4d08e"
+  projectId: "chegueidelivery-90259"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// 👉 DEFINE QUAL RESTAURANTE (simples por enquanto)
 const restauranteId = "rest1";
 
-// 🔄 CARREGAR NOME
-async function carregarRestaurante() {
-  const ref = doc(db, "restaurantes", restauranteId);
-  const snap = await getDoc(ref);
+let lat = null;
+let lng = null;
 
-  if (snap.exists()) {
-    document.getElementById("nomeRestaurante").innerText = snap.data().nome;
-  } else {
-    document.getElementById("nomeRestaurante").innerText = "Restaurante";
+// 🔄 CARREGAR RESTAURANTE
+async function carregarRestaurante() {
+  const snap = await getDoc(doc(db, "restaurantes", restauranteId));
+  document.getElementById("nomeRestaurante").innerText =
+    snap.exists() ? snap.data().nome : "Restaurante";
+}
+carregarRestaurante();
+
+// 📍 PEGAR LOCALIZAÇÃO
+function iniciarGPS() {
+  if (!navigator.geolocation) {
+    document.getElementById("gpsStatus").innerText = "GPS não suportado";
+    return;
   }
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      lat = pos.coords.latitude;
+      lng = pos.coords.longitude;
+
+      document.getElementById("gpsStatus").innerText =
+        "📍 Localização capturada";
+    },
+    () => {
+      document.getElementById("gpsStatus").innerText =
+        "⚠️ Usando localização padrão";
+
+      // fallback (caso não permita GPS)
+      lat = -22.376;
+      lng = -46.942;
+    }
+  );
 }
 
-carregarRestaurante();
+iniciarGPS();
 
 // 🚀 CRIAR PEDIDO
 window.criarPedido = async () => {
+
+  const btn = document.getElementById("btn");
   const endereco = document.getElementById("endereco").value;
   const valor = Number(document.getElementById("valor").value);
   const msg = document.getElementById("msg");
@@ -121,6 +160,14 @@ window.criarPedido = async () => {
     msg.innerHTML = "<div class='erro'>Preencha tudo</div>";
     return;
   }
+
+  if (!lat || !lng) {
+    msg.innerHTML = "<div class='erro'>Aguardando localização...</div>";
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerText = "Enviando...";
 
   try {
 
@@ -133,17 +180,23 @@ window.criarPedido = async () => {
       motoboyId: "",
       restauranteId: restauranteId,
       recusadoPor: [],
-      lat: -22.376,
-      lng: -46.942,
+      lat: lat,
+      lng: lng,
       createdAt: new Date()
     });
 
     msg.innerHTML = "<div class='sucesso'>Pedido enviado!</div>";
 
+    document.getElementById("endereco").value = "";
+    document.getElementById("valor").value = "";
+
   } catch (e) {
     msg.innerHTML = "<div class='erro'>Erro ao enviar</div>";
     console.error(e);
   }
+
+  btn.disabled = false;
+  btn.innerText = "Enviar Pedido";
 };
 
 </script>
