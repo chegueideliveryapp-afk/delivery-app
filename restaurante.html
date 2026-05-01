@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<h1>Restaurante</h1>
+
+<input id="endereco" placeholder="Endereço">
+<input id="valor" placeholder="Valor total">
+
+<button onclick="criarPedido()">Criar Pedido</button>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, addDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  // COLE AQUI SUA CONFIG WEB
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+window.criarPedido = async () => {
+  const endereco = document.getElementById("endereco").value;
+  const valor = Number(document.getElementById("valor").value);
+
+  await addDoc(collection(db, "pedidos"), {
+    enderecoEntrega: endereco,
+    valorTotal: valor,
+    valorMotoboy: 10,
+    taxaSistema: 5,
+    status: "pendente",
+    motoboyId: "",
+    restauranteId: "rest1",
+    recusadoPor: [],
+    createdAt: new Date()
+  });
+
+  alert("Pedido criado!");
+};
+
+</script>
+
+</body>
+</html>
