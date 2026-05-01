@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Motoboy2</title>
+<title>Motoboy</title>
 
 <style>
 body {
@@ -31,7 +31,7 @@ body {
 
 button {
   width: 100%;
-  padding: 10px;
+  padding: 12px;
   margin-top: 10px;
   border: none;
   border-radius: 8px;
@@ -40,22 +40,26 @@ button {
 }
 
 .aceitar { background: green; color: white; }
+.recusar { background: red; color: white; }
 .finalizar { background: blue; color: white; }
 
 .popup {
   position: fixed;
   top:0;left:0;width:100%;height:100%;
-  background: rgba(0,0,0,0.85);
+  background: rgba(0,0,0,0.9);
   display:none;
   align-items:center;
   justify-content:center;
+  z-index: 999;
 }
 
 .popup-content {
   background:white;
-  padding:20px;
-  border-radius:10px;
+  padding:25px;
+  border-radius:12px;
   text-align: center;
+  width: 90%;
+  max-width: 300px;
 }
 </style>
 </head>
@@ -73,9 +77,13 @@ button {
   <div class="popup-content">
     <h2>🚨 Nova corrida</h2>
     <div id="info"></div>
+
     <button class="aceitar" onclick="aceitar()">Aceitar</button>
+    <button class="recusar" onclick="recusar()">Recusar</button>
   </div>
 </div>
+
+<audio id="som" src="https://www.soundjay.com/buttons/sounds/beep-01a.mp3"></audio>
 
 <script type="module">
 
@@ -102,17 +110,13 @@ const motoId = "tSRzdKRyTLN1Os0bsVSc";
 
 let pedidoAtual = null;
 
-// 💰 CARREGAR SALDO
+// 💰 SALDO
 async function carregarSaldo() {
-  try {
-    const snap = await getDoc(doc(db, "motoboys", motoId));
-    const saldo = snap.data()?.saldo || 0;
+  const snap = await getDoc(doc(db, "motoboys", motoId));
+  const saldo = snap.data()?.saldo || 0;
 
-    document.getElementById("saldo").innerText =
-      "Saldo: R$ " + saldo;
-  } catch (e) {
-    console.error(e);
-  }
+  document.getElementById("saldo").innerText =
+    "Saldo: R$ " + saldo;
 }
 carregarSaldo();
 
@@ -124,12 +128,15 @@ onSnapshot(collection(db, "pedidos"), (snap) => {
   snap.forEach(docSnap => {
     const p = docSnap.data();
 
-    // 🔥 NOVO PEDIDO
-    if (p.status === "pendente") {
+    // 🚨 NOVO PEDIDO (não recusado)
+    if (
+      p.status === "pendente" &&
+      !(p.recusadoPor || []).includes(motoId)
+    ) {
       mostrarPopup(docSnap.id, p);
     }
 
-    // 🛵 PEDIDO ACEITO
+    // 🛵 EM ANDAMENTO
     if (p.status === "aceito" && p.motoboyId === motoId) {
       lista.innerHTML += `
         <div class="card">
@@ -144,7 +151,7 @@ onSnapshot(collection(db, "pedidos"), (snap) => {
   });
 });
 
-// 🔥 POPUP
+// 🔥 POPUP + SOM
 function mostrarPopup(id, p) {
   if (pedidoAtual === id) return;
 
@@ -153,6 +160,8 @@ function mostrarPopup(id, p) {
   document.getElementById("popup").style.display = "flex";
   document.getElementById("info").innerHTML =
     `${p.enderecoEntrega}<br><b>R$ ${p.valorMotoboy}</b>`;
+
+  document.getElementById("som").play();
 }
 
 // ✅ ACEITAR
@@ -173,24 +182,42 @@ window.aceitar = async () => {
   }
 };
 
-// 🏁 FINALIZAR + SOMAR SALDO
+// ❌ RECUSAR
+window.recusar = async () => {
+  try {
+    const ref = doc(db, "pedidos", pedidoAtual);
+
+    const snap = await getDoc(ref);
+    const recusados = snap.data().recusadoPor || [];
+
+    await updateDoc(ref, {
+      recusadoPor: [...recusados, motoId]
+    });
+
+    document.getElementById("popup").style.display = "none";
+    pedidoAtual = null;
+
+  } catch (e) {
+    console.error(e);
+    alert("Erro ao recusar");
+  }
+};
+
+// 🏁 FINALIZAR
 window.finalizar = async (id, valor) => {
   try {
 
     const pedidoRef = doc(db, "pedidos", id);
     const motoRef = doc(db, "motoboys", motoId);
 
-    // atualizar pedido
     await updateDoc(pedidoRef, {
       status: "entregue",
       entregueAt: new Date()
     });
 
-    // pegar saldo atual
     const snap = await getDoc(motoRef);
     const saldoAtual = snap.data()?.saldo || 0;
 
-    // atualizar saldo
     await updateDoc(motoRef, {
       saldo: saldoAtual + valor
     });
@@ -199,7 +226,6 @@ window.finalizar = async (id, valor) => {
 
     carregarSaldo();
 
-    // força atualizar lista
     setTimeout(() => location.reload(), 500);
 
   } catch (e) {
