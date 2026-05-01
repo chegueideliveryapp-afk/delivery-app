@@ -2,17 +2,15 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Motoboy - Login</title>
+<title>Motoboy</title>
 
 <style>
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
-  font-family: Arial, sans-serif;
-  background: linear-gradient(135deg, #000000, #1a1a1a);
+  font-family: Arial;
+  background: linear-gradient(135deg, #000, #1a1a1a);
   height: 100vh;
   display: flex;
   align-items: center;
@@ -23,17 +21,34 @@ body {
 .card {
   background: rgba(255,255,255,0.05);
   backdrop-filter: blur(15px);
+  padding: 25px;
   border-radius: 16px;
-  padding: 30px;
   width: 100%;
   max-width: 400px;
-  box-shadow: 0 0 30px rgba(0,0,0,0.4);
 }
 
 .logo {
   text-align: center;
-  font-size: 28px;
-  margin-bottom: 20px;
+  font-size: 26px;
+  margin-bottom: 15px;
+}
+
+.tabs {
+  display: flex;
+  margin-bottom: 15px;
+}
+
+.tab {
+  flex: 1;
+  text-align: center;
+  padding: 10px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+
+.tab.active {
+  border-bottom: 2px solid #00ff88;
+  font-weight: bold;
 }
 
 input {
@@ -43,50 +58,29 @@ input {
   border-radius: 8px;
   border: none;
   outline: none;
-  font-size: 14px;
 }
 
-input:focus {
-  box-shadow: 0 0 0 2px #00ff88;
-}
-
-.btn {
+button {
   width: 100%;
   padding: 12px;
   margin-top: 12px;
-  border: none;
   border-radius: 8px;
-  font-size: 15px;
+  border: none;
   cursor: pointer;
-  transition: 0.2s;
-}
-
-.btn-login {
-  background: #00ff88;
-  color: black;
   font-weight: bold;
 }
 
-.btn-login:hover {
-  background: #00cc6a;
-}
-
-.btn-cadastro {
-  background: transparent;
-  color: #00ff88;
-  border: 1px solid #00ff88;
-}
-
-.btn-cadastro:hover {
+.btn {
   background: #00ff88;
   color: black;
 }
 
-.divider {
-  text-align: center;
-  margin: 15px 0;
-  font-size: 12px;
-  opacity: 0.6;
+.btn:hover {
+  background: #00cc6a;
+}
+
+.hidden {
+  display: none;
 }
 
 small {
@@ -104,16 +98,26 @@ small {
 
   <div class="logo">🛵 Motoboy</div>
 
-  <input id="cpf" placeholder="CPF (somente números)">
-  <input id="nome" placeholder="Nome completo (cadastro)">
-  <input id="nascimento" type="date">
-  <input id="senha" type="password" placeholder="Senha">
+  <div class="tabs">
+    <div class="tab active" onclick="trocar('login')">Entrar</div>
+    <div class="tab" onclick="trocar('cadastro')">Criar conta</div>
+  </div>
 
-  <button class="btn btn-login" onclick="login()">Entrar</button>
+  <!-- LOGIN -->
+  <div id="loginBox">
+    <input id="cpfLogin" placeholder="CPF">
+    <input id="senhaLogin" type="password" placeholder="Senha">
+    <button class="btn" onclick="login()">Entrar</button>
+  </div>
 
-  <div class="divider">ou</div>
-
-  <button class="btn btn-cadastro" onclick="cadastrar()">Criar conta</button>
+  <!-- CADASTRO -->
+  <div id="cadastroBox" class="hidden">
+    <input id="cpfCad" placeholder="CPF">
+    <input id="nome" placeholder="Nome completo">
+    <input id="nascimento" type="date">
+    <input id="senhaCad" type="password" placeholder="Senha">
+    <button class="btn" onclick="cadastrar()">Criar conta</button>
+  </div>
 
   <small>Use seu CPF como login</small>
 
@@ -144,14 +148,22 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+// 🔄 TROCAR ABA
+window.trocar = (tipo) => {
+  document.getElementById("loginBox").classList.toggle("hidden", tipo !== "login");
+  document.getElementById("cadastroBox").classList.toggle("hidden", tipo !== "cadastro");
+
+  const tabs = document.querySelectorAll(".tab");
+  tabs.forEach(t => t.classList.remove("active"));
+  tabs[tipo === "login" ? 0 : 1].classList.add("active");
+};
+
 // 🆕 CADASTRO
 window.cadastrar = async () => {
-  let cpf = document.getElementById("cpf").value;
+  let cpf = document.getElementById("cpfCad").value.replace(/\D/g, "");
   const nome = document.getElementById("nome").value;
   const nascimento = document.getElementById("nascimento").value;
-  const senha = document.getElementById("senha").value;
-
-  cpf = cpf.replace(/\D/g, "");
+  const senha = document.getElementById("senhaCad").value;
 
   if (cpf.length < 11) {
     alert("CPF inválido");
@@ -172,23 +184,23 @@ window.cadastrar = async () => {
       createdAt: new Date()
     });
 
-    alert("✅ Cadastro realizado!");
+    alert("✅ Conta criada! Agora faça login");
+
+    trocar("login");
 
   } catch (e) {
     if (e.code === "auth/email-already-in-use") {
       alert("CPF já cadastrado");
     } else {
-      alert("Erro: " + e.message);
+      alert(e.message);
     }
   }
 };
 
 // 🔐 LOGIN
 window.login = async () => {
-  let cpf = document.getElementById("cpf").value;
-  const senha = document.getElementById("senha").value;
-
-  cpf = cpf.replace(/\D/g, "");
+  let cpf = document.getElementById("cpfLogin").value.replace(/\D/g, "");
+  const senha = document.getElementById("senhaLogin").value;
 
   if (cpf.length < 11) {
     alert("CPF inválido");
@@ -199,11 +211,9 @@ window.login = async () => {
 
   try {
     await signInWithEmailAndPassword(auth, emailFake, senha);
-
     window.location.href = "motoboy.html";
-
   } catch (e) {
-    alert("Erro login: " + e.message);
+    alert("Erro: " + e.message);
   }
 };
 
