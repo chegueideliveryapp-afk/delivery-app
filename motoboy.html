@@ -2,14 +2,10 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Motoboy</title>
+<title>Motoboy2</title>
 
 <style>
-body {
-  font-family: Arial;
-  margin: 0;
-  background: #f2f2f2;
-}
+body { font-family: Arial; margin: 0; background: #f2f2f2; }
 
 .header {
   background: black;
@@ -18,9 +14,7 @@ body {
   text-align: center;
 }
 
-.container {
-  padding: 15px;
-}
+.container { padding: 15px; }
 
 .card {
   background: white;
@@ -97,6 +91,11 @@ import {
   getDoc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+import {
+  getAuth,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
 const firebaseConfig = {
   apiKey: "AIzaSyBwgR-CXLl676ga05qFfuuGQZyJEx6KwGQ",
   authDomain: "chegueidelivery-90259.firebaseapp.com",
@@ -105,10 +104,30 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
 
-const motoId = "tSRzdKRyTLN1Os0bsVSc";
-
+let motoId = null;
 let pedidoAtual = null;
+
+// 🔐 VERIFICAR LOGIN
+onAuthStateChanged(auth, (user) => {
+
+  if (!user) {
+    alert("Você precisa fazer login");
+    window.location.href = "motoboy-login.html";
+    return;
+  }
+
+  motoId = user.uid;
+
+  iniciarApp();
+});
+
+// 🚀 INICIAR APP
+function iniciarApp() {
+  carregarSaldo();
+  escutarPedidos();
+}
 
 // 💰 SALDO
 async function carregarSaldo() {
@@ -118,40 +137,41 @@ async function carregarSaldo() {
   document.getElementById("saldo").innerText =
     "Saldo: R$ " + saldo;
 }
-carregarSaldo();
 
-// 🔄 ESCUTAR PEDIDOS
-onSnapshot(collection(db, "pedidos"), (snap) => {
-  const lista = document.getElementById("lista");
-  lista.innerHTML = "";
+// 🔄 PEDIDOS
+function escutarPedidos() {
 
-  snap.forEach(docSnap => {
-    const p = docSnap.data();
+  onSnapshot(collection(db, "pedidos"), (snap) => {
+    const lista = document.getElementById("lista");
+    lista.innerHTML = "";
 
-    // 🚨 NOVO PEDIDO (não recusado)
-    if (
-      p.status === "pendente" &&
-      !(p.recusadoPor || []).includes(motoId)
-    ) {
-      mostrarPopup(docSnap.id, p);
-    }
+    snap.forEach(docSnap => {
+      const p = docSnap.data();
 
-    // 🛵 EM ANDAMENTO
-    if (p.status === "aceito" && p.motoboyId === motoId) {
-      lista.innerHTML += `
-        <div class="card">
-          📍 ${p.enderecoEntrega}<br>
-          💰 R$ ${p.valorMotoboy}
-          <button class="finalizar" onclick="finalizar('${docSnap.id}', ${p.valorMotoboy})">
-            Finalizar corrida
-          </button>
-        </div>
-      `;
-    }
+      if (
+        p.status === "pendente" &&
+        !(p.recusadoPor || []).includes(motoId)
+      ) {
+        mostrarPopup(docSnap.id, p);
+      }
+
+      if (p.status === "aceito" && p.motoboyId === motoId) {
+        lista.innerHTML += `
+          <div class="card">
+            📍 ${p.enderecoEntrega}<br>
+            💰 R$ ${p.valorMotoboy}
+            <button class="finalizar" onclick="finalizar('${docSnap.id}', ${p.valorMotoboy})">
+              Finalizar corrida
+            </button>
+          </div>
+        `;
+      }
+    });
   });
-});
 
-// 🔥 POPUP + SOM
+}
+
+// 🔔 POPUP
 function mostrarPopup(id, p) {
   if (pedidoAtual === id) return;
 
@@ -166,72 +186,54 @@ function mostrarPopup(id, p) {
 
 // ✅ ACEITAR
 window.aceitar = async () => {
-  try {
-    await updateDoc(doc(db, "pedidos", pedidoAtual), {
-      status: "aceito",
-      motoboyId: motoId,
-      aceitoAt: new Date()
-    });
+  await updateDoc(doc(db, "pedidos", pedidoAtual), {
+    status: "aceito",
+    motoboyId: motoId,
+    aceitoAt: new Date()
+  });
 
-    document.getElementById("popup").style.display = "none";
-    pedidoAtual = null;
-
-  } catch (e) {
-    alert("Erro ao aceitar");
-    console.error(e);
-  }
+  document.getElementById("popup").style.display = "none";
+  pedidoAtual = null;
 };
 
 // ❌ RECUSAR
 window.recusar = async () => {
-  try {
-    const ref = doc(db, "pedidos", pedidoAtual);
+  const ref = doc(db, "pedidos", pedidoAtual);
 
-    const snap = await getDoc(ref);
-    const recusados = snap.data().recusadoPor || [];
+  const snap = await getDoc(ref);
+  const recusados = snap.data().recusadoPor || [];
 
-    await updateDoc(ref, {
-      recusadoPor: [...recusados, motoId]
-    });
+  await updateDoc(ref, {
+    recusadoPor: [...recusados, motoId]
+  });
 
-    document.getElementById("popup").style.display = "none";
-    pedidoAtual = null;
-
-  } catch (e) {
-    console.error(e);
-    alert("Erro ao recusar");
-  }
+  document.getElementById("popup").style.display = "none";
+  pedidoAtual = null;
 };
 
 // 🏁 FINALIZAR
 window.finalizar = async (id, valor) => {
-  try {
 
-    const pedidoRef = doc(db, "pedidos", id);
-    const motoRef = doc(db, "motoboys", motoId);
+  const pedidoRef = doc(db, "pedidos", id);
+  const motoRef = doc(db, "motoboys", motoId);
 
-    await updateDoc(pedidoRef, {
-      status: "entregue",
-      entregueAt: new Date()
-    });
+  await updateDoc(pedidoRef, {
+    status: "entregue",
+    entregueAt: new Date()
+  });
 
-    const snap = await getDoc(motoRef);
-    const saldoAtual = snap.data()?.saldo || 0;
+  const snap = await getDoc(motoRef);
+  const saldoAtual = snap.data()?.saldo || 0;
 
-    await updateDoc(motoRef, {
-      saldo: saldoAtual + valor
-    });
+  await updateDoc(motoRef, {
+    saldo: saldoAtual + valor
+  });
 
-    alert("✅ Corrida finalizada!");
+  alert("✅ Corrida finalizada!");
 
-    carregarSaldo();
+  carregarSaldo();
 
-    setTimeout(() => location.reload(), 500);
-
-  } catch (e) {
-    console.error(e);
-    alert("❌ Erro ao finalizar: " + e);
-  }
+  setTimeout(() => location.reload(), 500);
 };
 
 </script>
