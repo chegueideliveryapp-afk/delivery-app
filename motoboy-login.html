@@ -2,28 +2,120 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Login Motoboy</title>
+<title>Motoboy - Login</title>
 
 <style>
-body { font-family: Arial; padding:20px; background:#f2f2f2; }
-.card { background:white; padding:20px; border-radius:10px; max-width:400px; margin:auto; }
-input { width:100%; padding:10px; margin-top:10px; }
-button { width:100%; padding:10px; margin-top:10px; }
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg, #000000, #1a1a1a);
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.card {
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(15px);
+  border-radius: 16px;
+  padding: 30px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 0 30px rgba(0,0,0,0.4);
+}
+
+.logo {
+  text-align: center;
+  font-size: 28px;
+  margin-bottom: 20px;
+}
+
+input {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  border-radius: 8px;
+  border: none;
+  outline: none;
+  font-size: 14px;
+}
+
+input:focus {
+  box-shadow: 0 0 0 2px #00ff88;
+}
+
+.btn {
+  width: 100%;
+  padding: 12px;
+  margin-top: 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn-login {
+  background: #00ff88;
+  color: black;
+  font-weight: bold;
+}
+
+.btn-login:hover {
+  background: #00cc6a;
+}
+
+.btn-cadastro {
+  background: transparent;
+  color: #00ff88;
+  border: 1px solid #00ff88;
+}
+
+.btn-cadastro:hover {
+  background: #00ff88;
+  color: black;
+}
+
+.divider {
+  text-align: center;
+  margin: 15px 0;
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+small {
+  display: block;
+  text-align: center;
+  margin-top: 10px;
+  opacity: 0.6;
+}
 </style>
 </head>
 
 <body>
 
 <div class="card">
-<h2>🛵 Motoboy</h2>
 
-<input id="cpf" placeholder="CPF (somente números)">
-<input id="nome" placeholder="Nome completo">
-<input id="nascimento" type="date">
-<input id="senha" type="password" placeholder="Senha">
+  <div class="logo">🛵 Motoboy</div>
 
-<button onclick="cadastrar()">Cadastrar</button>
-<button onclick="login()">Entrar</button>
+  <input id="cpf" placeholder="CPF (somente números)">
+  <input id="nome" placeholder="Nome completo (cadastro)">
+  <input id="nascimento" type="date">
+  <input id="senha" type="password" placeholder="Senha">
+
+  <button class="btn btn-login" onclick="login()">Entrar</button>
+
+  <div class="divider">ou</div>
+
+  <button class="btn btn-cadastro" onclick="cadastrar()">Criar conta</button>
+
+  <small>Use seu CPF como login</small>
 
 </div>
 
@@ -54,10 +146,17 @@ const db = getFirestore(app);
 
 // 🆕 CADASTRO
 window.cadastrar = async () => {
-  const cpf = document.getElementById("cpf").value;
+  let cpf = document.getElementById("cpf").value;
   const nome = document.getElementById("nome").value;
   const nascimento = document.getElementById("nascimento").value;
   const senha = document.getElementById("senha").value;
+
+  cpf = cpf.replace(/\D/g, "");
+
+  if (cpf.length < 11) {
+    alert("CPF inválido");
+    return;
+  }
 
   const emailFake = cpf + "@app.com";
 
@@ -76,22 +175,32 @@ window.cadastrar = async () => {
     alert("✅ Cadastro realizado!");
 
   } catch (e) {
-    alert("Erro: " + e.message);
+    if (e.code === "auth/email-already-in-use") {
+      alert("CPF já cadastrado");
+    } else {
+      alert("Erro: " + e.message);
+    }
   }
 };
 
 // 🔐 LOGIN
 window.login = async () => {
-  const cpf = document.getElementById("cpf").value;
+  let cpf = document.getElementById("cpf").value;
   const senha = document.getElementById("senha").value;
+
+  cpf = cpf.replace(/\D/g, "");
+
+  if (cpf.length < 11) {
+    alert("CPF inválido");
+    return;
+  }
 
   const emailFake = cpf + "@app.com";
 
   try {
-    const user = await signInWithEmailAndPassword(auth, emailFake, senha);
+    await signInWithEmailAndPassword(auth, emailFake, senha);
 
-    // redireciona pro app
-    window.location.href = "motoboy.html?uid=" + user.user.uid;
+    window.location.href = "motoboy.html";
 
   } catch (e) {
     alert("Erro login: " + e.message);
