@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Login Motoboy</title>
+
+<style>
+body { font-family: Arial; padding:20px; background:#f2f2f2; }
+.card { background:white; padding:20px; border-radius:10px; max-width:400px; margin:auto; }
+input { width:100%; padding:10px; margin-top:10px; }
+button { width:100%; padding:10px; margin-top:10px; }
+</style>
+</head>
+
+<body>
+
+<div class="card">
+<h2>🛵 Motoboy</h2>
+
+<input id="cpf" placeholder="CPF (somente números)">
+<input id="nome" placeholder="Nome completo">
+<input id="nascimento" type="date">
+<input id="senha" type="password" placeholder="Senha">
+
+<button onclick="cadastrar()">Cadastrar</button>
+<button onclick="login()">Entrar</button>
+
+</div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+import {
+  getFirestore,
+  doc,
+  setDoc
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBwgR-CXLl676ga05qFfuuGQZyJEx6KwGQ",
+  authDomain: "chegueidelivery-90259.firebaseapp.com",
+  projectId: "chegueidelivery-90259",
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// 🆕 CADASTRO
+window.cadastrar = async () => {
+  const cpf = document.getElementById("cpf").value;
+  const nome = document.getElementById("nome").value;
+  const nascimento = document.getElementById("nascimento").value;
+  const senha = document.getElementById("senha").value;
+
+  const emailFake = cpf + "@app.com";
+
+  try {
+    const user = await createUserWithEmailAndPassword(auth, emailFake, senha);
+
+    await setDoc(doc(db, "motoboys", user.user.uid), {
+      nome,
+      cpf,
+      nascimento,
+      saldo: 0,
+      online: true,
+      createdAt: new Date()
+    });
+
+    alert("✅ Cadastro realizado!");
+
+  } catch (e) {
+    alert("Erro: " + e.message);
+  }
+};
+
+// 🔐 LOGIN
+window.login = async () => {
+  const cpf = document.getElementById("cpf").value;
+  const senha = document.getElementById("senha").value;
+
+  const emailFake = cpf + "@app.com";
+
+  try {
+    const user = await signInWithEmailAndPassword(auth, emailFake, senha);
+
+    // redireciona pro app
+    window.location.href = "motoboy.html?uid=" + user.user.uid;
+
+  } catch (e) {
+    alert("Erro login: " + e.message);
+  }
+};
+
+</script>
+
+</body>
+</html>
