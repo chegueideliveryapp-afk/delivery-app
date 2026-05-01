@@ -2,40 +2,18 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Motoboy2</title>
+<title>Motoboy</title>
 
 <style>
 body { font-family: Arial; margin: 0; background: #f2f2f2; }
-
-.header {
-  background: black;
-  color: white;
-  padding: 15px;
-  text-align: center;
-}
-
+.header { background: black; color: white; padding: 15px; text-align: center; }
 .container { padding: 15px; }
-
-.card {
-  background: white;
-  padding: 15px;
-  border-radius: 10px;
-  margin-bottom: 10px;
-}
-
-button {
-  width: 100%;
-  padding: 12px;
-  margin-top: 10px;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  cursor: pointer;
-}
-
+.card { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; }
+button { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; }
 .aceitar { background: green; color: white; }
 .recusar { background: red; color: white; }
 .finalizar { background: blue; color: white; }
+.status-gps { font-size: 13px; margin-top: 6px; color: #b7ffb7; }
 
 .popup {
   position: fixed;
@@ -63,6 +41,7 @@ button {
 <div class="header">
   🛵 Motoboy
   <div id="saldo">Saldo: R$ 0</div>
+  <div id="gpsStatus" class="status-gps">Aguardando GPS...</div>
 </div>
 
 <div class="container" id="lista"></div>
@@ -82,6 +61,7 @@ button {
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+
 import {
   getFirestore,
   collection,
@@ -109,9 +89,13 @@ const auth = getAuth(app);
 let motoId = null;
 let pedidoAtual = null;
 
+let minhaLat = null;
+let minhaLng = null;
+
+const RAIO_KM = 5;
+
 // 🔐 VERIFICAR LOGIN
 onAuthStateChanged(auth, (user) => {
-
   if (!user) {
     alert("Você precisa fazer login");
     window.location.href = "motoboy-login.html";
@@ -119,13 +103,13 @@ onAuthStateChanged(auth, (user) => {
   }
 
   motoId = user.uid;
-
   iniciarApp();
 });
 
 // 🚀 INICIAR APP
 function iniciarApp() {
   carregarSaldo();
+  iniciarLocalizacaoTempoReal();
   escutarPedidos();
 }
 
@@ -134,13 +118,71 @@ async function carregarSaldo() {
   const snap = await getDoc(doc(db, "motoboys", motoId));
   const saldo = snap.data()?.saldo || 0;
 
-  document.getElementById("saldo").innerText =
-    "Saldo: R$ " + saldo;
+  document.getElementById("saldo").innerText = "Saldo: R$ " + saldo;
+}
+
+// 📍 LOCALIZAÇÃO EM TEMPO REAL
+function iniciarLocalizacaoTempoReal() {
+  if (!navigator.geolocation) {
+    alert("Seu navegador não suporta localização.");
+    return;
+  }
+
+  navigator.geolocation.watchPosition(
+    async (pos) => {
+      minhaLat = pos.coords.latitude;
+      minhaLng = pos.coords.longitude;
+
+      document.getElementById("gpsStatus").innerText =
+        "📍 Online - GPS ativo";
+
+      await updateDoc(doc(db, "motoboys", motoId), {
+        online: true,
+        location: {
+          lat: minhaLat,
+          lng: minhaLng
+        },
+        ultimaLocalizacaoAt: new Date()
+      });
+
+      console.log("Localização enviada:", minhaLat, minhaLng);
+    },
+    async (erro) => {
+      console.error("Erro GPS:", erro);
+
+      document.getElementById("gpsStatus").innerText =
+        "❌ Permita localização para receber corridas";
+
+      await updateDoc(doc(db, "motoboys", motoId), {
+        online: false
+      });
+    },
+    {
+      enableHighAccuracy: true,
+      maximumAge: 5000,
+      timeout: 10000
+    }
+  );
+}
+
+// 📏 CALCULAR DISTÂNCIA EM KM
+function calcularDistanciaKm(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) *
+    Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
 }
 
 // 🔄 PEDIDOS
 function escutarPedidos() {
-
   onSnapshot(collection(db, "pedidos"), (snap) => {
     const lista = document.getElementById("lista");
     lista.innerHTML = "";
@@ -148,18 +190,35 @@ function escutarPedidos() {
     snap.forEach(docSnap => {
       const p = docSnap.data();
 
+      // pedido pendente, não recusado e com localização
       if (
         p.status === "pendente" &&
         !(p.recusadoPor || []).includes(motoId)
       ) {
-        mostrarPopup(docSnap.id, p);
+        let podeMostrar = true;
+        let distanciaTexto = "";
+
+        if (p.lat && p.lng && minhaLat && minhaLng) {
+          const distancia = calcularDistanciaKm(minhaLat, minhaLng, p.lat, p.lng);
+
+          distanciaTexto = `<br>📏 Distância: ${distancia.toFixed(2)} km`;
+
+          if (distancia > RAIO_KM) {
+            podeMostrar = false;
+          }
+        }
+
+        if (podeMostrar) {
+          mostrarPopup(docSnap.id, p, distanciaTexto);
+        }
       }
 
+      // pedido aceito pelo motoboy atual
       if (p.status === "aceito" && p.motoboyId === motoId) {
         lista.innerHTML += `
           <div class="card">
             📍 ${p.enderecoEntrega}<br>
-            💰 R$ ${p.valorMotoboy}
+            💰 R$ ${p.valorMotoboy}<br>
             <button class="finalizar" onclick="finalizar('${docSnap.id}', ${p.valorMotoboy})">
               Finalizar corrida
             </button>
@@ -168,20 +227,19 @@ function escutarPedidos() {
       }
     });
   });
-
 }
 
 // 🔔 POPUP
-function mostrarPopup(id, p) {
+function mostrarPopup(id, p, distanciaTexto = "") {
   if (pedidoAtual === id) return;
 
   pedidoAtual = id;
 
   document.getElementById("popup").style.display = "flex";
   document.getElementById("info").innerHTML =
-    `${p.enderecoEntrega}<br><b>R$ ${p.valorMotoboy}</b>`;
+    `${p.enderecoEntrega}<br><b>R$ ${p.valorMotoboy}</b>${distanciaTexto}`;
 
-  document.getElementById("som").play();
+  document.getElementById("som").play().catch(() => {});
 }
 
 // ✅ ACEITAR
@@ -213,7 +271,6 @@ window.recusar = async () => {
 
 // 🏁 FINALIZAR
 window.finalizar = async (id, valor) => {
-
   const pedidoRef = doc(db, "pedidos", id);
   const motoRef = doc(db, "motoboys", motoId);
 
