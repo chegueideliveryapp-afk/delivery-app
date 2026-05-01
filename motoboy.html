@@ -1,58 +1,189 @@
 <!DOCTYPE html>
 <html>
+<head>
+<meta charset="UTF-8">
+<title>Motoboy</title>
+
+<style>
+body {
+  font-family: Arial;
+  margin: 0;
+  background: #f2f2f2;
+}
+
+.header {
+  background: black;
+  color: white;
+  padding: 15px;
+  text-align: center;
+}
+
+.container {
+  padding: 15px;
+}
+
+.card {
+  background: white;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  margin-top: 10px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+.aceitar { background: green; color: white; }
+.finalizar { background: blue; color: white; }
+
+.popup {
+  position: fixed;
+  top:0;left:0;width:100%;height:100%;
+  background: rgba(0,0,0,0.85);
+  display:none;
+  align-items:center;
+  justify-content:center;
+}
+
+.popup-content {
+  background:white;
+  padding:20px;
+  border-radius:10px;
+}
+</style>
+</head>
+
 <body>
 
-<h1>Motoboy</h1>
+<div class="header">
+  🛵 Motoboy
+  <div id="saldo">Saldo: R$ 0</div>
+</div>
 
-<div id="pedidos"></div>
+<div class="container" id="lista"></div>
+
+<div class="popup" id="popup">
+  <div class="popup-content">
+    <h2>🚨 Nova corrida</h2>
+    <div id="info"></div>
+    <button class="aceitar" onclick="aceitar()">Aceitar</button>
+  </div>
+</div>
 
 <script type="module">
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, onSnapshot, doc, runTransaction } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import {
+  getFirestore,
+  collection,
+  onSnapshot,
+  doc,
+  updateDoc,
+  getDoc,
+  runTransaction
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
-  // CONFIG
+  apiKey: "AIzaSyBwgR-CXLl676ga05qFfuuGQZyJEx6KwGQ",
+  authDomain: "chegueidelivery-90259.firebaseapp.com",
+  projectId: "chegueidelivery-90259",
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const lista = document.getElementById("pedidos");
+const motoId = "moto1";
 
-onSnapshot(collection(db, "pedidos"), (snapshot) => {
+let pedidoAtual = null;
+
+// 💰 CARREGAR SALDO
+async function carregarSaldo() {
+  const snap = await getDoc(doc(db, "motoboys", motoId));
+  document.getElementById("saldo").innerText =
+    "Saldo: R$ " + snap.data().saldo;
+}
+carregarSaldo();
+
+// 🔄 ESCUTAR PEDIDOS
+onSnapshot(collection(db, "pedidos"), (snap) => {
+  const lista = document.getElementById("lista");
   lista.innerHTML = "";
 
-  snapshot.forEach((docSnap) => {
+  snap.forEach(docSnap => {
     const p = docSnap.data();
 
     if (p.status === "pendente") {
+      mostrarPopup(docSnap.id, p);
+    }
+
+    if (p.status === "aceito" && p.motoboyId === motoId) {
       lista.innerHTML += `
-        <div>
-          ${p.enderecoEntrega} - R$ ${p.valorMotoboy}
-          <button onclick="aceitar('${docSnap.id}')">Aceitar</button>
-        </div><hr>
+        <div class="card">
+          📍 ${p.enderecoEntrega}<br>
+          💰 R$ ${p.valorMotoboy}
+          <button class="finalizar" onclick="finalizar('${docSnap.id}', ${p.valorMotoboy})">
+            Finalizar corrida
+          </button>
+        </div>
       `;
     }
   });
 });
 
-window.aceitar = async (id) => {
-  const ref = doc(db, "pedidos", id);
+// 🔥 POPUP
+function mostrarPopup(id, p) {
+  if (pedidoAtual === id) return;
 
-  await runTransaction(db, async (transaction) => {
-    const snap = await transaction.get(ref);
+  pedidoAtual = id;
 
-    if (snap.data().status !== "pendente") {
-      alert("Já foi pego");
-      return;
-    }
+  document.getElementById("popup").style.display = "flex";
+  document.getElementById("info").innerHTML =
+    `${p.enderecoEntrega}<br>R$ ${p.valorMotoboy}`;
+}
 
-    transaction.update(ref, {
-      status: "aceito",
-      motoboyId: "moto1",
-      aceitoAt: new Date()
-    });
+// ✅ ACEITAR
+window.aceitar = async () => {
+  await updateDoc(doc(db, "pedidos", pedidoAtual), {
+    status: "aceito",
+    motoboyId: motoId,
+    aceitoAt: new Date()
   });
+
+  document.getElementById("popup").style.display = "none";
+};
+
+// 🏁 FINALIZAR + PAGAR
+window.finalizar = async (id, valor) => {
+
+  const pedidoRef = doc(db, "pedidos", id);
+  const motoRef = doc(db, "motoboys", motoId);
+
+  await runTransaction(db, async (t) => {
+
+    const pedido = await t.get(pedidoRef);
+    const moto = await t.get(motoRef);
+
+    if (pedido.data().status !== "aceito") return;
+
+    const novoSaldo = moto.data().saldo + valor;
+
+    t.update(pedidoRef, {
+      status: "entregue",
+      entregueAt: new Date()
+    });
+
+    t.update(motoRef, {
+      saldo: novoSaldo
+    });
+
+  });
+
+  carregarSaldo();
 };
 
 </script>
