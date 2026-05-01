@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<h1>Motoboy</h1>
+
+<div id="pedidos"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, onSnapshot, doc, runTransaction } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  // CONFIG
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const lista = document.getElementById("pedidos");
+
+onSnapshot(collection(db, "pedidos"), (snapshot) => {
+  lista.innerHTML = "";
+
+  snapshot.forEach((docSnap) => {
+    const p = docSnap.data();
+
+    if (p.status === "pendente") {
+      lista.innerHTML += `
+        <div>
+          ${p.enderecoEntrega} - R$ ${p.valorMotoboy}
+          <button onclick="aceitar('${docSnap.id}')">Aceitar</button>
+        </div><hr>
+      `;
+    }
+  });
+});
+
+window.aceitar = async (id) => {
+  const ref = doc(db, "pedidos", id);
+
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(ref);
+
+    if (snap.data().status !== "pendente") {
+      alert("Já foi pego");
+      return;
+    }
+
+    transaction.update(ref, {
+      status: "aceito",
+      motoboyId: "moto1",
+      aceitoAt: new Date()
+    });
+  });
+};
+
+</script>
+
+</body>
+</html>
