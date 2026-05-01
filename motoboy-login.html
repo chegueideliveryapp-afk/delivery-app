@@ -114,6 +114,7 @@ small {
   <div id="cadastroBox" class="hidden">
     <input id="cpfCad" placeholder="CPF">
     <input id="nome" placeholder="Nome completo">
+    <input id="telefone" placeholder="Telefone (DDD + número)">
     <input id="nascimento" type="date">
     <input id="senhaCad" type="password" placeholder="Senha">
     <button class="btn" onclick="cadastrar()">Criar conta</button>
@@ -126,6 +127,7 @@ small {
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+
 import {
   getAuth,
   createUserWithEmailAndPassword,
@@ -135,7 +137,8 @@ import {
 import {
   getFirestore,
   doc,
-  setDoc
+  setDoc,
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -160,45 +163,73 @@ window.trocar = (tipo) => {
 
 // 🆕 CADASTRO
 window.cadastrar = async () => {
+
   let cpf = document.getElementById("cpfCad").value.replace(/\D/g, "");
+  let telefone = document.getElementById("telefone").value.replace(/\D/g, "");
+
   const nome = document.getElementById("nome").value;
   const nascimento = document.getElementById("nascimento").value;
   const senha = document.getElementById("senhaCad").value;
 
+  // validações
   if (cpf.length < 11) {
     alert("CPF inválido");
+    return;
+  }
+
+  if (telefone.length < 10) {
+    alert("Telefone inválido");
+    return;
+  }
+
+  if (!nome) {
+    alert("Preencha o nome");
+    return;
+  }
+
+  if (!senha || senha.length < 6) {
+    alert("Senha deve ter pelo menos 6 caracteres");
     return;
   }
 
   const emailFake = cpf + "@app.com";
 
   try {
+
     const user = await createUserWithEmailAndPassword(auth, emailFake, senha);
 
     await setDoc(doc(db, "motoboys", user.user.uid), {
       nome,
       cpf,
       nascimento,
+      telefone,
       saldo: 0,
       online: true,
-      createdAt: new Date()
+      location: {
+        lat: 0,
+        lng: 0
+      },
+      createdAt: serverTimestamp()
     });
 
-    alert("✅ Conta criada! Agora faça login");
+    alert("✅ Conta criada! Faça login");
 
     trocar("login");
 
   } catch (e) {
+
     if (e.code === "auth/email-already-in-use") {
       alert("CPF já cadastrado");
     } else {
-      alert(e.message);
+      alert("Erro: " + e.message);
     }
+
   }
 };
 
 // 🔐 LOGIN
 window.login = async () => {
+
   let cpf = document.getElementById("cpfLogin").value.replace(/\D/g, "");
   const senha = document.getElementById("senhaLogin").value;
 
@@ -210,8 +241,11 @@ window.login = async () => {
   const emailFake = cpf + "@app.com";
 
   try {
+
     await signInWithEmailAndPassword(auth, emailFake, senha);
+
     window.location.href = "motoboy.html";
+
   } catch (e) {
     alert("Erro: " + e.message);
   }
