@@ -1,20 +1,118 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Restaurante - Cheguei Delivery</title>
+
+  <style>
+    body {
+      font-family: Arial;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      background: #ff3d00;
+      color: white;
+      padding: 15px;
+      text-align: center;
+      font-size: 20px;
+    }
+
+    .container {
+      padding: 20px;
+    }
+
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+
+    button {
+      width: 100%;
+      padding: 15px;
+      margin-top: 15px;
+      background: #ff3d00;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #e63600;
+    }
+
+    .info {
+      font-size: 14px;
+      color: #666;
+      margin-top: 10px;
+    }
+
+    .sucesso {
+      color: green;
+      margin-top: 10px;
+    }
+
+    .erro {
+      color: red;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+
 <body>
 
-<h1>Restaurante</h1>
+<header>
+  🍔 Restaurante - Criar Pedido
+</header>
 
-<input id="endereco" placeholder="Endereço">
-<input id="valor" placeholder="Valor total">
+<div class="container">
 
-<button onclick="criarPedido()">Criar Pedido</button>
+  <div class="card">
+    <h3>Novo Pedido</h3>
+
+    <input id="endereco" placeholder="Endereço de entrega">
+    <input id="valor" type="number" placeholder="Valor total (R$)">
+
+    <button onclick="criarPedido()">Criar Pedido</button>
+
+    <div class="info">
+      💡 O valor do motoboy é fixo no sistema<br>
+      💡 A taxa da plataforma NÃO aparece para o motoboy
+    </div>
+
+    <div id="mensagem"></div>
+  </div>
+
+</div>
 
 <script type="module">
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, collection, addDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
-  // COLE AQUI SUA CONFIG WEB
+  apiKey: "AIzaSyBwgR-CXLl676ga05qFfuuGQZyJEx6KwGQ",
+  authDomain: "chegueidelivery-90259.firebaseapp.com",
+  projectId: "chegueidelivery-90259",
+  storageBucket: "chegueidelivery-90259.firebasestorage.app",
+  messagingSenderId: "930909516939",
+  appId: "1:930909516939:web:2f8258c80396c4cdf4d08e"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -23,20 +121,38 @@ const db = getFirestore(app);
 window.criarPedido = async () => {
   const endereco = document.getElementById("endereco").value;
   const valor = Number(document.getElementById("valor").value);
+  const msg = document.getElementById("mensagem");
 
-  await addDoc(collection(db, "pedidos"), {
-    enderecoEntrega: endereco,
-    valorTotal: valor,
-    valorMotoboy: 10,
-    taxaSistema: 5,
-    status: "pendente",
-    motoboyId: "",
-    restauranteId: "rest1",
-    recusadoPor: [],
-    createdAt: new Date()
-  });
+  msg.innerHTML = "";
 
-  alert("Pedido criado!");
+  if (!endereco || !valor) {
+    msg.innerHTML = "<div class='erro'>Preencha todos os campos</div>";
+    return;
+  }
+
+  try {
+
+    await addDoc(collection(db, "pedidos"), {
+      enderecoEntrega: endereco,
+      valorTotal: valor,
+      valorMotoboy: 10,        // depois podemos automatizar
+      taxaSistema: 5,          // invisível pro motoboy
+      status: "pendente",
+      motoboyId: "",
+      restauranteId: "rest1",
+      recusadoPor: [],
+      createdAt: new Date()
+    });
+
+    msg.innerHTML = "<div class='sucesso'>Pedido enviado com sucesso!</div>";
+
+    document.getElementById("endereco").value = "";
+    document.getElementById("valor").value = "";
+
+  } catch (e) {
+    msg.innerHTML = "<div class='erro'>Erro ao enviar pedido</div>";
+    console.error(e);
+  }
 };
 
 </script>
