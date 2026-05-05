@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Admin - Motoboys</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #080808;
+  color: white;
+}
+
+.header {
+  padding: 22px;
+  background: #111;
+  font-size: 24px;
+  font-weight: bold;
+  text-align: center;
+}
+
+.container {
+  padding: 20px;
+  max-width: 900px;
+  margin: auto;
+}
+
+.card {
+  background: #111;
+  border: 1px solid #222;
+  border-radius: 22px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.top-info {
+  font-size: 18px;
+  margin-bottom: 15px;
+  color: #00ff88;
+  font-weight: bold;
+}
+
+.motoboy {
+  background: #181818;
+  border: 1px solid #292929;
+  border-radius: 18px;
+  padding: 16px;
+  margin-top: 12px;
+}
+
+.nome {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.info {
+  color: #bbb;
+  font-size: 14px;
+  margin-top: 6px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: bold;
+  margin-top: 10px;
+}
+
+.online { background: #00351e; color: #00ff88; }
+.offline { background: #333; color: #aaa; }
+.pendente { background: #332900; color: #ffd34d; }
+.aprovado { background: #00351e; color: #00ff88; }
+.bloqueado { background: #3a1111; color: #ff6b6b; }
+
+button {
+  width: 100%;
+  padding: 14px;
+  margin-top: 12px;
+  border: none;
+  border-radius: 14px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.delete {
+  background: #ff3b3b;
+  color: white;
+}
+
+.empty {
+  padding: 18px;
+  background: #181818;
+  border-radius: 16px;
+  color: #777;
+  text-align: center;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">Painel Admin</div>
+
+<div class="container">
+
+  <div class="card">
+    <div class="top-info" id="totalMotoboys">
+      Carregando motoboys...
+    </div>
+
+    <div id="listaMotoboys"></div>
+  </div>
+
+</div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+
+import {
+  getFirestore,
+  collection,
+  onSnapshot,
+  doc,
+  deleteDoc
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBwgR-CXLl676ga05qFfuuGQZyJEx6KwGQ",
+  authDomain: "chegueidelivery-90259.firebaseapp.com",
+  projectId: "chegueidelivery-90259",
+  storageBucket: "chegueidelivery-90259.firebasestorage.app",
+  messagingSenderId: "930909516939",
+  appId: "1:930909516939:web:2f8258c80396c4cdf4d08e"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+function dinheiro(valor) {
+  return Number(valor || 0).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL"
+  });
+}
+
+function texto(valor) {
+  return valor || "Não informado";
+}
+
+function carregarMotoboys() {
+  const lista = document.getElementById("listaMotoboys");
+  const total = document.getElementById("totalMotoboys");
+
+  onSnapshot(collection(db, "motoboys"), (snapshot) => {
+    lista.innerHTML = "";
+
+    total.innerText = `Total de motoboys cadastrados: ${snapshot.size}`;
+
+    if (snapshot.empty) {
+      lista.innerHTML = `<div class="empty">Nenhum motoboy cadastrado.</div>`;
+      return;
+    }
+
+    snapshot.forEach((docSnap) => {
+      const m = docSnap.data();
+      const id = docSnap.id;
+
+      const statusCadastro = m.statusCadastro || "sem status";
+      const online = m.online === true;
+
+      lista.innerHTML += `
+        <div class="motoboy">
+          <div class="nome">${texto(m.nome)}</div>
+
+          <div class="info">CPF: ${texto(m.cpf)}</div>
+          <div class="info">Telefone: ${texto(m.telefone)}</div>
+          <div class="info">Nascimento: ${texto(m.nascimento)}</div>
+          <div class="info">Saldo atual: ${dinheiro(m.saldo)}</div>
+
+          <span class="badge ${online ? "online" : "offline"}">
+            ${online ? "ONLINE" : "OFFLINE"}
+          </span>
+
+          <span class="badge ${statusCadastro}">
+            ${statusCadastro.toUpperCase()}
+          </span>
+
+          ${m.bloqueado ? `<span class="badge bloqueado">BLOQUEADO</span>` : ""}
+
+          <button class="delete" onclick="excluirMotoboy('${id}', '${texto(m.nome)}')">
+            Excluir motoboy
+          </button>
+        </div>
+      `;
+    });
+  });
+}
+
+window.excluirMotoboy = async (id, nome) => {
+  const confirmar = confirm(
+    `Tem certeza que deseja excluir o motoboy ${nome}?\n\nIsso remove o cadastro da coleção motoboys.`
+  );
+
+  if (!confirmar) return;
+
+  try {
+    await deleteDoc(doc(db, "motoboys", id));
+    alert("Motoboy excluído do Firestore.");
+  } catch (e) {
+    console.error(e);
+    alert("Erro ao excluir motoboy.");
+  }
+};
+
+carregarMotoboys();
+
+</script>
+
+</body>
+</html>
