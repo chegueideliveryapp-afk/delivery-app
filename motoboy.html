@@ -1,37 +1,176 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-br">
 <head>
 <meta charset="UTF-8">
 <title>Motoboy</title>
 
 <style>
-body { font-family: Arial; margin: 0; background: #f2f2f2; }
-.header { background: black; color: white; padding: 15px; text-align: center; }
-.container { padding: 15px; }
-.card { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; }
-button { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; }
-.aceitar { background: green; color: white; }
-.recusar { background: red; color: white; }
-.finalizar { background: blue; color: white; }
-.status-gps { font-size: 13px; margin-top: 6px; color: #b7ffb7; }
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  background: #f5f5f5;
+  color: #111;
+}
+
+.header {
+  background: #ea1d2c;
+  color: white;
+  padding: 22px 18px 28px;
+  border-radius: 0 0 28px 28px;
+}
+
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.status-pill {
+  background: rgba(255,255,255,0.2);
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.saldo-card {
+  margin-top: 20px;
+  background: white;
+  color: #111;
+  padding: 18px;
+  border-radius: 20px;
+  box-shadow: 0 12px 28px rgba(0,0,0,0.18);
+}
+
+.saldo-label {
+  color: #777;
+  font-size: 13px;
+}
+
+.saldo-valor {
+  font-size: 28px;
+  font-weight: bold;
+  margin-top: 5px;
+}
+
+.status-gps {
+  font-size: 13px;
+  margin-top: 12px;
+  color: #fff;
+}
+
+.container {
+  padding: 18px;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: bold;
+  margin: 10px 0 14px;
+}
+
+.card {
+  background: white;
+  padding: 18px;
+  border-radius: 22px;
+  margin-bottom: 14px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  border: 1px solid #eee;
+}
+
+.card strong {
+  font-size: 17px;
+}
+
+.info-line {
+  margin-top: 8px;
+  color: #555;
+  font-size: 14px;
+}
+
+button {
+  width: 100%;
+  padding: 15px;
+  margin-top: 12px;
+  border: none;
+  border-radius: 16px;
+  font-size: 16px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.aceitar {
+  background: #00a650;
+  color: white;
+}
+
+.recusar {
+  background: #f1f1f1;
+  color: #333;
+}
+
+.finalizar {
+  background: #ea1d2c;
+  color: white;
+}
+
+.empty {
+  background: white;
+  border-radius: 20px;
+  padding: 22px;
+  text-align: center;
+  color: #777;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+}
 
 .popup {
   position: fixed;
-  top:0;left:0;width:100%;height:100%;
-  background: rgba(0,0,0,0.9);
-  display:none;
-  align-items:center;
-  justify-content:center;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.82);
+  display: none;
+  align-items: center;
+  justify-content: center;
   z-index: 999;
+  padding: 20px;
 }
 
 .popup-content {
-  background:white;
-  padding:25px;
-  border-radius:12px;
-  text-align: center;
-  width: 90%;
-  max-width: 300px;
+  background: white;
+  color: #111;
+  padding: 24px;
+  border-radius: 26px;
+  width: 100%;
+  max-width: 360px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+}
+
+.popup-content h2 {
+  margin-top: 0;
+  color: #ea1d2c;
+}
+
+.valor-corrida {
+  font-size: 30px;
+  font-weight: bold;
+  margin: 16px 0;
+}
+
+.mini-text {
+  font-size: 13px;
+  color: #777;
+  margin-top: 8px;
 }
 </style>
 </head>
@@ -39,20 +178,35 @@ button { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radi
 <body>
 
 <div class="header">
-  🛵 Motoboy
-  <div id="saldo">Saldo: R$ 0</div>
+  <div class="header-top">
+    <div class="logo">Cheguei Entregador</div>
+    <div class="status-pill" id="onlineStatus">Conectando...</div>
+  </div>
+
+  <div class="saldo-card">
+    <div class="saldo-label">Saldo disponível</div>
+    <div class="saldo-valor" id="saldo">R$ 0,00</div>
+  </div>
+
   <div id="gpsStatus" class="status-gps">Aguardando GPS...</div>
 </div>
 
-<div class="container" id="lista"></div>
+<div class="container">
+  <div class="section-title">Minhas corridas</div>
+  <div id="lista"></div>
+</div>
 
 <div class="popup" id="popup">
   <div class="popup-content">
-    <h2>🚨 Nova corrida</h2>
+    <h2>Nova corrida</h2>
     <div id="info"></div>
 
-    <button class="aceitar" onclick="aceitar()">Aceitar</button>
+    <button class="aceitar" onclick="aceitar()">Aceitar corrida</button>
     <button class="recusar" onclick="recusar()">Recusar</button>
+
+    <div class="mini-text">
+      Aceite apenas se estiver disponível para retirar o pedido.
+    </div>
   </div>
 </div>
 
@@ -68,7 +222,8 @@ import {
   onSnapshot,
   doc,
   updateDoc,
-  getDoc
+  getDoc,
+  setDoc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 import {
@@ -91,11 +246,11 @@ let pedidoAtual = null;
 
 let minhaLat = null;
 let minhaLng = null;
+let watchId = null;
 
 const RAIO_KM = 5;
 
-// 🔐 VERIFICAR LOGIN
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
   if (!user) {
     alert("Você precisa fazer login");
     window.location.href = "motoboy-login.html";
@@ -103,47 +258,78 @@ onAuthStateChanged(auth, (user) => {
   }
 
   motoId = user.uid;
+
+  await garantirDocumentoMotoboy();
   iniciarApp();
 });
 
-// 🚀 INICIAR APP
+async function garantirDocumentoMotoboy() {
+  const ref = doc(db, "motoboys", motoId);
+  const snap = await getDoc(ref);
+
+  if (!snap.exists()) {
+    await setDoc(ref, {
+      online: false,
+      saldo: 0,
+      lat: null,
+      lng: null,
+      createdAt: new Date()
+    });
+  }
+}
+
 function iniciarApp() {
   carregarSaldo();
   iniciarLocalizacaoTempoReal();
   escutarPedidos();
 }
 
-// 💰 SALDO
 async function carregarSaldo() {
   const snap = await getDoc(doc(db, "motoboys", motoId));
   const saldo = snap.data()?.saldo || 0;
 
-  document.getElementById("saldo").innerText = "Saldo: R$ " + saldo;
+  document.getElementById("saldo").innerText =
+    saldo.toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL"
+    });
 }
 
-// 📍 LOCALIZAÇÃO EM TEMPO REAL
 function iniciarLocalizacaoTempoReal() {
   if (!navigator.geolocation) {
-    alert("Seu navegador não suporta localização.");
+    document.getElementById("gpsStatus").innerText =
+      "GPS não suportado neste aparelho.";
+
     return;
   }
 
-  navigator.geolocation.watchPosition(
+  watchId = navigator.geolocation.watchPosition(
     async (pos) => {
       minhaLat = pos.coords.latitude;
       minhaLng = pos.coords.longitude;
 
       document.getElementById("gpsStatus").innerText =
-        "📍 Online - GPS ativo";
+        "📍 GPS ativo — localização sendo atualizada";
 
-      await updateDoc(doc(db, "motoboys", motoId), {
+      document.getElementById("onlineStatus").innerText = "Online";
+
+      await setDoc(doc(db, "motoboys", motoId), {
         online: true,
+
+        // IMPORTANTE PARA O MAPA DO RESTAURANTE
+        lat: minhaLat,
+        lng: minhaLng,
+
+        // também mantém em objeto, caso você queira usar depois
         location: {
           lat: minhaLat,
           lng: minhaLng
         },
+
+        accuracy: pos.coords.accuracy,
+        updatedAt: new Date(),
         ultimaLocalizacaoAt: new Date()
-      });
+      }, { merge: true });
 
       console.log("Localização enviada:", minhaLat, minhaLng);
     },
@@ -151,21 +337,36 @@ function iniciarLocalizacaoTempoReal() {
       console.error("Erro GPS:", erro);
 
       document.getElementById("gpsStatus").innerText =
-        "❌ Permita localização para receber corridas";
+        "❌ Permita a localização para receber corridas";
 
-      await updateDoc(doc(db, "motoboys", motoId), {
-        online: false
-      });
+      document.getElementById("onlineStatus").innerText = "Offline";
+
+      await setDoc(doc(db, "motoboys", motoId), {
+        online: false,
+        updatedAt: new Date()
+      }, { merge: true });
     },
     {
       enableHighAccuracy: true,
-      maximumAge: 5000,
-      timeout: 10000
+      maximumAge: 3000,
+      timeout: 15000
     }
   );
 }
 
-// 📏 CALCULAR DISTÂNCIA EM KM
+window.addEventListener("beforeunload", async () => {
+  if (motoId) {
+    await setDoc(doc(db, "motoboys", motoId), {
+      online: false,
+      updatedAt: new Date()
+    }, { merge: true });
+  }
+
+  if (watchId) {
+    navigator.geolocation.clearWatch(watchId);
+  }
+});
+
 function calcularDistanciaKm(lat1, lng1, lat2, lng2) {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -178,19 +379,20 @@ function calcularDistanciaKm(lat1, lng1, lat2, lng2) {
     Math.sin(dLng / 2) * Math.sin(dLng / 2);
 
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
   return R * c;
 }
 
-// 🔄 PEDIDOS
 function escutarPedidos() {
   onSnapshot(collection(db, "pedidos"), (snap) => {
     const lista = document.getElementById("lista");
     lista.innerHTML = "";
 
+    let temCorrida = false;
+
     snap.forEach(docSnap => {
       const p = docSnap.data();
 
-      // pedido pendente, não recusado e com localização
       if (
         p.status === "pendente" &&
         !(p.recusadoPor || []).includes(motoId)
@@ -198,10 +400,22 @@ function escutarPedidos() {
         let podeMostrar = true;
         let distanciaTexto = "";
 
-        if (p.lat && p.lng && minhaLat && minhaLng) {
-          const distancia = calcularDistanciaKm(minhaLat, minhaLng, p.lat, p.lng);
+        const pedidoLat = p.restauranteLat || p.lat;
+        const pedidoLng = p.restauranteLng || p.lng;
 
-          distanciaTexto = `<br>📏 Distância: ${distancia.toFixed(2)} km`;
+        if (pedidoLat && pedidoLng && minhaLat && minhaLng) {
+          const distancia = calcularDistanciaKm(
+            minhaLat,
+            minhaLng,
+            pedidoLat,
+            pedidoLng
+          );
+
+          distanciaTexto = `
+            <div class="info-line">
+              📏 Distância até o restaurante: ${distancia.toFixed(2)} km
+            </div>
+          `;
 
           if (distancia > RAIO_KM) {
             podeMostrar = false;
@@ -213,37 +427,64 @@ function escutarPedidos() {
         }
       }
 
-      // pedido aceito pelo motoboy atual
       if (p.status === "aceito" && p.motoboyId === motoId) {
+        temCorrida = true;
+
         lista.innerHTML += `
           <div class="card">
-            📍 ${p.enderecoEntrega}<br>
-            💰 R$ ${p.valorMotoboy}<br>
-            <button class="finalizar" onclick="finalizar('${docSnap.id}', ${p.valorMotoboy})">
-              Finalizar corrida
+            <strong>Corrida em andamento</strong>
+
+            <div class="info-line">
+              📍 Entrega: ${p.enderecoEntrega}
+            </div>
+
+            <div class="info-line">
+              💰 Ganho: R$ ${Number(p.valorMotoboy || 0).toFixed(2)}
+            </div>
+
+            <button class="finalizar" onclick="finalizar('${docSnap.id}', ${p.valorMotoboy || 0})">
+              Finalizar entrega
             </button>
           </div>
         `;
       }
     });
+
+    if (!temCorrida) {
+      lista.innerHTML = `
+        <div class="empty">
+          Nenhuma corrida em andamento.<br>
+          Fique online e aguarde novos pedidos.
+        </div>
+      `;
+    }
   });
 }
 
-// 🔔 POPUP
 function mostrarPopup(id, p, distanciaTexto = "") {
   if (pedidoAtual === id) return;
 
   pedidoAtual = id;
 
   document.getElementById("popup").style.display = "flex";
-  document.getElementById("info").innerHTML =
-    `${p.enderecoEntrega}<br><b>R$ ${p.valorMotoboy}</b>${distanciaTexto}`;
+
+  document.getElementById("info").innerHTML = `
+    <div class="info-line">📍 Entrega</div>
+    <strong>${p.enderecoEntrega}</strong>
+
+    <div class="valor-corrida">
+      R$ ${Number(p.valorMotoboy || 0).toFixed(2)}
+    </div>
+
+    ${distanciaTexto}
+  `;
 
   document.getElementById("som").play().catch(() => {});
 }
 
-// ✅ ACEITAR
 window.aceitar = async () => {
+  if (!pedidoAtual) return;
+
   await updateDoc(doc(db, "pedidos", pedidoAtual), {
     status: "aceito",
     motoboyId: motoId,
@@ -254,10 +495,10 @@ window.aceitar = async () => {
   pedidoAtual = null;
 };
 
-// ❌ RECUSAR
 window.recusar = async () => {
-  const ref = doc(db, "pedidos", pedidoAtual);
+  if (!pedidoAtual) return;
 
+  const ref = doc(db, "pedidos", pedidoAtual);
   const snap = await getDoc(ref);
   const recusados = snap.data().recusadoPor || [];
 
@@ -269,7 +510,6 @@ window.recusar = async () => {
   pedidoAtual = null;
 };
 
-// 🏁 FINALIZAR
 window.finalizar = async (id, valor) => {
   const pedidoRef = doc(db, "pedidos", id);
   const motoRef = doc(db, "motoboys", motoId);
@@ -282,15 +522,14 @@ window.finalizar = async (id, valor) => {
   const snap = await getDoc(motoRef);
   const saldoAtual = snap.data()?.saldo || 0;
 
-  await updateDoc(motoRef, {
-    saldo: saldoAtual + valor
-  });
+  await setDoc(motoRef, {
+    saldo: saldoAtual + Number(valor || 0),
+    updatedAt: new Date()
+  }, { merge: true });
 
   alert("✅ Corrida finalizada!");
 
   carregarSaldo();
-
-  setTimeout(() => location.reload(), 500);
 };
 
 </script>
