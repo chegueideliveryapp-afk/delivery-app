@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>Restaurante</title>
+<title>Restaurantes</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
@@ -52,10 +52,7 @@ input {
   outline: none;
   background: #181818;
   color: white;
-  font-size: 15px;
 }
-
-input::placeholder { color: #777; }
 
 button {
   width: 100%;
@@ -65,76 +62,19 @@ button {
   color: black;
   border: none;
   border-radius: 16px;
-  font-size: 16px;
-  cursor: pointer;
   font-weight: bold;
 }
 
-button:disabled { opacity: 0.6; }
-
-.status {
-  font-size: 13px;
-  margin-top: 10px;
-  color: #999;
-}
-
+.status { font-size: 13px; margin-top: 10px; color: #999; }
 .sucesso { color: #00ff88; margin-top: 12px; }
 .erro { color: #ff4d4d; margin-top: 12px; }
-
-.grid {
-  display: grid;
-  gap: 14px;
-}
 
 #map {
   width: 100%;
   height: 380px;
   border-radius: 22px;
-  overflow: hidden;
   border: 1px solid #222;
   margin-bottom: 14px;
-  background: #0b0b0b;
-}
-
-.leaflet-container {
-  background: #111;
-}
-
-.motoboy-card {
-  background: linear-gradient(135deg, #151515, #0c0c0c);
-  border: 1px solid #252525;
-  border-radius: 18px;
-  padding: 16px;
-  display: grid;
-  gap: 10px;
-}
-
-.motoboy-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.badge-online {
-  background: rgba(0,255,136,0.15);
-  color: #00ff88;
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: bold;
-}
-
-.coord {
-  font-size: 13px;
-  color: #bbb;
-}
-
-.empty {
-  color: #777;
-  font-size: 14px;
-  padding: 15px;
-  background: #151515;
-  border-radius: 14px;
 }
 
 .moto-marker {
@@ -148,21 +88,6 @@ button:disabled { opacity: 0.6; }
   justify-content: center;
   font-size: 22px;
   border: 3px solid #fff;
-  box-shadow: 0 8px 25px rgba(0,255,136,0.45);
-}
-
-.restaurante-marker {
-  width: 42px;
-  height: 42px;
-  background: #fff;
-  color: #000;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
-  border: 3px solid #00ff88;
-  box-shadow: 0 8px 25px rgba(255,255,255,0.35);
 }
 </style>
 </head>
@@ -179,9 +104,9 @@ button:disabled { opacity: 0.6; }
     <input id="endereco" placeholder="Endereço de entrega">
     <input id="valor" type="number" placeholder="Valor total">
 
-    <button id="btn" onclick="criarPedido()">Enviar Pedido</button>
+    <button onclick="criarPedido()">Enviar Pedido</button>
 
-    <div class="status" id="gpsStatus">Obtendo localização do restaurante...</div>
+    <div class="status" id="gpsStatus">Obtendo localização...</div>
     <div id="msg"></div>
   </div>
 
@@ -191,10 +116,10 @@ button:disabled { opacity: 0.6; }
     <div id="map"></div>
 
     <div class="status" id="motoboyStatus">
-      Buscando motoboys disponíveis...
+      Buscando motoboys...
     </div>
 
-    <div class="grid" id="listaMotoboys"></div>
+    <div id="listaMotoboys"></div>
   </div>
 
 </div>
@@ -204,7 +129,6 @@ button:disabled { opacity: 0.6; }
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-
 import {
   getFirestore,
   doc,
@@ -217,7 +141,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBwgR-CXLl676ga05qFfuuGQZyJEx6KwGQ",
+  apiKey: "AIzaSy...",
   authDomain: "chegueidelivery-90259.firebaseapp.com",
   projectId: "chegueidelivery-90259"
 };
@@ -229,9 +153,7 @@ const restauranteId = "rest1";
 
 let lat = null;
 let lng = null;
-
 let map = null;
-let restauranteMarker = null;
 let motoboyMarkers = {};
 
 const motoIcon = L.divIcon({
@@ -241,21 +163,11 @@ const motoIcon = L.divIcon({
   iconAnchor: [21, 21]
 });
 
-const restauranteIcon = L.divIcon({
-  html: `<div class="restaurante-marker">🏪</div>`,
-  className: "",
-  iconSize: [42, 42],
-  iconAnchor: [21, 21]
-});
-
 function iniciarMapa() {
-  map = L.map("map", {
-    zoomControl: true
-  }).setView([-22.376, -46.942], 14);
+  map = L.map("map").setView([-22.376, -46.942], 13);
 
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap'
+    maxZoom: 19
   }).addTo(map);
 }
 
@@ -263,160 +175,64 @@ iniciarMapa();
 
 async function carregarRestaurante() {
   const snap = await getDoc(doc(db, "restaurantes", restauranteId));
-
   document.getElementById("nomeRestaurante").innerText =
     snap.exists() ? snap.data().nome : "Restaurante";
 }
-
 carregarRestaurante();
 
-function atualizarMarkerRestaurante() {
-  if (!lat || !lng || !map) return;
-
-  const pos = [lat, lng];
-
-  if (!restauranteMarker) {
-    restauranteMarker = L.marker(pos, { icon: restauranteIcon })
-      .addTo(map)
-      .bindPopup("Restaurante");
-  } else {
-    restauranteMarker.setLatLng(pos);
+navigator.geolocation.getCurrentPosition(
+  (pos) => {
+    lat = pos.coords.latitude;
+    lng = pos.coords.longitude;
+    document.getElementById("gpsStatus").innerText = "Localização OK";
+  },
+  () => {
+    lat = -22.376;
+    lng = -46.942;
   }
-
-  map.setView(pos, 14);
-}
-
-function iniciarGPS() {
-  if (!navigator.geolocation) {
-    document.getElementById("gpsStatus").innerText = "GPS não suportado";
-    return;
-  }
-
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      lat = pos.coords.latitude;
-      lng = pos.coords.longitude;
-
-      document.getElementById("gpsStatus").innerText =
-        "📍 Localização do restaurante capturada";
-
-      atualizarMarkerRestaurante();
-    },
-    () => {
-      document.getElementById("gpsStatus").innerText =
-        "⚠️ Usando localização padrão do restaurante";
-
-      lat = -22.376;
-      lng = -46.942;
-
-      atualizarMarkerRestaurante();
-    },
-    {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 30000
-    }
-  );
-}
-
-iniciarGPS();
-
-function tempoRelativo(data) {
-  if (!data) return "sem horário";
-
-  const agora = new Date();
-  const diff = Math.floor((agora - data) / 1000);
-
-  if (diff < 60) return "agora mesmo";
-  if (diff < 3600) return `${Math.floor(diff / 60)} min atrás`;
-  return `${Math.floor(diff / 3600)} h atrás`;
-}
+);
 
 function carregarMotoboysOnline() {
   const lista = document.getElementById("listaMotoboys");
   const status = document.getElementById("motoboyStatus");
 
-  const q = query(
-    collection(db, "motoboys"),
-    where("online", "==", true)
-  );
+  const q = query(collection(db, "motoboys"), where("online", "==", true));
 
   onSnapshot(q, (snapshot) => {
     lista.innerHTML = "";
 
-    Object.values(motoboyMarkers).forEach(marker => {
-      map.removeLayer(marker);
-    });
-
+    Object.values(motoboyMarkers).forEach(m => map.removeLayer(m));
     motoboyMarkers = {};
 
     if (snapshot.empty) {
-      status.innerText = "Nenhum motoboy online no momento.";
-      lista.innerHTML = `<div class="empty">Aguardando motoboys ficarem online...</div>`;
+      status.innerText = "Nenhum motoboy online";
       return;
     }
 
-    status.innerText = `${snapshot.size} motoboy(s) online agora`;
-
     const bounds = [];
-
-    if (lat && lng) {
-      bounds.push([lat, lng]);
-    }
 
     snapshot.forEach((docSnap) => {
       const m = docSnap.data();
-
       if (!m.lat || !m.lng) return;
 
-      const motoLat = Number(m.lat);
-      const motoLng = Number(m.lng);
-
-      const pos = [motoLat, motoLng];
-
+      const pos = [m.lat, m.lng];
       bounds.push(pos);
 
       const marker = L.marker(pos, { icon: motoIcon })
         .addTo(map)
-        .bindPopup("Motoboy online");
+        .bindPopup("Motoboy disponível");
 
       motoboyMarkers[docSnap.id] = marker;
 
-      let atualizadoEm = null;
-
-      if (m.updatedAt?.toDate) {
-        atualizadoEm = m.updatedAt.toDate();
-      } else if (m.updatedAt) {
-        atualizadoEm = new Date(m.updatedAt);
-      }
-
-      const div = document.createElement("div");
-      div.className = "motoboy-card";
-
-      div.innerHTML = `
-        <div class="motoboy-top">
-          <strong>Motoboy disponível</strong>
-          <span class="badge-online">ONLINE</span>
-        </div>
-
-        <div class="coord">
-          Latitude: ${motoLat.toFixed(5)}<br>
-          Longitude: ${motoLng.toFixed(5)}
-        </div>
-
+      lista.innerHTML += `
         <div class="status">
-          Última atualização: ${tempoRelativo(atualizadoEm)}
+          📍 ${m.lat.toFixed(4)}, ${m.lng.toFixed(4)}
         </div>
       `;
-
-      lista.appendChild(div);
     });
 
-    if (bounds.length > 0) {
-      map.fitBounds(bounds, {
-        padding: [40, 40],
-        maxZoom: 15
-      });
+    if (bounds.length) {
+      map.fitBounds(bounds, { padding: [50, 50] });
     }
   });
 }
@@ -424,53 +240,17 @@ function carregarMotoboysOnline() {
 carregarMotoboysOnline();
 
 window.criarPedido = async () => {
-  const btn = document.getElementById("btn");
-  const endereco = document.getElementById("endereco").value.trim();
-  const valor = Number(document.getElementById("valor").value);
-  const msg = document.getElementById("msg");
+  if (!lat || !lng) return;
 
-  msg.innerHTML = "";
+  await addDoc(collection(db, "pedidos"), {
+    restauranteId,
+    lat,
+    lng,
+    status: "pendente",
+    createdAt: new Date()
+  });
 
-  if (!endereco || !valor) {
-    msg.innerHTML = "<div class='erro'>Preencha tudo</div>";
-    return;
-  }
-
-  if (!lat || !lng) {
-    msg.innerHTML = "<div class='erro'>Aguardando localização...</div>";
-    return;
-  }
-
-  btn.disabled = true;
-  btn.innerText = "Enviando...";
-
-  try {
-    await addDoc(collection(db, "pedidos"), {
-      enderecoEntrega: endereco,
-      valorTotal: valor,
-      valorMotoboy: 10,
-      taxaSistema: 5,
-      status: "pendente",
-      motoboyId: "",
-      restauranteId: restauranteId,
-      recusadoPor: [],
-      restauranteLat: lat,
-      restauranteLng: lng,
-      createdAt: new Date()
-    });
-
-    msg.innerHTML = "<div class='sucesso'>Pedido enviado!</div>";
-
-    document.getElementById("endereco").value = "";
-    document.getElementById("valor").value = "";
-
-  } catch (e) {
-    msg.innerHTML = "<div class='erro'>Erro ao enviar</div>";
-    console.error(e);
-  }
-
-  btn.disabled = false;
-  btn.innerText = "Enviar Pedido";
+  document.getElementById("msg").innerHTML = "<div class='sucesso'>Enviado</div>";
 };
 
 </script>
