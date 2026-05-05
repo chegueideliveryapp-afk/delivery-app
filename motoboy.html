@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>Motoboy</title>
+<title>Motoboy Cheguei</title>
 
 <style>
 * {
@@ -235,6 +235,9 @@ const firebaseConfig = {
   apiKey: "AIzaSyBwgR-CXLl676ga05qFfuuGQZyJEx6KwGQ",
   authDomain: "chegueidelivery-90259.firebaseapp.com",
   projectId: "chegueidelivery-90259",
+  storageBucket: "chegueidelivery-90259.firebasestorage.app",
+  messagingSenderId: "930909516939",
+  appId: "1:930909516939:web:2f8258c80396c4cdf4d08e"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -316,11 +319,9 @@ function iniciarLocalizacaoTempoReal() {
       await setDoc(doc(db, "motoboys", motoId), {
         online: true,
 
-        // IMPORTANTE PARA O MAPA DO RESTAURANTE
         lat: minhaLat,
         lng: minhaLng,
 
-        // também mantém em objeto, caso você queira usar depois
         location: {
           lat: minhaLat,
           lng: minhaLng
