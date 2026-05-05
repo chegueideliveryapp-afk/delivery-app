@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-br">
 <head>
 <meta charset="UTF-8">
 <title>Motoboy LC</title>
@@ -9,65 +9,89 @@
 
 body {
   margin: 0;
-  font-family: Arial;
-  background: linear-gradient(135deg, #000, #1a1a1a);
-  height: 100vh;
+  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg, #050505, #1a1a1a);
+  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
+  padding: 20px;
 }
 
 .card {
-  background: rgba(255,255,255,0.05);
-  backdrop-filter: blur(15px);
-  padding: 25px;
-  border-radius: 16px;
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(18px);
+  padding: 26px;
+  border-radius: 24px;
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.45);
 }
 
 .logo {
   text-align: center;
-  font-size: 26px;
-  margin-bottom: 15px;
+  font-size: 30px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  text-align: center;
+  color: #aaa;
+  font-size: 14px;
+  margin-bottom: 22px;
 }
 
 .tabs {
   display: flex;
-  margin-bottom: 15px;
+  background: #111;
+  border-radius: 16px;
+  padding: 5px;
+  margin-bottom: 18px;
 }
 
 .tab {
   flex: 1;
   text-align: center;
-  padding: 10px;
+  padding: 12px;
   cursor: pointer;
-  border-bottom: 2px solid transparent;
+  border-radius: 12px;
+  color: #aaa;
+  font-weight: bold;
 }
 
 .tab.active {
-  border-bottom: 2px solid #00ff88;
-  font-weight: bold;
+  background: #00ff88;
+  color: #000;
 }
 
 input {
   width: 100%;
-  padding: 12px;
-  margin-top: 10px;
-  border-radius: 8px;
-  border: none;
+  padding: 15px;
+  margin-top: 12px;
+  border-radius: 14px;
+  border: 1px solid #333;
   outline: none;
+  background: #101010;
+  color: white;
+  font-size: 15px;
+}
+
+input::placeholder {
+  color: #777;
 }
 
 button {
   width: 100%;
-  padding: 12px;
-  margin-top: 12px;
-  border-radius: 8px;
+  padding: 15px;
+  margin-top: 14px;
+  border-radius: 14px;
   border: none;
   cursor: pointer;
   font-weight: bold;
+  font-size: 16px;
 }
 
 .btn {
@@ -79,6 +103,11 @@ button {
   background: #00cc6a;
 }
 
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .hidden {
   display: none;
 }
@@ -86,8 +115,22 @@ button {
 small {
   display: block;
   text-align: center;
-  margin-top: 10px;
-  opacity: 0.6;
+  margin-top: 14px;
+  color: #999;
+}
+
+.msg {
+  margin-top: 12px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.erro {
+  color: #ff5c5c;
+}
+
+.sucesso {
+  color: #00ff88;
 }
 </style>
 </head>
@@ -97,28 +140,29 @@ small {
 <div class="card">
 
   <div class="logo">🛵 Motoboy</div>
+  <div class="subtitle">Entre ou crie sua conta para receber corridas</div>
 
   <div class="tabs">
     <div class="tab active" onclick="trocar('login')">Entrar</div>
     <div class="tab" onclick="trocar('cadastro')">Criar conta</div>
   </div>
 
-  <!-- LOGIN -->
   <div id="loginBox">
     <input id="cpfLogin" placeholder="CPF">
     <input id="senhaLogin" type="password" placeholder="Senha">
-    <button class="btn" onclick="login()">Entrar</button>
+    <button class="btn" id="btnLogin" onclick="login()">Entrar</button>
   </div>
 
-  <!-- CADASTRO -->
   <div id="cadastroBox" class="hidden">
     <input id="cpfCad" placeholder="CPF">
     <input id="nome" placeholder="Nome completo">
-    <input id="telefone" placeholder="Telefone (DDD + número)">
+    <input id="telefone" placeholder="Telefone com DDD">
     <input id="nascimento" type="date">
-    <input id="senhaCad" type="password" placeholder="Senha">
-    <button class="btn" onclick="cadastrar()">Criar conta</button>
+    <input id="senhaCad" type="password" placeholder="Senha mínimo 6 caracteres">
+    <button class="btn" id="btnCadastro" onclick="cadastrar()">Criar conta</button>
   </div>
+
+  <div id="msg" class="msg"></div>
 
   <small>Use seu CPF como login</small>
 
@@ -145,14 +189,28 @@ const firebaseConfig = {
   apiKey: "AIzaSyBwgR-CXLl676ga05qFfuuGQZyJEx6KwGQ",
   authDomain: "chegueidelivery-90259.firebaseapp.com",
   projectId: "chegueidelivery-90259",
+  storageBucket: "chegueidelivery-90259.firebasestorage.app",
+  messagingSenderId: "930909516939",
+  appId: "1:930909516939:web:2f8258c80396c4cdf4d08e"
 };
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// 🔄 TROCAR ABA
+function limparNumero(valor) {
+  return valor.replace(/\D/g, "");
+}
+
+function mostrarMsg(texto, tipo = "erro") {
+  const msg = document.getElementById("msg");
+  msg.className = `msg ${tipo}`;
+  msg.innerText = texto;
+}
+
 window.trocar = (tipo) => {
+  document.getElementById("msg").innerText = "";
+
   document.getElementById("loginBox").classList.toggle("hidden", tipo !== "login");
   document.getElementById("cadastroBox").classList.toggle("hidden", tipo !== "cadastro");
 
@@ -161,94 +219,129 @@ window.trocar = (tipo) => {
   tabs[tipo === "login" ? 0 : 1].classList.add("active");
 };
 
-// 🆕 CADASTRO
 window.cadastrar = async () => {
+  const btn = document.getElementById("btnCadastro");
 
-  let cpf = document.getElementById("cpfCad").value.replace(/\D/g, "");
-  let telefone = document.getElementById("telefone").value.replace(/\D/g, "");
-
-  const nome = document.getElementById("nome").value;
+  const cpf = limparNumero(document.getElementById("cpfCad").value);
+  const telefone = limparNumero(document.getElementById("telefone").value);
+  const nome = document.getElementById("nome").value.trim();
   const nascimento = document.getElementById("nascimento").value;
   const senha = document.getElementById("senhaCad").value;
 
-  // validações
-  if (cpf.length < 11) {
-    alert("CPF inválido");
+  if (cpf.length !== 11) {
+    mostrarMsg("CPF inválido.");
     return;
   }
 
   if (telefone.length < 10) {
-    alert("Telefone inválido");
+    mostrarMsg("Telefone inválido.");
     return;
   }
 
   if (!nome) {
-    alert("Preencha o nome");
+    mostrarMsg("Preencha o nome completo.");
+    return;
+  }
+
+  if (!nascimento) {
+    mostrarMsg("Informe sua data de nascimento.");
     return;
   }
 
   if (!senha || senha.length < 6) {
-    alert("Senha deve ter pelo menos 6 caracteres");
+    mostrarMsg("Senha deve ter pelo menos 6 caracteres.");
     return;
   }
 
-  const emailFake = cpf + "@app.com";
+  const emailFake = `${cpf}@app.com`;
+
+  btn.disabled = true;
+  btn.innerText = "Criando conta...";
 
   try {
+    const userCredential = await createUserWithEmailAndPassword(auth, emailFake, senha);
+    const uid = userCredential.user.uid;
 
-    const user = await createUserWithEmailAndPassword(auth, emailFake, senha);
-
-    await setDoc(doc(db, "motoboys", user.user.uid), {
+    await setDoc(doc(db, "motoboys", uid), {
       nome,
       cpf,
-      nascimento,
       telefone,
-      saldo: 0,
-      online: true,
+      nascimento,
+      email: emailFake,
+
+      aprovado: false,
+      bloqueado: false,
+      statusCadastro: "pendente",
+
+      online: false,
+
+      lat: 0,
+      lng: 0,
+
       location: {
         lat: 0,
         lng: 0
       },
-      createdAt: serverTimestamp()
+
+      saldo: 0,
+      totalRecebido: 0,
+
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
     });
 
-    alert("✅ Conta criada! Faça login");
+    mostrarMsg("Conta criada! Aguarde aprovação do administrador.", "sucesso");
+
+    document.getElementById("cpfCad").value = "";
+    document.getElementById("nome").value = "";
+    document.getElementById("telefone").value = "";
+    document.getElementById("nascimento").value = "";
+    document.getElementById("senhaCad").value = "";
 
     trocar("login");
 
   } catch (e) {
-
     if (e.code === "auth/email-already-in-use") {
-      alert("CPF já cadastrado");
+      mostrarMsg("CPF já cadastrado.");
     } else {
-      alert("Erro: " + e.message);
+      mostrarMsg("Erro ao criar conta: " + e.message);
     }
-
   }
+
+  btn.disabled = false;
+  btn.innerText = "Criar conta";
 };
 
-// 🔐 LOGIN
 window.login = async () => {
+  const btn = document.getElementById("btnLogin");
 
-  let cpf = document.getElementById("cpfLogin").value.replace(/\D/g, "");
+  const cpf = limparNumero(document.getElementById("cpfLogin").value);
   const senha = document.getElementById("senhaLogin").value;
 
-  if (cpf.length < 11) {
-    alert("CPF inválido");
+  if (cpf.length !== 11) {
+    mostrarMsg("CPF inválido.");
     return;
   }
 
-  const emailFake = cpf + "@app.com";
+  if (!senha) {
+    mostrarMsg("Digite sua senha.");
+    return;
+  }
+
+  const emailFake = `${cpf}@app.com`;
+
+  btn.disabled = true;
+  btn.innerText = "Entrando...";
 
   try {
-
     await signInWithEmailAndPassword(auth, emailFake, senha);
-
     window.location.href = "motoboy.html";
-
   } catch (e) {
-    alert("Erro: " + e.message);
+    mostrarMsg("CPF ou senha inválidos.");
   }
+
+  btn.disabled = false;
+  btn.innerText = "Entrar";
 };
 
 </script>
