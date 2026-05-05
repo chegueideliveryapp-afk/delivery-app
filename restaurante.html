@@ -63,6 +63,7 @@ button {
   border: none;
   border-radius: 16px;
   font-weight: bold;
+  cursor: pointer;
 }
 
 .status { font-size: 13px; margin-top: 10px; color: #999; }
@@ -88,6 +89,16 @@ button {
   justify-content: center;
   font-size: 22px;
   border: 3px solid #fff;
+  box-shadow: 0 8px 22px rgba(0,255,136,0.4);
+}
+
+.motoboy-item {
+  background: #181818;
+  padding: 12px;
+  border-radius: 14px;
+  margin-top: 10px;
+  font-size: 13px;
+  color: #bbb;
 }
 </style>
 </head>
@@ -104,7 +115,7 @@ button {
     <input id="endereco" placeholder="Endereço de entrega">
     <input id="valor" type="number" placeholder="Valor total">
 
-    <button onclick="criarPedido()">Enviar Pedido</button>
+    <button id="btn" onclick="criarPedido()">Enviar Pedido</button>
 
     <div class="status" id="gpsStatus">Obtendo localização...</div>
     <div id="msg"></div>
@@ -129,6 +140,7 @@ button {
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+
 import {
   getFirestore,
   doc,
@@ -141,9 +153,12 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSy...",
+  apiKey: "AIzaSyBwgR-CXLl676ga05qFfuuGQZyJEx6KwGQ",
   authDomain: "chegueidelivery-90259.firebaseapp.com",
-  projectId: "chegueidelivery-90259"
+  projectId: "chegueidelivery-90259",
+  storageBucket: "chegueidelivery-90259.firebasestorage.app",
+  messagingSenderId: "930909516939",
+  appId: "1:930909516939:web:2f8258c80396c4cdf4d08e"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -167,7 +182,8 @@ function iniciarMapa() {
   map = L.map("map").setView([-22.376, -46.942], 13);
 
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap'
   }).addTo(map);
 }
 
@@ -175,9 +191,11 @@ iniciarMapa();
 
 async function carregarRestaurante() {
   const snap = await getDoc(doc(db, "restaurantes", restauranteId));
+
   document.getElementById("nomeRestaurante").innerText =
     snap.exists() ? snap.data().nome : "Restaurante";
 }
+
 carregarRestaurante();
 
 navigator.geolocation.getCurrentPosition(
@@ -189,6 +207,12 @@ navigator.geolocation.getCurrentPosition(
   () => {
     lat = -22.376;
     lng = -46.942;
+    document.getElementById("gpsStatus").innerText = "Usando localização padrão";
+  },
+  {
+    enableHighAccuracy: true,
+    timeout: 10000,
+    maximumAge: 30000
   }
 );
 
@@ -196,26 +220,34 @@ function carregarMotoboysOnline() {
   const lista = document.getElementById("listaMotoboys");
   const status = document.getElementById("motoboyStatus");
 
-  const q = query(collection(db, "motoboys"), where("online", "==", true));
+  const q = query(
+    collection(db, "motoboys"),
+    where("online", "==", true)
+  );
 
   onSnapshot(q, (snapshot) => {
     lista.innerHTML = "";
 
-    Object.values(motoboyMarkers).forEach(m => map.removeLayer(m));
+    Object.values(motoboyMarkers).forEach(marker => {
+      map.removeLayer(marker);
+    });
+
     motoboyMarkers = {};
 
-    if (snapshot.empty) {
-      status.innerText = "Nenhum motoboy online";
-      return;
-    }
-
     const bounds = [];
+    let total = 0;
 
     snapshot.forEach((docSnap) => {
       const m = docSnap.data();
-      if (!m.lat || !m.lng) return;
 
-      const pos = [m.lat, m.lng];
+      const motoLat = Number(m.lat ?? m.location?.lat);
+      const motoLng = Number(m.lng ?? m.location?.lng);
+
+      if (!motoLat || !motoLng) return;
+
+      total++;
+
+      const pos = [motoLat, motoLng];
       bounds.push(pos);
 
       const marker = L.marker(pos, { icon: motoIcon })
@@ -225,32 +257,83 @@ function carregarMotoboysOnline() {
       motoboyMarkers[docSnap.id] = marker;
 
       lista.innerHTML += `
-        <div class="status">
-          📍 ${m.lat.toFixed(4)}, ${m.lng.toFixed(4)}
+        <div class="motoboy-item">
+          🟢 Motoboy disponível<br>
+          📍 ${motoLat.toFixed(5)}, ${motoLng.toFixed(5)}
         </div>
       `;
     });
 
-    if (bounds.length) {
-      map.fitBounds(bounds, { padding: [50, 50] });
+    if (total === 0) {
+      status.innerText = "Nenhum motoboy com localização válida.";
+      return;
     }
+
+    status.innerText = `${total} motoboy(s) online agora`;
+
+    map.fitBounds(bounds, {
+      padding: [50, 50],
+      maxZoom: 16
+    });
+
+  }, (erro) => {
+    console.error("Erro ao carregar motoboys:", erro);
+    status.innerText = "Erro ao carregar motoboys.";
   });
 }
 
 carregarMotoboysOnline();
 
 window.criarPedido = async () => {
-  if (!lat || !lng) return;
+  const btn = document.getElementById("btn");
+  const endereco = document.getElementById("endereco").value.trim();
+  const valor = Number(document.getElementById("valor").value);
+  const msg = document.getElementById("msg");
 
-  await addDoc(collection(db, "pedidos"), {
-    restauranteId,
-    lat,
-    lng,
-    status: "pendente",
-    createdAt: new Date()
-  });
+  msg.innerHTML = "";
 
-  document.getElementById("msg").innerHTML = "<div class='sucesso'>Enviado</div>";
+  if (!endereco || !valor) {
+    msg.innerHTML = "<div class='erro'>Preencha endereço e valor.</div>";
+    return;
+  }
+
+  if (!lat || !lng) {
+    msg.innerHTML = "<div class='erro'>Aguardando localização do restaurante.</div>";
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerText = "Enviando...";
+
+  try {
+    await addDoc(collection(db, "pedidos"), {
+      enderecoEntrega: endereco,
+      valorTotal: valor,
+      valorMotoboy: 10,
+      taxaSistema: 5,
+      status: "pendente",
+      motoboyId: "",
+      restauranteId: restauranteId,
+      recusadoPor: [],
+      restauranteLat: lat,
+      restauranteLng: lng,
+      lat: lat,
+      lng: lng,
+      createdAt: new Date()
+    });
+
+    msg.innerHTML = "<div class='sucesso'>Pedido enviado!</div>";
+
+    document.getElementById("endereco").value = "";
+    document.getElementById("valor").value = "";
+
+  } catch (e) {
+    console.error(e);
+    msg.innerHTML = "<div class='erro'>Erro ao enviar pedido.</div>";
+  }
+
+  btn.disabled = false;
+  btn.innerText = "Enviar Pedido";
 };
 
 </script>
