@@ -1,1 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Login Admin - Cheguei Delivery</title>
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body>
+  <main class="login-page">
+    <section class="login-card">
+      <h1>Admin</h1>
+      <p>Cheguei Delivery</p>
+
+      <input id="email" type="email" placeholder="E-mail">
+      <input id="senha" type="password" placeholder="Senha">
+
+      <button id="btnLogin">Entrar</button>
+
+      <div id="mensagem"></div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { loginComEmailSenha } from "../js/auth.js";
+
+    const btn = document.getElementById("btnLogin");
+    const msg = document.getElementById("mensagem");
+
+    btn.addEventListener("click", async () => {
+      const email = document.getElementById("email").value.trim();
+      const senha = document.getElementById("senha").value;
+
+      msg.innerText = "";
+
+      if (!email || !senha) {
+        msg.innerText = "Preencha e-mail e senha.";
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerText = "Entrando...";
+
+      try {
+        const perfil = await loginComEmailSenha(email, senha);
+
+        if (perfil.role !== "admin") {
+          msg.innerText = "Este usuário não é administrador.";
+          btn.disabled = false;
+          btn.innerText = "Entrar";
+          return;
+        }
+
+        window.location.href = "./dashboard.html";
+      } catch (erro) {
+        msg.innerText = erro.message || "Erro ao entrar.";
+      }
+
+      btn.disabled = false;
+      btn.innerText = "Entrar";
+    });
+  </script>
+</body>
+</html>
 
