@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: "AIzaSyCH17jg8aN5tUrICaoILOh6OEd88dVBLXI",
   authDomain: "cheguei-delivery-c5cc2.firebaseapp.com",
   projectId: "cheguei-delivery-c5cc2",
