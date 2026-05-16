@@ -1,1 +1,91 @@
 
+.login-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 380px;
+  background: #fff;
+  padding: 24px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+
+.login-card h1 {
+  margin: 0 0 4px;
+}
+
+.login-card p {
+  margin: 0 0 20px;
+  color: #666;
+}
+
+.login-card input {
+  width: 100%;
+  padding: 14px;
+  margin-bottom: 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.login-card button {
+  width: 100%;
+  padding: 14px;
+  background: #111;
+  color: #fff;
+  border: 0;
+  border-radius: 6px;
+  font-weight: bold;
+}
+
+#mensagem {
+  margin-top: 12px;
+  color: #c00;
+  font-size: 14px;
+}
+
+.topbar {
+  height: 64px;
+  padding: 0 20px;
+  background: #111;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.topbar h1 {
+  font-size: 20px;
+}
+
+.topbar button {
+  background: #fff;
+  color: #111;
+  border: 0;
+  border-radius: 6px;
+  padding: 10px 14px;
+}
+
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 24px;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.menu-card {
+  display: block;
+  padding: 22px;
+  background: #fff;
+  color: #111;
+  text-decoration: none;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-weight: bold;
+}
