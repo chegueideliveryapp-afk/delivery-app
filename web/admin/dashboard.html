@@ -1,1 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Painel Admin - Cheguei Delivery</title>
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Painel Admin</h1>
+    <button id="btnSair">Sair</button>
+  </header>
+
+  <main class="container">
+    <a class="menu-card" href="./motoboys.html">Motoboys</a>
+    <a class="menu-card" href="./restaurantes.html">Restaurantes</a>
+    <a class="menu-card" href="./pedidos.html">Pedidos</a>
+    <a class="menu-card" href="./recargas.html">Recargas</a>
+    <a class="menu-card" href="./pagamentos.html">Pagamentos</a>
+    <a class="menu-card" href="./mapa.html">Mapa</a>
+  </main>
+
+  <script type="module">
+    import { protegerPagina, logout } from "../js/auth.js";
+
+    protegerPagina("admin");
+
+    document.getElementById("btnSair").addEventListener("click", async () => {
+      await logout();
+      window.location.href = "./login.html";
+    });
+  </script>
+</body>
+</html>
 
