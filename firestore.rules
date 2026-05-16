@@ -1,1 +1,61 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return signedIn() && userData().role == "admin";
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    match /admins/{uid} {
+      allow read, write: if isAdmin();
+    }
+
+    match /config/{docId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /restaurantes/{uid} {
+      allow read, write: if isAdmin();
+    }
+
+    match /motoboys/{uid} {
+      allow read, write: if isAdmin();
+    }
+
+    match /pedidos/{pedidoId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /recargas_restaurante/{recargaId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /ledger_restaurante/{movimentoId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /ledger_motoboy/{movimentoId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /pagamentos_motoboy/{pagamentoId} {
+      allow read, write: if isAdmin();
+    }
+  }
+}
 
