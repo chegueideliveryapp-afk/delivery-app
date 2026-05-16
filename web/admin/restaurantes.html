@@ -1,1 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Restaurantes - Admin</title>
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Restaurantes</h1>
+    <a class="topbar-link" href="./dashboard.html">Voltar</a>
+  </header>
+
+  <main class="page">
+    <section class="panel">
+      <h2>Cadastrar restaurante</h2>
+
+      <div class="form-grid">
+        <input id="nome" placeholder="Nome do restaurante">
+        <input id="responsavel" placeholder="Responsável">
+        <input id="telefone" placeholder="Telefone">
+        <input id="email" type="email" placeholder="E-mail de login">
+        <input id="senha" type="password" placeholder="Senha inicial">
+        <input id="endereco" placeholder="Endereço fixo do restaurante">
+        <input id="lat" type="number" step="any" placeholder="Latitude fixa do restaurante">
+        <input id="lng" type="number" step="any" placeholder="Longitude fixa do restaurante">
+        <input id="saldoPrePago" type="number" step="0.01" placeholder="Saldo inicial">
+        <input id="taxaSistemaPadrao" type="number" step="0.01" placeholder="Taxa sistema padrão">
+        <input id="valorMotoboyPadrao" type="number" step="0.01" placeholder="Valor motoboy padrão">
+      </div>
+
+      <p class="hint">
+        A latitude e longitude fixas serão usadas para buscar motoboys próximos ao restaurante.
+      </p>
+
+      <button id="btnSalvar" class="primary-btn">Cadastrar restaurante</button>
+      <div id="mensagem"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Restaurantes cadastrados</h2>
+      <div id="listaRestaurantes"></div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { protegerPagina } from "../js/auth.js";
+    import {
+      cadastrarRestaurante,
+      carregarRestaurantes
+    } from "../js/admin.js";
+
+    protegerPagina("admin");
+
+    document.getElementById("btnSalvar").addEventListener("click", cadastrarRestaurante);
+    carregarRestaurantes();
+  </script>
+</body>
+</html>
 
