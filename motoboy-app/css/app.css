@@ -429,13 +429,13 @@ input:focus {
   transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
 }
 
-.online-btn.is-offline {
+.online-btn.is-online {
   background: var(--online);
   color: #fff;
   box-shadow: 0 14px 26px rgba(23, 201, 100, .28);
 }
 
-.online-btn.is-online {
+.online-btn.is-offline {
   background: #eef0f4;
   color: #2f3541;
   box-shadow: none;
