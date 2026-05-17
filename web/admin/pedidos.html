@@ -37,11 +37,32 @@
   </main>
 
   <script type="module">
-    import { protegerAdmin } from "../js/auth.js";
-    import { carregarPedidosAdmin } from "../js/pedidos.js";
+    const lista = document.getElementById("listaPedidosAdmin");
 
-    protegerAdmin();
-    carregarPedidosAdmin();
+    try {
+      const authModule = await import("../js/auth.js?v=2");
+      const pedidosModule = await import("../js/pedidos.js?v=2");
+
+      if (!authModule.protegerAdmin) {
+        throw new Error("A função protegerAdmin não foi encontrada em web/js/auth.js");
+      }
+
+      if (!pedidosModule.carregarPedidosAdmin) {
+        throw new Error("A função carregarPedidosAdmin não foi encontrada em web/js/pedidos.js");
+      }
+
+      authModule.protegerAdmin();
+      pedidosModule.carregarPedidosAdmin();
+    } catch (erro) {
+      console.error(erro);
+
+      lista.innerHTML = `
+        <div class="empty">
+          Erro ao carregar a página de pedidos:<br>
+          ${erro.message}
+        </div>
+      `;
+    }
   </script>
 </body>
 </html>
