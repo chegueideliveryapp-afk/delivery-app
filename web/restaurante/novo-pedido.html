@@ -54,7 +54,7 @@
           class="secondary-action maps-action"
           type="button"
         >
-          Abrir rota no Google Maps
+          Ver rota no mapa
         </button>
 
         <input
@@ -67,7 +67,7 @@
         >
 
         <p class="helper-text">
-          Abra a rota no Google Maps, veja a distância de carro e informe o valor em km acima.
+          Veja a rota no mapa, confira a distância de carro e informe o valor em km acima.
         </p>
 
         <label class="field-label">Forma de pagamento do cliente</label>
@@ -128,6 +128,33 @@
         </button>
       </div>
     </section>
+
+    <div id="mapsModal" class="maps-modal hidden">
+      <div class="maps-modal-backdrop" id="fecharMapsBackdrop"></div>
+
+      <div class="maps-modal-content">
+        <div class="maps-modal-header">
+          <div>
+            <span>Consulta de rota</span>
+            <strong>Google Maps</strong>
+          </div>
+
+          <button id="fecharMapsModal" type="button">Fechar</button>
+        </div>
+
+        <iframe
+          id="mapsFrame"
+          class="maps-frame"
+          loading="lazy"
+          referrerpolicy="no-referrer-when-downgrade"
+          src="">
+        </iframe>
+
+        <p class="maps-modal-note">
+          Veja a distância exibida pelo Google Maps e informe o valor em km no campo de distância.
+        </p>
+      </div>
+    </div>
   </main>
 
   <script type="module">
