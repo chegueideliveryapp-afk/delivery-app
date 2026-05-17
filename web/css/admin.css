@@ -183,3 +183,73 @@
   border-radius: 8px;
   color: #666;
 }
+#mapaMotoboys {
+  width: 100%;
+  height: 460px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  margin-top: 12px;
+}
+
+.status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.badge {
+  display: inline-block;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  color: #111;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.badge.green {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.badge.red {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.badge.yellow {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.badge.gray {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.whatsapp-link {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 9px 10px;
+  background: #128c7e;
+  color: white;
+  text-decoration: none;
+  border-radius: 6px;
+  font-weight: bold;
+}
+
+.map-popup strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.map-popup p {
+  margin: 4px 0;
+}
+
+@media (max-width: 700px) {
+  #mapaMotoboys {
+    height: 360px;
+  }
+}
