@@ -4,67 +4,90 @@
   <meta charset="UTF-8">
   <title>Cheguei Motoboy</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <link rel="stylesheet" href="./css/app.css">
 </head>
 <body>
-  <main class="app-shell">
-    <section class="auth-card">
-      <div class="brand-block">
-        <div class="app-mark">C</div>
+  <main class="app-screen">
+    <section class="hero">
+      <div class="brand-row">
+        <div class="brand-mark">C</div>
         <div>
-          <h1>Cheguei Motoboy</h1>
-          <p>Corridas próximas, ganhos claros e controle na sua mão.</p>
+          <strong>Cheguei</strong>
+          <span>Motoboy</span>
         </div>
       </div>
 
-      <div class="hero-panel">
-        <div>
-          <span class="hero-label">Área do entregador</span>
-          <strong>Entre para ficar disponível</strong>
-        </div>
-        <div class="signal-dot"></div>
+      <div class="hero-copy">
+        <p class="eyebrow">Área do entregador</p>
+        <h1>Fique online e receba corridas próximas.</h1>
+        <p class="subtitle">Ganhos claros, mapa em tempo real e controle das suas entregas em um só lugar.</p>
       </div>
 
+      <div class="route-card">
+        <div class="route-point active"></div>
+        <div class="route-line"></div>
+        <div class="route-point"></div>
+        <div class="route-info">
+          <strong>Pronto para rodar</strong>
+          <span>Ative sua conta após aprovação</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="auth-panel">
       <div class="tabs">
         <button id="tabLogin" class="active">Entrar</button>
         <button id="tabCadastro">Criar conta</button>
       </div>
 
       <section id="loginBox" class="form-section">
-        <label>CPF</label>
-        <input id="cpfLogin" inputmode="numeric" autocomplete="username" placeholder="Digite seu CPF">
+        <div class="field">
+          <label>CPF</label>
+          <input id="cpfLogin" inputmode="numeric" autocomplete="username" placeholder="Somente números">
+        </div>
 
-        <label>Senha</label>
-        <input id="senhaLogin" type="password" autocomplete="current-password" placeholder="Digite sua senha">
+        <div class="field">
+          <label>Senha</label>
+          <input id="senhaLogin" type="password" autocomplete="current-password" placeholder="Sua senha">
+        </div>
 
         <button id="btnLogin" class="primary-btn">Entrar no app</button>
       </section>
 
       <section id="cadastroBox" class="form-section hidden">
-        <label>CPF</label>
-        <input id="cpfCadastro" inputmode="numeric" autocomplete="username" placeholder="Somente números">
+        <div class="field">
+          <label>CPF</label>
+          <input id="cpfCadastro" inputmode="numeric" autocomplete="username" placeholder="Somente números">
+        </div>
 
-        <label>Nome completo</label>
-        <input id="nomeCadastro" autocomplete="name" placeholder="Seu nome completo">
+        <div class="field">
+          <label>Nome completo</label>
+          <input id="nomeCadastro" autocomplete="name" placeholder="Como aparece no documento">
+        </div>
 
-        <label>Telefone</label>
-        <input id="telefoneCadastro" inputmode="numeric" autocomplete="tel" placeholder="DDD + número">
+        <div class="field">
+          <label>Telefone</label>
+          <input id="telefoneCadastro" inputmode="numeric" autocomplete="tel" placeholder="DDD + número">
+        </div>
 
-        <label>Data de nascimento</label>
-        <input id="nascimentoCadastro" type="date">
+        <div class="field">
+          <label>Data de nascimento</label>
+          <input id="nascimentoCadastro" type="date">
+        </div>
 
-        <label>Senha</label>
-        <input id="senhaCadastro" type="password" autocomplete="new-password" placeholder="Mínimo 6 caracteres">
+        <div class="field">
+          <label>Senha</label>
+          <input id="senhaCadastro" type="password" autocomplete="new-password" placeholder="Mínimo 6 caracteres">
+        </div>
 
         <button id="btnCadastro" class="primary-btn">Criar minha conta</button>
       </section>
 
       <div id="mensagem"></div>
 
-      <div class="footer-note">
-        Após o cadastro, sua conta precisa ser aprovada pela administração.
-      </div>
+      <p class="approval-note">
+        Seu cadastro passa por aprovação antes de receber corridas.
+      </p>
     </section>
   </main>
 
