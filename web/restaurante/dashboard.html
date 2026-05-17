@@ -1,1 +1,73 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard Restaurante - Cheguei Delivery</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/restaurante.css">
+</head>
+<body>
+  <main class="restaurant-app">
+    <header class="restaurant-header">
+      <div>
+        <span>Cheguei Restaurantes</span>
+        <h1 id="nomeRestaurante">Carregando...</h1>
+      </div>
+
+      <button id="btnSair">Sair</button>
+    </header>
+
+    <section class="wallet-card">
+      <span>Saldo pré-pago</span>
+      <strong id="saldoPrePago">R$ 0,00</strong>
+      <p>Esse saldo é usado para liberar novas solicitações de entrega.</p>
+    </section>
+
+    <section class="restaurant-status-grid">
+      <div class="info-card">
+        <span>Status da conta</span>
+        <strong id="statusConta">Verificando...</strong>
+        <p id="statusDescricao">Aguarde.</p>
+      </div>
+
+      <div class="info-card">
+        <span>Localização fixa</span>
+        <strong id="localizacaoRestaurante">---</strong>
+        <p>Usada para buscar motoboys próximos ao restaurante.</p>
+      </div>
+    </section>
+
+    <section class="restaurant-actions">
+      <a href="./novo-pedido.html" class="action-card">
+        <strong>Novo pedido</strong>
+        <span>Solicitar motoboy</span>
+      </a>
+
+      <a href="./pedidos.html" class="action-card">
+        <strong>Pedidos</strong>
+        <span>Acompanhar entregas</span>
+      </a>
+
+      <a href="./recarga.html" class="action-card">
+        <strong>Recarga Pix</strong>
+        <span>Adicionar saldo</span>
+      </a>
+    </section>
+  </main>
+
+  <script type="module">
+    import {
+      protegerRestaurante,
+      carregarDashboardRestaurante,
+      sairRestaurante
+    } from "../js/restaurante.js";
+
+    protegerRestaurante();
+    carregarDashboardRestaurante();
+
+    document.getElementById("btnSair").addEventListener("click", sairRestaurante);
+  </script>
+</body>
+</html>
