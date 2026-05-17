@@ -20,10 +20,8 @@ import {
 
 let restauranteLogado = null;
 let configApp = null;
-
-let restaurantePedido = null;
-let configPedido = null;
 let pedidoCalculado = null;
+let entregaLocation = null;
 
 function dinheiro(valor) {
   return Number(valor || 0).toLocaleString("pt-BR", {
@@ -32,8 +30,9 @@ function dinheiro(valor) {
   });
 }
 
-function arredondarDinheiro(valor) {
-  return Math.round(Number(valor || 0) * 100) / 100;
+function numero(valor, padrao = 0) {
+  const n = Number(valor || padrao);
+  return Number.isFinite(n) ? n : padrao;
 }
 
 function setText(id, texto) {
@@ -78,31 +77,105 @@ function statusRecargaTexto(status) {
   return "Pendente";
 }
 
-function calcularValorMotoboy(distanciaKm, config) {
-  const taxaBase = Number(config.taxaBaseMotoboy || 0);
-  const valorKm = Number(config.valorKmMotoboy || 0);
-  const minimo = Number(config.valorMinimoMotoboy || 0);
+function distanciaLinhaRetaKm(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
 
-  const adicionalChuva = Number(config.adicionalChuva || 0);
-  const adicionalEvento = Number(config.adicionalEvento || 0);
-  const adicionalFimAno = Number(config.adicionalFimAno || 0);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) *
+    Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) ** 2;
 
-  const calculado =
-    taxaBase +
-    (Number(distanciaKm || 0) * valorKm) +
-    adicionalChuva +
-    adicionalEvento +
-    adicionalFimAno;
-
-  return arredondarDinheiro(Math.max(calculado, minimo));
+  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
-function ordenarPorDataDesc(lista, campo) {
-  return lista.sort((a, b) => {
-    const dataA = a[campo]?.toMillis?.() || 0;
-    const dataB = b[campo]?.toMillis?.() || 0;
-    return dataB - dataA;
-  });
+async function geocodificarEndereco(endereco) {
+  const url = new URL("https://nominatim.openstreetmap.org/search");
+
+  url.searchParams.set("format", "json");
+  url.searchParams.set("limit", "1");
+  url.searchParams.set("countrycodes", "br");
+  url.searchParams.set("q", endereco);
+
+  const resposta = await fetch(url.toString());
+  const dados = await resposta.json();
+
+  if (!dados.length) {
+    throw new Error("Endereço não encontrado.");
+  }
+
+  return {
+    lat: Number(dados[0].lat),
+    lng: Number(dados[0].lon),
+    displayName: dados[0].display_name
+  };
+}
+
+async function calcularRotaKm(origem, destino) {
+  const url =
+    `https://router.project-osrm.org/route/v1/driving/` +
+    `${origem.lng},${origem.lat};${destino.lng},${destino.lat}` +
+    `?overview=false`;
+
+  const resposta = await fetch(url);
+  const dados = await resposta.json();
+
+  if (!dados.routes?.length) {
+    return distanciaLinhaRetaKm(origem.lat, origem.lng, destino.lat, destino.lng);
+  }
+
+  return dados.routes[0].distance / 1000;
+}
+
+function atualizarResumoPagamento() {
+  const forma = document.getElementById("formaPagamento")?.value || "pix";
+  const precisaRetorno = document.getElementById("precisaRetorno")?.checked === true;
+
+  const pagamentoTexto = {
+    pix: "Pix",
+    cartao: "Cartão",
+    dinheiro: "Dinheiro"
+  };
+
+  setText("pagamentoResumo", pagamentoTexto[forma] || "Pix");
+  setText(
+    "retornoResumo",
+    precisaRetorno
+      ? "Com retorno ao restaurante."
+      : "Sem retorno ao restaurante."
+  );
+}
+
+function calcularValoresPedido() {
+  const distanciaKm = numero(document.getElementById("distanciaEntregaKm")?.value, 0);
+  const precisaRetorno = document.getElementById("precisaRetorno")?.checked === true;
+
+  const taxaBaseMotoboy = numero(configApp?.taxaBaseMotoboy, 0);
+  const valorKmMotoboy = numero(configApp?.valorKmMotoboy, 0);
+  const valorMinimoMotoboy = numero(configApp?.valorMinimoMotoboy, 0);
+
+  const taxaRetornoMotoboy = precisaRetorno
+    ? numero(configApp?.taxaRetornoMotoboy, 0)
+    : 0;
+
+  const taxaSistema = numero(
+    restauranteLogado?.taxaSistemaPadrao,
+    numero(configApp?.taxaSistemaPadrao, 5)
+  );
+
+  const valorCalculadoMotoboy = taxaBaseMotoboy + (distanciaKm * valorKmMotoboy);
+  const valorMotoboy = Math.max(valorMinimoMotoboy, valorCalculadoMotoboy) + taxaRetornoMotoboy;
+  const valorTotal = valorMotoboy + taxaSistema;
+
+  return {
+    distanciaKm,
+    valorMotoboy,
+    taxaSistema,
+    taxaRetornoMotoboy,
+    valorTotal
+  };
 }
 
 export async function loginRestaurante() {
@@ -223,8 +296,8 @@ export function carregarDashboardRestaurante() {
         setText("statusDescricao", "Você já pode solicitar entregas com saldo disponível.");
       },
       (erro) => {
-        console.error("Erro dashboard restaurante:", erro);
-        mostrarErroDashboard(`Erro ao carregar restaurante: ${erro.message}`);
+        console.error(erro);
+        mostrarErroDashboard("Sem permissão para carregar o restaurante. Confira as regras do Firestore.");
       }
     );
   });
@@ -299,7 +372,13 @@ export function carregarRecargaRestaurante() {
           });
         });
 
-        ordenarPorDataDesc(recargas, "solicitadoAt").forEach((r) => {
+        recargas.sort((a, b) => {
+          const dataA = a.solicitadoAt?.toMillis?.() || 0;
+          const dataB = b.solicitadoAt?.toMillis?.() || 0;
+          return dataB - dataA;
+        });
+
+        recargas.forEach((r) => {
           const item = document.createElement("div");
           item.className = "recharge-item";
 
@@ -317,10 +396,10 @@ export function carregarRecargaRestaurante() {
         });
       },
       (erro) => {
-        console.error("Erro recargas restaurante:", erro);
+        console.error(erro);
         const lista = document.getElementById("listaRecargas");
         if (lista) {
-          lista.innerHTML = `<div class="empty-mini">Erro ao carregar recargas: ${erro.message}</div>`;
+          lista.innerHTML = `<div class="empty-mini">Erro ao carregar recargas.</div>`;
         }
       }
     );
@@ -369,15 +448,15 @@ export async function solicitarRecarga() {
     document.getElementById("observacaoRecarga").value = "";
     msg.innerText = "Solicitação enviada. Envie o comprovante pelo WhatsApp.";
   } catch (erro) {
-    console.error("Erro solicitar recarga:", erro);
-    msg.innerText = `Erro ao solicitar recarga: ${erro.message}`;
+    console.error(erro);
+    msg.innerText = "Erro ao solicitar recarga.";
   }
 
   btn.disabled = false;
   btn.innerText = "Solicitar recarga";
 }
 
-export function carregarNovoPedido() {
+export function carregarNovoPedidoRestaurante() {
   onAuthStateChanged(auth, async (user) => {
     if (!user) return;
 
@@ -387,40 +466,113 @@ export function carregarNovoPedido() {
     onSnapshot(restauranteRef, (snap) => {
       if (!snap.exists()) return;
 
-      restaurantePedido = {
+      restauranteLogado = {
         id: user.uid,
         ...snap.data()
       };
 
-      setText("saldoPedido", dinheiro(restaurantePedido.saldoPrePago));
+      setText("saldoPrePago", dinheiro(restauranteLogado.saldoPrePago));
     });
 
     onSnapshot(configRef, (snap) => {
       if (!snap.exists()) return;
 
-      configPedido = snap.data();
+      configApp = snap.data();
 
-      const raioInicial = configPedido.raiosBuscaKm?.[0] || 3;
-      setText("raioInicialPedido", `${raioInicial} km`);
+      const raios = configApp.raiosBuscaKm || [3, 5, 10, 15];
+      setText("raioInicialPedido", `${raios[0] || 3} km`);
+
+      calcularPedido();
     });
   });
 }
 
-export function calcularPedido() {
-  const enderecoEntrega = document.getElementById("enderecoEntrega").value.trim();
-  const distanciaEntregaKm = Number(document.getElementById("distanciaEntregaKm").value || 0);
-  const btnCriar = document.getElementById("btnCriarPedido");
+export async function buscarDistanciaEntrega() {
   const msg = document.getElementById("mensagem");
+  const btn = document.getElementById("btnBuscarDistancia");
+  const endereco = document.getElementById("enderecoEntrega").value.trim();
 
   msg.innerText = "";
 
-  if (!restaurantePedido) {
+  if (!restauranteLogado) {
     msg.innerText = "Restaurante ainda não carregado.";
     return;
   }
 
-  if (!configPedido) {
-    msg.innerText = "Configuração do sistema ainda não carregada.";
+  if (!restauranteLogado.location?.lat || !restauranteLogado.location?.lng) {
+    msg.innerText = "Restaurante sem localização fixa cadastrada.";
+    return;
+  }
+
+  if (!endereco) {
+    msg.innerText = "Informe o endereço de entrega.";
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerText = "Calculando...";
+
+  try {
+    entregaLocation = await geocodificarEndereco(endereco);
+
+    const origem = {
+      lat: Number(restauranteLogado.location.lat),
+      lng: Number(restauranteLogado.location.lng)
+    };
+
+    const distanciaKm = await calcularRotaKm(origem, entregaLocation);
+
+    document.getElementById("distanciaEntregaKm").value = distanciaKm.toFixed(2);
+    setText("distanciaResumoPedido", `${distanciaKm.toFixed(2)} km`);
+
+    calcularPedido();
+  } catch (erro) {
+    console.error(erro);
+    msg.innerText = "Não consegui calcular esse endereço. Confira rua, número, bairro e cidade.";
+  }
+
+  btn.disabled = false;
+  btn.innerText = "Calcular distância";
+}
+
+export function calcularPedido() {
+  const msg = document.getElementById("mensagem");
+  if (msg) msg.innerText = "";
+
+  atualizarResumoPagamento();
+
+  if (!configApp || !restauranteLogado) {
+    return;
+  }
+
+  const valores = calcularValoresPedido();
+  pedidoCalculado = valores;
+
+  setText("valorTotalPedido", dinheiro(valores.valorTotal));
+  setText("valorMotoboyPedido", dinheiro(valores.valorMotoboy));
+  setText("taxaSistemaPedido", dinheiro(valores.taxaSistema));
+  setText("taxaRetornoPedido", dinheiro(valores.taxaRetornoMotoboy));
+
+  if (valores.distanciaKm > 0) {
+    setText("distanciaResumoPedido", `${valores.distanciaKm.toFixed(2)} km`);
+  }
+}
+
+export async function criarPedido() {
+  const msg = document.getElementById("mensagem");
+  const btn = document.getElementById("btnCriarPedido");
+
+  const pedidoCopiado = document.getElementById("pedidoCopiado").value.trim();
+  const enderecoEntrega = document.getElementById("enderecoEntrega").value.trim();
+  const observacao = document.getElementById("observacaoPedido").value.trim();
+  const formaPagamento = document.getElementById("formaPagamento").value;
+  const precisaRetorno = document.getElementById("precisaRetorno").checked;
+  const valorTroco = numero(document.getElementById("valorTroco").value, 0);
+
+  msg.innerText = "";
+
+  if (!restauranteLogado) {
+    msg.innerText = "Restaurante não carregado.";
     return;
   }
 
@@ -429,55 +581,13 @@ export function calcularPedido() {
     return;
   }
 
-  if (!distanciaEntregaKm || distanciaEntregaKm <= 0) {
-    msg.innerText = "Informe uma distância válida.";
+  if (!pedidoCalculado || !pedidoCalculado.distanciaKm) {
+    msg.innerText = "Calcule a distância antes de criar o pedido.";
     return;
   }
 
-  const taxaSistema = arredondarDinheiro(
-    Number(restaurantePedido.taxaSistemaPadrao ?? configPedido.taxaSistemaPadrao ?? 0)
-  );
-
-  const valorMotoboy = calcularValorMotoboy(distanciaEntregaKm, configPedido);
-  const valorTotal = arredondarDinheiro(valorMotoboy + taxaSistema);
-
-  const raiosBuscaKm = configPedido.raiosBuscaKm || [3, 5, 10, 15];
-  const raioAtualKm = raiosBuscaKm[0] || 3;
-
-  pedidoCalculado = {
-    enderecoEntrega,
-    distanciaEntregaKm,
-    taxaSistema,
-    valorMotoboy,
-    valorTotal,
-    raiosBuscaKm,
-    raioAtualKm
-  };
-
-  setText("valorMotoboyPedido", dinheiro(valorMotoboy));
-  setText("taxaSistemaPedido", dinheiro(taxaSistema));
-  setText("valorTotalPedido", dinheiro(valorTotal));
-  setText("raioInicialPedido", `${raioAtualKm} km`);
-
-  if (Number(restaurantePedido.saldoPrePago || 0) < taxaSistema) {
-    msg.innerText = "Saldo insuficiente para a taxa Cheguei.";
-    btnCriar.disabled = true;
-    return;
-  }
-
-  btnCriar.disabled = false;
-  msg.innerText = "Valores calculados. Você já pode criar o pedido.";
-}
-
-export async function criarPedido() {
-  const msg = document.getElementById("mensagem");
-  const btn = document.getElementById("btnCriarPedido");
-  const observacao = document.getElementById("observacaoPedido").value.trim();
-
-  msg.innerText = "";
-
-  if (!restaurantePedido || !configPedido || !pedidoCalculado) {
-    msg.innerText = "Calcule os valores antes de criar o pedido.";
+  if (!entregaLocation) {
+    msg.innerText = "Localização da entrega não encontrada.";
     return;
   }
 
@@ -485,7 +595,7 @@ export async function criarPedido() {
   btn.innerText = "Criando pedido...";
 
   try {
-    const restauranteRef = doc(db, "restaurantes", restaurantePedido.id);
+    const restauranteRef = doc(db, "restaurantes", restauranteLogado.id);
     const pedidoRef = doc(collection(db, "pedidos"));
     const ledgerRef = doc(collection(db, "ledger_restaurante"));
 
@@ -506,87 +616,104 @@ export async function criarPedido() {
         throw new Error("Restaurante bloqueado.");
       }
 
-      const saldoAntes = Number(restaurante.saldoPrePago || 0);
-      const taxaSistema = Number(pedidoCalculado.taxaSistema || 0);
+      const saldoAntes = numero(restaurante.saldoPrePago, 0);
+      const taxaSistema = numero(pedidoCalculado.taxaSistema, 0);
 
       if (saldoAntes < taxaSistema) {
-        throw new Error("Saldo insuficiente.");
+        throw new Error("Saldo insuficiente para a taxa Cheguei.");
       }
 
-      const saldoDepois = arredondarDinheiro(saldoAntes - taxaSistema);
+      const saldoDepois = saldoAntes - taxaSistema;
+      const raiosBuscaKm = configApp?.raiosBuscaKm || [3, 5, 10, 15];
 
       transaction.set(pedidoRef, {
-        restauranteId: restaurantePedido.id,
-        restauranteNome: restaurante.nome || restaurantePedido.nome || "",
-        enderecoEntrega: pedidoCalculado.enderecoEntrega,
-        observacao,
-        restauranteLocation: {
-          lat: Number(restaurante.location?.lat || 0),
-          lng: Number(restaurante.location?.lng || 0)
-        },
+        restauranteId: restauranteLogado.id,
+        restauranteNome: restaurante.nome || restauranteLogado.nome || "",
+
+        pedidoCopiado,
+        enderecoEntrega,
         entregaLocation: {
-          lat: null,
-          lng: null
+          lat: entregaLocation.lat,
+          lng: entregaLocation.lng
         },
-        distanciaEntregaKm: pedidoCalculado.distanciaEntregaKm,
+
+        restauranteLocation: {
+          lat: Number(restaurante.location.lat),
+          lng: Number(restaurante.location.lng)
+        },
+
+        distanciaKm: pedidoCalculado.distanciaKm,
+
+        formaPagamento,
+        precisaRetorno,
+        valorTroco,
+        observacao,
+
+        valorMotoboy: pedidoCalculado.valorMotoboy,
+        taxaSistema: pedidoCalculado.taxaSistema,
+        taxaRetornoMotoboy: pedidoCalculado.taxaRetornoMotoboy,
+        valorTotal: pedidoCalculado.valorTotal,
+
         status: "pendente",
         motoboyId: "",
         motoboyNome: "",
         recusadoPor: [],
-        valorTotal: pedidoCalculado.valorTotal,
-        valorMotoboy: pedidoCalculado.valorMotoboy,
-        taxaSistema: pedidoCalculado.taxaSistema,
-        raioAtualKm: pedidoCalculado.raioAtualKm,
-        raiosBuscaKm: pedidoCalculado.raiosBuscaKm,
-        tentativaBusca: 1,
-        buscaIniciadaAt: serverTimestamp(),
-        ultimaExpansaoBuscaAt: serverTimestamp(),
+
+        raioAtualKm: raiosBuscaKm[0] || 3,
+        raiosBuscaKm,
+        tentativaBusca: 0,
+
         createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
         aceitoAt: null,
-        retiradoAt: null,
-        entregueAt: null,
-        canceladoAt: null
+        entregueAt: null
       });
 
       transaction.update(restauranteRef, {
         saldoPrePago: saldoDepois,
-        totalPedidos: Number(restaurante.totalPedidos || 0) + 1,
-        totalGasto: arredondarDinheiro(Number(restaurante.totalGasto || 0) + pedidoCalculado.valorTotal),
+        totalPedidos: numero(restaurante.totalPedidos, 0) + 1,
+        totalGasto: numero(restaurante.totalGasto, 0) + taxaSistema,
         updatedAt: serverTimestamp()
       });
 
       transaction.set(ledgerRef, {
-        restauranteId: restaurantePedido.id,
-        restauranteNome: restaurante.nome || restaurantePedido.nome || "",
+        restauranteId: restauranteLogado.id,
+        restauranteNome: restaurante.nome || restauranteLogado.nome || "",
         tipo: "debito_pedido",
         valor: -taxaSistema,
         saldoAntes,
         saldoDepois,
-        recargaId: null,
         pedidoId: pedidoRef.id,
+        recargaId: null,
         descricao: "Taxa Cheguei debitada na criação do pedido",
-        createdAt: serverTimestamp(),
-        criadoPor: restaurantePedido.id
+        createdAt: serverTimestamp()
       });
     });
 
-    msg.innerText = "Pedido criado com sucesso.";
-
+    document.getElementById("pedidoCopiado").value = "";
     document.getElementById("enderecoEntrega").value = "";
     document.getElementById("distanciaEntregaKm").value = "";
     document.getElementById("observacaoPedido").value = "";
-
-    setText("valorMotoboyPedido", dinheiro(0));
-    setText("taxaSistemaPedido", dinheiro(0));
-    setText("valorTotalPedido", dinheiro(0));
+    document.getElementById("precisaRetorno").checked = false;
+    document.getElementById("valorTroco").value = "";
+    document.getElementById("valorTroco").classList.add("hidden");
 
     pedidoCalculado = null;
+    entregaLocation = null;
+
+    setText("valorTotalPedido", dinheiro(0));
+    setText("valorMotoboyPedido", dinheiro(0));
+    setText("taxaSistemaPedido", dinheiro(0));
+    setText("taxaRetornoPedido", dinheiro(0));
+    setText("distanciaResumoPedido", "---");
+
+    msg.innerText = "Pedido criado com sucesso.";
   } catch (erro) {
-    console.error("Erro criar pedido:", erro);
+    console.error(erro);
     msg.innerText = erro.message || "Erro ao criar pedido.";
   }
 
-  btn.disabled = true;
+  btn.disabled = false;
   btn.innerText = "Criar pedido";
 }
 
