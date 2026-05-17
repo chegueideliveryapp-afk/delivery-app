@@ -9,10 +9,21 @@
 </head>
 <body>
   <main class="app-shell">
-    <section class="card">
-      <div class="brand">
-        <h1>Cheguei Motoboy</h1>
-        <p>Entre ou crie sua conta para receber corridas.</p>
+    <section class="auth-card">
+      <div class="brand-block">
+        <div class="app-mark">C</div>
+        <div>
+          <h1>Cheguei Motoboy</h1>
+          <p>Corridas próximas, ganhos claros e controle na sua mão.</p>
+        </div>
+      </div>
+
+      <div class="hero-panel">
+        <div>
+          <span class="hero-label">Área do entregador</span>
+          <strong>Entre para ficar disponível</strong>
+        </div>
+        <div class="signal-dot"></div>
       </div>
 
       <div class="tabs">
@@ -20,22 +31,40 @@
         <button id="tabCadastro">Criar conta</button>
       </div>
 
-      <section id="loginBox">
-        <input id="cpfLogin" inputmode="numeric" placeholder="CPF">
-        <input id="senhaLogin" type="password" placeholder="Senha">
-        <button id="btnLogin" class="primary-btn">Entrar</button>
+      <section id="loginBox" class="form-section">
+        <label>CPF</label>
+        <input id="cpfLogin" inputmode="numeric" autocomplete="username" placeholder="Digite seu CPF">
+
+        <label>Senha</label>
+        <input id="senhaLogin" type="password" autocomplete="current-password" placeholder="Digite sua senha">
+
+        <button id="btnLogin" class="primary-btn">Entrar no app</button>
       </section>
 
-      <section id="cadastroBox" class="hidden">
-        <input id="cpfCadastro" inputmode="numeric" placeholder="CPF">
-        <input id="nomeCadastro" placeholder="Nome completo">
-        <input id="telefoneCadastro" inputmode="numeric" placeholder="Telefone com DDD">
+      <section id="cadastroBox" class="form-section hidden">
+        <label>CPF</label>
+        <input id="cpfCadastro" inputmode="numeric" autocomplete="username" placeholder="Somente números">
+
+        <label>Nome completo</label>
+        <input id="nomeCadastro" autocomplete="name" placeholder="Seu nome completo">
+
+        <label>Telefone</label>
+        <input id="telefoneCadastro" inputmode="numeric" autocomplete="tel" placeholder="DDD + número">
+
+        <label>Data de nascimento</label>
         <input id="nascimentoCadastro" type="date">
-        <input id="senhaCadastro" type="password" placeholder="Senha mínimo 6 caracteres">
-        <button id="btnCadastro" class="primary-btn">Criar conta</button>
+
+        <label>Senha</label>
+        <input id="senhaCadastro" type="password" autocomplete="new-password" placeholder="Mínimo 6 caracteres">
+
+        <button id="btnCadastro" class="primary-btn">Criar minha conta</button>
       </section>
 
       <div id="mensagem"></div>
+
+      <div class="footer-note">
+        Após o cadastro, sua conta precisa ser aprovada pela administração.
+      </div>
     </section>
   </main>
 
