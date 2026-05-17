@@ -15,7 +15,6 @@ import {
   serverTimestamp,
   query,
   where,
-  orderBy,
   runTransaction
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
@@ -96,6 +95,14 @@ function calcularValorMotoboy(distanciaKm, config) {
     adicionalFimAno;
 
   return arredondarDinheiro(Math.max(calculado, minimo));
+}
+
+function ordenarPorDataDesc(lista, campo) {
+  return lista.sort((a, b) => {
+    const dataA = a[campo]?.toMillis?.() || 0;
+    const dataB = b[campo]?.toMillis?.() || 0;
+    return dataB - dataA;
+  });
 }
 
 export async function loginRestaurante() {
@@ -216,8 +223,8 @@ export function carregarDashboardRestaurante() {
         setText("statusDescricao", "Você já pode solicitar entregas com saldo disponível.");
       },
       (erro) => {
-        console.error(erro);
-        mostrarErroDashboard("Sem permissão para carregar o restaurante. Confira as regras do Firestore.");
+        console.error("Erro dashboard restaurante:", erro);
+        mostrarErroDashboard(`Erro ao carregar restaurante: ${erro.message}`);
       }
     );
   });
@@ -267,8 +274,7 @@ export function carregarRecargaRestaurante() {
 
     const q = query(
       collection(db, "recargas_restaurante"),
-      where("restauranteId", "==", user.uid),
-      orderBy("solicitadoAt", "desc")
+      where("restauranteId", "==", user.uid)
     );
 
     onSnapshot(
@@ -284,9 +290,16 @@ export function carregarRecargaRestaurante() {
           return;
         }
 
-        snapshot.forEach((docSnap) => {
-          const r = docSnap.data();
+        const recargas = [];
 
+        snapshot.forEach((docSnap) => {
+          recargas.push({
+            id: docSnap.id,
+            ...docSnap.data()
+          });
+        });
+
+        ordenarPorDataDesc(recargas, "solicitadoAt").forEach((r) => {
           const item = document.createElement("div");
           item.className = "recharge-item";
 
@@ -304,10 +317,10 @@ export function carregarRecargaRestaurante() {
         });
       },
       (erro) => {
-        console.error(erro);
+        console.error("Erro recargas restaurante:", erro);
         const lista = document.getElementById("listaRecargas");
         if (lista) {
-          lista.innerHTML = `<div class="empty-mini">Erro ao carregar recargas.</div>`;
+          lista.innerHTML = `<div class="empty-mini">Erro ao carregar recargas: ${erro.message}</div>`;
         }
       }
     );
@@ -356,8 +369,8 @@ export async function solicitarRecarga() {
     document.getElementById("observacaoRecarga").value = "";
     msg.innerText = "Solicitação enviada. Envie o comprovante pelo WhatsApp.";
   } catch (erro) {
-    console.error(erro);
-    msg.innerText = "Erro ao solicitar recarga.";
+    console.error("Erro solicitar recarga:", erro);
+    msg.innerText = `Erro ao solicitar recarga: ${erro.message}`;
   }
 
   btn.disabled = false;
@@ -436,4 +449,148 @@ export function calcularPedido() {
     distanciaEntregaKm,
     taxaSistema,
     valorMotoboy,
-    valorTotal
+    valorTotal,
+    raiosBuscaKm,
+    raioAtualKm
+  };
+
+  setText("valorMotoboyPedido", dinheiro(valorMotoboy));
+  setText("taxaSistemaPedido", dinheiro(taxaSistema));
+  setText("valorTotalPedido", dinheiro(valorTotal));
+  setText("raioInicialPedido", `${raioAtualKm} km`);
+
+  if (Number(restaurantePedido.saldoPrePago || 0) < taxaSistema) {
+    msg.innerText = "Saldo insuficiente para a taxa Cheguei.";
+    btnCriar.disabled = true;
+    return;
+  }
+
+  btnCriar.disabled = false;
+  msg.innerText = "Valores calculados. Você já pode criar o pedido.";
+}
+
+export async function criarPedido() {
+  const msg = document.getElementById("mensagem");
+  const btn = document.getElementById("btnCriarPedido");
+  const observacao = document.getElementById("observacaoPedido").value.trim();
+
+  msg.innerText = "";
+
+  if (!restaurantePedido || !configPedido || !pedidoCalculado) {
+    msg.innerText = "Calcule os valores antes de criar o pedido.";
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerText = "Criando pedido...";
+
+  try {
+    const restauranteRef = doc(db, "restaurantes", restaurantePedido.id);
+    const pedidoRef = doc(collection(db, "pedidos"));
+    const ledgerRef = doc(collection(db, "ledger_restaurante"));
+
+    await runTransaction(db, async (transaction) => {
+      const restauranteSnap = await transaction.get(restauranteRef);
+
+      if (!restauranteSnap.exists()) {
+        throw new Error("Restaurante não encontrado.");
+      }
+
+      const restaurante = restauranteSnap.data();
+
+      if (restaurante.ativo === false) {
+        throw new Error("Restaurante inativo.");
+      }
+
+      if (restaurante.bloqueado === true) {
+        throw new Error("Restaurante bloqueado.");
+      }
+
+      const saldoAntes = Number(restaurante.saldoPrePago || 0);
+      const taxaSistema = Number(pedidoCalculado.taxaSistema || 0);
+
+      if (saldoAntes < taxaSistema) {
+        throw new Error("Saldo insuficiente.");
+      }
+
+      const saldoDepois = arredondarDinheiro(saldoAntes - taxaSistema);
+
+      transaction.set(pedidoRef, {
+        restauranteId: restaurantePedido.id,
+        restauranteNome: restaurante.nome || restaurantePedido.nome || "",
+        enderecoEntrega: pedidoCalculado.enderecoEntrega,
+        observacao,
+        restauranteLocation: {
+          lat: Number(restaurante.location?.lat || 0),
+          lng: Number(restaurante.location?.lng || 0)
+        },
+        entregaLocation: {
+          lat: null,
+          lng: null
+        },
+        distanciaEntregaKm: pedidoCalculado.distanciaEntregaKm,
+        status: "pendente",
+        motoboyId: "",
+        motoboyNome: "",
+        recusadoPor: [],
+        valorTotal: pedidoCalculado.valorTotal,
+        valorMotoboy: pedidoCalculado.valorMotoboy,
+        taxaSistema: pedidoCalculado.taxaSistema,
+        raioAtualKm: pedidoCalculado.raioAtualKm,
+        raiosBuscaKm: pedidoCalculado.raiosBuscaKm,
+        tentativaBusca: 1,
+        buscaIniciadaAt: serverTimestamp(),
+        ultimaExpansaoBuscaAt: serverTimestamp(),
+        createdAt: serverTimestamp(),
+        aceitoAt: null,
+        retiradoAt: null,
+        entregueAt: null,
+        canceladoAt: null
+      });
+
+      transaction.update(restauranteRef, {
+        saldoPrePago: saldoDepois,
+        totalPedidos: Number(restaurante.totalPedidos || 0) + 1,
+        totalGasto: arredondarDinheiro(Number(restaurante.totalGasto || 0) + pedidoCalculado.valorTotal),
+        updatedAt: serverTimestamp()
+      });
+
+      transaction.set(ledgerRef, {
+        restauranteId: restaurantePedido.id,
+        restauranteNome: restaurante.nome || restaurantePedido.nome || "",
+        tipo: "debito_pedido",
+        valor: -taxaSistema,
+        saldoAntes,
+        saldoDepois,
+        recargaId: null,
+        pedidoId: pedidoRef.id,
+        descricao: "Taxa Cheguei debitada na criação do pedido",
+        createdAt: serverTimestamp(),
+        criadoPor: restaurantePedido.id
+      });
+    });
+
+    msg.innerText = "Pedido criado com sucesso.";
+
+    document.getElementById("enderecoEntrega").value = "";
+    document.getElementById("distanciaEntregaKm").value = "";
+    document.getElementById("observacaoPedido").value = "";
+
+    setText("valorMotoboyPedido", dinheiro(0));
+    setText("taxaSistemaPedido", dinheiro(0));
+    setText("valorTotalPedido", dinheiro(0));
+
+    pedidoCalculado = null;
+  } catch (erro) {
+    console.error("Erro criar pedido:", erro);
+    msg.innerText = erro.message || "Erro ao criar pedido.";
+  }
+
+  btn.disabled = true;
+  btn.innerText = "Criar pedido";
+}
+
+export async function sairRestaurante() {
+  await signOut(auth);
+  window.location.href = "./login.html";
+}
