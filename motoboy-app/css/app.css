@@ -11,6 +11,7 @@
   --soft: #f5f6f8;
   --line: #e6e8ee;
   --success: #11a36a;
+  --online: #17c964;
 }
 
 html,
@@ -420,17 +421,36 @@ input:focus {
 }
 
 .online-btn {
-  min-width: 128px;
-  min-height: 52px;
+  min-width: 132px;
+  min-height: 54px;
   border: 0;
   border-radius: 16px;
-  background: #16181d;
-  color: #fff;
   font-weight: 900;
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
 }
 
-.online-btn:disabled {
-  opacity: .45;
+.online-btn.is-offline {
+  background: var(--online);
+  color: #fff;
+  box-shadow: 0 14px 26px rgba(23, 201, 100, .28);
+}
+
+.online-btn.is-online {
+  background: #eef0f4;
+  color: #2f3541;
+  box-shadow: none;
+}
+
+.online-btn:active {
+  transform: scale(.98);
+}
+
+.online-btn:disabled,
+.online-btn.is-disabled {
+  background: #e5e7eb;
+  color: #9ca3af;
+  box-shadow: none;
+  opacity: 1;
   cursor: not-allowed;
 }
 
@@ -489,5 +509,13 @@ input:focus {
 
   .route-card {
     grid-template-columns: 12px 20px 12px 1fr;
+  }
+
+  .online-card {
+    grid-template-columns: 1fr;
+  }
+
+  .online-btn {
+    width: 100%;
   }
 }
