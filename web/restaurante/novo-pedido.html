@@ -38,32 +38,10 @@
         ></textarea>
 
         <input
-          id="enderecoRua"
+          id="enderecoEntrega"
           class="single-input"
-          placeholder="Rua / Avenida"
+          placeholder="Endereço completo de entrega"
         >
-
-        <div class="address-grid">
-          <input
-            id="enderecoNumero"
-            class="single-input"
-            placeholder="Número"
-          >
-
-          <input
-            id="enderecoBairro"
-            class="single-input"
-            placeholder="Bairro"
-          >
-        </div>
-
-        <input
-          id="enderecoCidade"
-          class="single-input"
-          placeholder="Cidade"
-        >
-
-        <div id="enderecoSugestoes" class="address-suggestions hidden"></div>
 
         <input
           id="enderecoComplemento"
@@ -72,19 +50,25 @@
         >
 
         <button
-          id="btnBuscarDistancia"
-          class="secondary-action"
+          id="btnAbrirMaps"
+          class="secondary-action maps-action"
           type="button"
         >
-          Calcular distância agora
+          Abrir rota no Google Maps
         </button>
 
         <input
           id="distanciaEntregaKm"
           class="single-input"
-          placeholder="Distância estimada em km"
-          readonly
+          placeholder="Digite a distância vista no Google Maps em km"
+          type="number"
+          min="0"
+          step="0.1"
         >
+
+        <p class="helper-text">
+          Abra a rota no Google Maps, veja a distância de carro e informe o valor em km acima.
+        </p>
 
         <label class="field-label">Forma de pagamento do cliente</label>
 
@@ -150,14 +134,23 @@
     import {
       protegerRestaurante,
       carregarNovoPedidoRestaurante,
-      buscarDistanciaEntrega,
+      abrirRotaGoogleMaps,
+      calcularPedido,
       criarPedido
     } from "../js/restaurante.js";
 
     protegerRestaurante();
     carregarNovoPedidoRestaurante();
 
-    document.getElementById("btnBuscarDistancia").addEventListener("click", buscarDistanciaEntrega);
+    document.getElementById("btnAbrirMaps").addEventListener("click", abrirRotaGoogleMaps);
+    document.getElementById("distanciaEntregaKm").addEventListener("input", calcularPedido);
+    document.getElementById("formaPagamento").addEventListener("change", calcularPedido);
+
+    document.getElementById("precisaRetorno").addEventListener("change", (event) => {
+      document.getElementById("valorTroco").classList.toggle("hidden", !event.target.checked);
+      calcularPedido();
+    });
+
     document.getElementById("btnCriarPedido").addEventListener("click", criarPedido);
   </script>
 </body>
