@@ -292,12 +292,181 @@ input:focus {
   text-align: center;
 }
 
+.driver-app {
+  min-height: 100vh;
+  max-width: 480px;
+  margin: 0 auto;
+  background: #f5f6f8;
+  padding: 18px;
+}
+
+.driver-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0 18px;
+}
+
+.driver-kicker {
+  display: block;
+  color: #747985;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.driver-header h1 {
+  margin: 4px 0 0;
+  font-size: 26px;
+  line-height: 1.05;
+}
+
+.icon-btn {
+  min-width: 64px;
+  height: 40px;
+  border: 0;
+  border-radius: 12px;
+  background: #fff;
+  color: #16181d;
+  font-weight: 900;
+  box-shadow: 0 8px 22px rgba(17, 24, 39, .08);
+}
+
+.balance-card {
+  min-height: 132px;
+  border-radius: 24px;
+  padding: 22px;
+  background: linear-gradient(135deg, #ea1d2c, #a70f1d);
+  color: #fff;
+  box-shadow: 0 18px 38px rgba(234, 29, 44, .24);
+}
+
+.balance-card span,
+.online-info span,
+.quick-card span {
+  display: block;
+  font-size: 13px;
+  opacity: .78;
+  font-weight: 800;
+}
+
+.balance-card strong {
+  display: block;
+  margin-top: 10px;
+  font-size: 38px;
+  line-height: 1;
+}
+
+.payday-row {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255,255,255,.25);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.payday-row span {
+  font-size: 13px;
+  opacity: .78;
+  font-weight: 800;
+}
+
+.payday-row b {
+  font-size: 14px;
+  color: #fff;
+}
+
+.status-card,
+.online-card,
+.feed-card,
+.quick-card {
+  margin-top: 14px;
+  background: #fff;
+  border: 1px solid #e6e8ee;
+  border-radius: 20px;
+  padding: 18px;
+  box-shadow: 0 10px 24px rgba(17, 24, 39, .05);
+}
+
+.status-label {
+  display: block;
+  color: #747985;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.status-card strong,
+.online-info strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 20px;
+}
+
+.status-card p,
+.online-info p {
+  margin: 7px 0 0;
+  color: #747985;
+  line-height: 1.4;
+  font-size: 14px;
+}
+
+.online-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 14px;
+  align-items: center;
+}
+
+.online-btn {
+  min-width: 128px;
+  min-height: 52px;
+  border: 0;
+  border-radius: 16px;
+  background: #16181d;
+  color: #fff;
+  font-weight: 900;
+}
+
+.online-btn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.quick-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.quick-card strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 28px;
+}
+
+.feed-card h2 {
+  margin: 0 0 12px;
+  font-size: 20px;
+}
+
+.empty-state {
+  padding: 18px;
+  border-radius: 16px;
+  background: #f5f6f8;
+  color: #747985;
+  line-height: 1.4;
+  text-align: center;
+}
+
 @media (min-width: 760px) {
   body {
     background: #17191f;
   }
 
-  .app-screen {
+  .app-screen,
+  .driver-app {
     min-height: auto;
     margin-top: 28px;
     margin-bottom: 28px;
