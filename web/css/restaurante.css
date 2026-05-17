@@ -546,70 +546,61 @@ select.single-input:focus {
   line-height: 1.4;
 }
 
-.maps-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  display: grid;
-  place-items: center;
-  padding: 18px;
-}
-
-.maps-modal-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(10, 12, 16, .72);
-}
-
-.maps-modal-content {
-  position: relative;
-  z-index: 1;
-  width: min(960px, 100%);
-  height: min(720px, 92vh);
-  background: #fff;
-  border-radius: 24px;
+.maps-inline {
+  margin-top: 14px;
+  border: 1px solid #e6e8ee;
+  border-radius: 18px;
   overflow: hidden;
-  box-shadow: 0 30px 90px rgba(0, 0, 0, .35);
-  display: flex;
-  flex-direction: column;
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(17, 24, 39, .05);
 }
 
-.maps-modal-header {
-  padding: 16px 18px;
+.maps-inline-header {
+  padding: 13px 14px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 14px;
   border-bottom: 1px solid #e6e8ee;
+  background: #fff;
 }
 
-.maps-modal-header span {
+.maps-inline-header span {
   display: block;
   color: #747985;
   font-size: 12px;
   font-weight: 900;
 }
 
-.maps-modal-header strong {
+.maps-inline-header strong {
   display: block;
-  margin-top: 4px;
-  font-size: 20px;
+  margin-top: 3px;
+  font-size: 18px;
 }
 
-.maps-modal-header button {
-  min-width: 82px;
-  height: 40px;
+.maps-inline-header button {
+  min-width: 74px;
+  height: 36px;
   border: 0;
-  border-radius: 13px;
+  border-radius: 12px;
   background: #16181d;
   color: #fff;
   font-weight: 900;
 }
 
 .maps-frame {
-  flex: 1;
   width: 100%;
+  height: 360px;
   border: 0;
+  display: block;
+  flex: unset;
+}
+
+.maps-inline .maps-frame {
+  width: 100%;
+  height: 360px;
+  border: 0;
+  display: block;
 }
 
 .maps-modal-note {
@@ -658,12 +649,8 @@ select.single-input:focus {
     gap: 0;
   }
 
-  .maps-modal {
-    padding: 10px;
-  }
-
-  .maps-modal-content {
-    height: 94vh;
-    border-radius: 18px;
+  .maps-frame,
+  .maps-inline .maps-frame {
+    height: 300px;
   }
 }
