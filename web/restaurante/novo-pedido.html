@@ -37,16 +37,32 @@
           placeholder="Cole aqui o pedido vindo do iFood, WhatsApp, Rappi, Zé Delivery ou qualquer outra plataforma."
         ></textarea>
 
+        <label class="field-label">Endereço de entrega</label>
+
         <input
-          id="enderecoEntrega"
+          id="enderecoRua"
           class="single-input"
-          placeholder="Endereço completo de entrega"
+          placeholder="Rua / Avenida"
         >
+
+        <div class="address-grid">
+          <input
+            id="enderecoNumero"
+            class="single-input"
+            placeholder="Número"
+          >
+
+          <input
+            id="enderecoBairro"
+            class="single-input"
+            placeholder="Bairro"
+          >
+        </div>
 
         <input
           id="enderecoComplemento"
           class="single-input"
-          placeholder="Complemento, bloco, apto ou referência"
+          placeholder="Complemento ou referência (opcional)"
         >
 
         <button
@@ -67,7 +83,7 @@
         >
 
         <p class="helper-text">
-          Veja a rota no mapa, confira a distância de carro e informe o valor em km acima.
+          Abra a rota no mapa, veja a distância de carro e informe o valor em km acima.
         </p>
 
         <label class="field-label">Forma de pagamento do cliente</label>
