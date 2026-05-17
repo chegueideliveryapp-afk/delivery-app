@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="../css/base.css">
   <link rel="stylesheet" href="../css/restaurante.css">
 </head>
+
 <body>
   <main class="restaurant-app">
     <header class="restaurant-header">
@@ -21,55 +22,124 @@
 
     <section class="wallet-card">
       <span>Saldo pré-pago</span>
-      <strong id="saldoPedido">R$ 0,00</strong>
-      <p>O pedido só será criado se houver saldo suficiente para a taxa Cheguei.</p>
+      <strong id="saldoPrePago">Carregando...</strong>
+      <p>O pedido será liberado se houver saldo suficiente para a taxa Cheguei.</p>
     </section>
 
-    <section class="recharge-grid">
-      <div class="info-card">
-        <span>Dados da entrega</span>
-        <strong>Pedido e destino</strong>
+    <section class="order-layout">
+      <div class="info-card order-form-card">
+        <span>Pedido copiado</span>
+        <strong>Dados da entrega</strong>
 
-        <textarea id="pedidoCopiado" class="single-textarea large-textarea" placeholder="Cole aqui o pedido vindo do iFood, WhatsApp, Rappi, Zé Delivery ou outra plataforma"></textarea>
+        <textarea
+          id="pedidoCopiado"
+          class="single-textarea large-textarea"
+          placeholder="Cole aqui o pedido vindo do iFood, WhatsApp, Rappi, Zé Delivery ou qualquer outra plataforma."
+        ></textarea>
 
-        <input id="enderecoEntrega" class="single-input" placeholder="Endereço de entrega">
-        <button id="btnBuscarDistancia" class="secondary-btn">Buscar distância</button>
+        <input
+          id="enderecoRua"
+          class="single-input"
+          placeholder="Rua / Avenida"
+        >
 
-        <input id="distanciaEntregaKm" class="single-input" type="number" step="0.1" placeholder="Distância em km" readonly>
+        <div class="address-grid">
+          <input
+            id="enderecoNumero"
+            class="single-input"
+            placeholder="Número"
+          >
+
+          <input
+            id="enderecoBairro"
+            class="single-input"
+            placeholder="Bairro"
+          >
+        </div>
+
+        <input
+          id="enderecoCidade"
+          class="single-input"
+          placeholder="Cidade"
+        >
+
+        <input
+          id="enderecoComplemento"
+          class="single-input"
+          placeholder="Complemento, bloco, apto ou referência"
+        >
+
+        <button
+          id="btnBuscarDistancia"
+          class="secondary-action"
+          type="button"
+        >
+          Calcular distância agora
+        </button>
+
+        <input
+          id="distanciaEntregaKm"
+          class="single-input"
+          placeholder="Distância estimada em km"
+          readonly
+        >
+
+        <label class="field-label">Forma de pagamento do cliente</label>
 
         <select id="formaPagamento" class="single-input">
-          <option value="">Forma de pagamento</option>
           <option value="pix">Pix</option>
           <option value="cartao">Cartão</option>
           <option value="dinheiro">Dinheiro</option>
         </select>
 
-        <label class="check-row">
+        <label class="return-check">
           <input id="precisaRetorno" type="checkbox">
-          Motoboy precisa retornar com maquininha ou troco
+          <span>Motoboy precisa retornar com maquininha, troco ou item</span>
         </label>
 
-        <input id="valorTroco" class="single-input hidden" type="number" step="0.01" placeholder="Troco para quanto?">
+        <input
+          id="valorTroco"
+          class="single-input hidden"
+          placeholder="Troco para quanto? Ex: 100"
+          type="number"
+          min="0"
+          step="0.01"
+        >
 
-        <textarea id="observacaoPedido" class="single-textarea" placeholder="Observação opcional"></textarea>
+        <textarea
+          id="observacaoPedido"
+          class="single-textarea"
+          placeholder="Observação para o motoboy. Ex: retirar na portaria, levar maquininha, cliente paga em dinheiro..."
+        ></textarea>
 
-        <button id="btnCalcularPedido" class="primary-btn">Calcular valores</button>
+        <p id="mensagem" class="form-message"></p>
       </div>
 
-      <div class="info-card">
+      <div class="info-card order-summary-card">
         <span>Resumo financeiro</span>
         <strong id="valorTotalPedido">R$ 0,00</strong>
 
-        <div class="price-lines">
+        <div class="summary-list">
           <p>Motoboy: <b id="valorMotoboyPedido">R$ 0,00</b></p>
-          <p>Taxa retorno: <b id="taxaRetornoPedido">R$ 0,00</b></p>
           <p>Taxa Cheguei: <b id="taxaSistemaPedido">R$ 0,00</b></p>
-          <p>Raio inicial: <b id="raioInicialPedido">3 km</b></p>
+          <p>Taxa retorno: <b id="taxaRetornoPedido">R$ 0,00</b></p>
           <p>Distância: <b id="distanciaResumoPedido">---</b></p>
+          <p>Raio inicial: <b id="raioInicialPedido">3 km</b></p>
         </div>
 
-        <button id="btnCriarPedido" class="primary-btn" disabled>Criar pedido</button>
-        <div id="mensagem"></div>
+        <div class="payment-preview">
+          <span>Pagamento</span>
+          <strong id="pagamentoResumo">Pix</strong>
+          <p id="retornoResumo">Sem retorno ao restaurante.</p>
+        </div>
+
+        <button
+          id="btnCriarPedido"
+          class="primary-btn"
+          type="button"
+        >
+          Criar pedido
+        </button>
       </div>
     </section>
   </main>
@@ -77,23 +147,16 @@
   <script type="module">
     import {
       protegerRestaurante,
-      carregarNovoPedido,
+      carregarNovoPedidoRestaurante,
       buscarDistanciaEntrega,
-      calcularPedido,
       criarPedido
     } from "../js/restaurante.js";
 
     protegerRestaurante();
-    carregarNovoPedido();
+    carregarNovoPedidoRestaurante();
 
     document.getElementById("btnBuscarDistancia").addEventListener("click", buscarDistanciaEntrega);
-    document.getElementById("enderecoEntrega").addEventListener("blur", buscarDistanciaEntrega);
-    document.getElementById("btnCalcularPedido").addEventListener("click", calcularPedido);
     document.getElementById("btnCriarPedido").addEventListener("click", criarPedido);
-
-    document.getElementById("precisaRetorno").addEventListener("change", (event) => {
-      document.getElementById("valorTroco").classList.toggle("hidden", !event.target.checked);
-    });
   </script>
 </body>
 </html>
