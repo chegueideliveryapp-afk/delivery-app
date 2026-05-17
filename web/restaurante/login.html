@@ -1,1 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Restaurante - Cheguei Delivery</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/restaurante.css">
+</head>
+<body>
+  <main class="restaurant-auth">
+    <section class="restaurant-hero">
+      <div class="restaurant-brand">
+        <div class="brand-symbol">C</div>
+        <div>
+          <strong>Cheguei</strong>
+          <span>Restaurantes</span>
+        </div>
+      </div>
+
+      <div class="restaurant-copy">
+        <p class="eyebrow">Painel do parceiro</p>
+        <h1>Solicite entregas e acompanhe tudo em tempo real.</h1>
+        <p>Controle seu saldo pré-pago, pedidos e corridas em um só lugar.</p>
+      </div>
+    </section>
+
+    <section class="restaurant-login-card">
+      <h2>Entrar</h2>
+
+      <label>E-mail</label>
+      <input id="email" type="email" placeholder="E-mail do restaurante">
+
+      <label>Senha</label>
+      <input id="senha" type="password" placeholder="Senha">
+
+      <button id="btnLogin" class="primary-btn">Acessar painel</button>
+
+      <div id="mensagem"></div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { loginRestaurante } from "../js/restaurante.js";
+
+    document.getElementById("btnLogin").addEventListener("click", loginRestaurante);
+  </script>
+</body>
+</html>
