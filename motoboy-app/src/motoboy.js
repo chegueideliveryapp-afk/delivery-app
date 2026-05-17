@@ -17,6 +17,7 @@ let uid = null;
 let motoboyAtual = null;
 let watchId = null;
 let onlineSolicitado = false;
+let gpsAutoIniciado = false;
 
 function dinheiro(valor) {
   return Number(valor || 0).toLocaleString("pt-BR", {
@@ -92,12 +93,18 @@ function atualizarTela(motoboy) {
   setText("statusConta", "Conta aprovada");
   setText("statusDescricao", "Você já pode ficar online para receber corridas próximas.");
   definirBotaoOnlineAtivo(btnOnline, motoboy.online === true);
+
+  if (motoboy.online === true && watchId === null && gpsAutoIniciado === false) {
+    gpsAutoIniciado = true;
+    iniciarGpsOnline();
+  }
 }
 
 async function marcarOffline() {
   if (!uid) return;
 
   onlineSolicitado = false;
+  gpsAutoIniciado = false;
 
   if (watchId !== null) {
     navigator.geolocation.clearWatch(watchId);
@@ -115,6 +122,8 @@ async function marcarOffline() {
 async function iniciarGpsOnline() {
   if (!uid || !motoboyAtual) return;
 
+  if (watchId !== null) return;
+
   if (!podeFicarOnline(motoboyAtual)) {
     setText("gpsTexto", "Sua conta ainda não pode ficar online.");
     return;
@@ -126,7 +135,7 @@ async function iniciarGpsOnline() {
   }
 
   onlineSolicitado = true;
-  setText("gpsTexto", "Solicitando localização...");
+  setText("gpsTexto", "Atualizando localização...");
 
   watchId = navigator.geolocation.watchPosition(
     async (pos) => {
@@ -151,6 +160,14 @@ async function iniciarGpsOnline() {
     },
     async (erro) => {
       console.error(erro);
+
+      onlineSolicitado = false;
+      gpsAutoIniciado = false;
+
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+      }
 
       await updateDoc(doc(db, "motoboys", uid), {
         online: false,
@@ -178,6 +195,7 @@ function configurarBotoes() {
       if (motoboyAtual.online) {
         await marcarOffline();
       } else {
+        gpsAutoIniciado = true;
         await iniciarGpsOnline();
       }
     });
