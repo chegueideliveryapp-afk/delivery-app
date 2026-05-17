@@ -126,6 +126,11 @@ body {
   font-size: 16px;
 }
 
+.primary-btn:disabled {
+  opacity: .7;
+  cursor: wait;
+}
+
 #mensagem {
   margin-top: 12px;
   color: #c02626;
@@ -282,16 +287,20 @@ body {
 }
 
 .single-input,
-.single-textarea {
+.single-textarea,
+select.single-input {
   width: 100%;
   margin-top: 14px;
   border: 1px solid #e6e8ee;
   border-radius: 14px;
   outline: none;
   font-size: 16px;
+  background: #fff;
+  color: #16181d;
 }
 
-.single-input {
+.single-input,
+select.single-input {
   min-height: 52px;
   padding: 0 15px;
 }
@@ -303,7 +312,8 @@ body {
 }
 
 .single-input:focus,
-.single-textarea:focus {
+.single-textarea:focus,
+select.single-input:focus {
   border-color: #ea1d2c;
   box-shadow: 0 0 0 4px rgba(234, 29, 44, .1);
 }
@@ -353,4 +363,153 @@ body {
 }
 
 .status-pill.recusada {
-  background: #fee2
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.empty-mini {
+  padding: 16px;
+  border-radius: 16px;
+  background: #f5f6f8;
+  color: #747985;
+  text-align: center;
+}
+
+.order-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-top: 18px;
+  align-items: start;
+}
+
+.order-form-card strong,
+.order-summary-card strong {
+  font-size: 24px;
+}
+
+.large-textarea {
+  min-height: 150px;
+}
+
+.field-label {
+  display: block;
+  margin-top: 14px;
+  color: #363b45;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.secondary-action {
+  width: 100%;
+  min-height: 50px;
+  margin-top: 12px;
+  border: 1px solid #e6e8ee;
+  border-radius: 16px;
+  background: #fff;
+  color: #16181d;
+  font-weight: 900;
+  font-size: 15px;
+}
+
+.secondary-action:hover {
+  border-color: #ea1d2c;
+}
+
+.secondary-action:disabled {
+  opacity: .7;
+  cursor: wait;
+}
+
+.return-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 16px;
+  color: #363b45;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.return-check input {
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  accent-color: #ea1d2c;
+}
+
+.summary-list {
+  margin-top: 18px;
+  display: grid;
+  gap: 10px;
+}
+
+.summary-list p {
+  margin: 0;
+  color: #5d6472;
+  font-size: 16px;
+}
+
+.summary-list b {
+  color: #16181d;
+}
+
+.payment-preview {
+  margin-top: 22px;
+  padding: 16px;
+  border-radius: 18px;
+  background: #f5f6f8;
+}
+
+.payment-preview span {
+  color: #747985;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.payment-preview strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 22px;
+}
+
+.payment-preview p {
+  margin: 8px 0 0;
+  color: #747985;
+}
+
+.form-message {
+  min-height: 20px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+@media (max-width: 820px) {
+  .restaurant-auth {
+    grid-template-columns: 1fr;
+    padding: 18px;
+  }
+
+  .restaurant-hero {
+    min-height: auto;
+    gap: 80px;
+  }
+
+  .restaurant-copy h1 {
+    font-size: 34px;
+  }
+
+  .restaurant-status-grid,
+  .restaurant-actions,
+  .recharge-grid,
+  .order-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .restaurant-app {
+    padding: 18px;
+  }
+}
