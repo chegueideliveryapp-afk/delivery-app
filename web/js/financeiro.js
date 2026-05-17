@@ -37,6 +37,10 @@ function dataTexto(timestamp) {
   });
 }
 
+function textoSeguro(valor, fallback = "Não informado") {
+  return valor || fallback;
+}
+
 export function carregarRecargasAdmin() {
   const lista = document.getElementById("listaRecargasAdmin");
 
@@ -78,27 +82,51 @@ export function carregarRecargasAdmin() {
         const card = document.createElement("div");
         card.className = "list-card";
 
+        const pendente = recarga.status === "pendente";
+
         card.innerHTML = `
           <div>
-            <strong>${recarga.restauranteNome || "Restaurante não informado"}</strong>
+            <strong>${textoSeguro(recarga.restauranteNome, "Restaurante não informado")}</strong>
+
             <p>Valor: ${dinheiro(recarga.valor)}</p>
+
             <p>Status:
               <span class="badge ${classeStatus(recarga.status)}">
                 ${statusTexto(recarga.status)}
               </span>
             </p>
-            <p>Método: ${recarga.metodo || "pix"}</p>
-            <p>Chave Pix: ${recarga.chavePixUsada || "Não informada"}</p>
+
+            <p>Método: ${textoSeguro(recarga.metodo, "pix")}</p>
+            <p>Chave Pix: ${textoSeguro(recarga.chavePixUsada)}</p>
             <p>Observação: ${recarga.observacao || "Sem observação"}</p>
             <p>Solicitada em: ${dataTexto(recarga.solicitadoAt)}</p>
+
+            ${
+              recarga.status === "aprovada"
+                ? `<p>Aprovada em: ${dataTexto(recarga.aprovadoAt)}</p>`
+                : ""
+            }
+
+            ${
+              recarga.status === "recusada"
+                ? `<p>Recusada em: ${dataTexto(recarga.recusadoAt)}</p>
+                   <p>Motivo: ${recarga.motivoRecusa || "Sem motivo informado"}</p>`
+                : ""
+            }
           </div>
 
           <div class="actions">
             ${
-              recarga.status === "pendente"
-                ? `<button data-action="aprovarRecarga" data-id="${recarga.id}">
+              pendente
+                ? `
+                  <button data-action="aprovarRecarga" data-id="${recarga.id}">
                     Aprovar
-                  </button>`
+                  </button>
+
+                  <button data-action="recusarRecarga" data-id="${recarga.id}">
+                    Recusar
+                  </button>
+                `
                 : ""
             }
           </div>
@@ -110,7 +138,6 @@ export function carregarRecargasAdmin() {
       lista.querySelectorAll("button[data-action='aprovarRecarga']").forEach((button) => {
         button.addEventListener("click", async () => {
           const recargaId = button.dataset.id;
-
           const confirmar = confirm("Confirmar aprovação desta recarga?");
 
           if (!confirmar) return;
@@ -125,6 +152,27 @@ export function carregarRecargasAdmin() {
             alert("Erro ao aprovar recarga.");
             button.disabled = false;
             button.innerText = "Aprovar";
+          }
+        });
+      });
+
+      lista.querySelectorAll("button[data-action='recusarRecarga']").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const recargaId = button.dataset.id;
+          const motivo = prompt("Informe o motivo da recusa:");
+
+          if (motivo === null) return;
+
+          button.disabled = true;
+          button.innerText = "Recusando...";
+
+          try {
+            await recusarRecarga(recargaId, motivo.trim());
+          } catch (erro) {
+            console.error(erro);
+            alert("Erro ao recusar recarga.");
+            button.disabled = false;
+            button.innerText = "Recusar";
           }
         });
       });
@@ -168,6 +216,11 @@ async function aprovarRecarga(recargaId) {
     const restaurante = restauranteSnap.data();
 
     const valor = Number(recarga.valor || 0);
+
+    if (!valor || valor <= 0) {
+      throw new Error("Valor inválido.");
+    }
+
     const saldoAntes = Number(restaurante.saldoPrePago || 0);
     const saldoDepois = saldoAntes + valor;
 
@@ -196,6 +249,37 @@ async function aprovarRecarga(recargaId) {
       descricao: "Recarga Pix aprovada",
       createdAt: serverTimestamp(),
       criadoPor: uidAdmin
+    });
+  });
+}
+
+async function recusarRecarga(recargaId, motivo) {
+  const uidAdmin = auth.currentUser?.uid;
+
+  if (!uidAdmin) {
+    throw new Error("Admin não autenticado.");
+  }
+
+  const recargaRef = doc(db, "recargas_restaurante", recargaId);
+
+  await runTransaction(db, async (transaction) => {
+    const recargaSnap = await transaction.get(recargaRef);
+
+    if (!recargaSnap.exists()) {
+      throw new Error("Recarga não encontrada.");
+    }
+
+    const recarga = recargaSnap.data();
+
+    if (recarga.status !== "pendente") {
+      throw new Error("Recarga já processada.");
+    }
+
+    transaction.update(recargaRef, {
+      status: "recusada",
+      recusadoAt: serverTimestamp(),
+      recusadoPor: uidAdmin,
+      motivoRecusa: motivo || "Sem motivo informado"
     });
   });
 }
