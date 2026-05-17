@@ -1,1 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Recarga Pix - Cheguei Delivery</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/restaurante.css">
+</head>
+<body>
+  <main class="restaurant-app">
+    <header class="restaurant-header">
+      <div>
+        <span>Cheguei Restaurantes</span>
+        <h1>Recarga Pix</h1>
+      </div>
+
+      <a class="back-link" href="./dashboard.html">Voltar</a>
+    </header>
+
+    <section class="wallet-card">
+      <span>Saldo atual</span>
+      <strong id="saldoAtual">R$ 0,00</strong>
+      <p>Após aprovação da administração, o valor entra no seu saldo pré-pago.</p>
+    </section>
+
+    <section class="recharge-grid">
+      <div class="info-card pix-card">
+        <span>Chave Pix</span>
+        <strong id="chavePix">Carregando...</strong>
+        <p>Faça o Pix e depois solicite a recarga abaixo.</p>
+        <a id="whatsappSuporte" class="support-link" target="_blank" href="#">Enviar comprovante</a>
+      </div>
+
+      <div class="info-card">
+        <span>Nova solicitação</span>
+        <strong>Informe o valor</strong>
+
+        <input id="valorRecarga" class="single-input" type="number" step="0.01" placeholder="Valor da recarga">
+        <textarea id="observacaoRecarga" class="single-textarea" placeholder="Observação opcional"></textarea>
+
+        <button id="btnSolicitarRecarga" class="primary-btn">Solicitar recarga</button>
+        <div id="mensagem"></div>
+      </div>
+    </section>
+
+    <section class="info-card history-card">
+      <span>Histórico</span>
+      <strong>Solicitações de recarga</strong>
+      <div id="listaRecargas"></div>
+    </section>
+  </main>
+
+  <script type="module">
+    import {
+      protegerRestaurante,
+      carregarRecargaRestaurante,
+      solicitarRecarga
+    } from "../js/restaurante.js";
+
+    protegerRestaurante();
+    carregarRecargaRestaurante();
+
+    document.getElementById("btnSolicitarRecarga").addEventListener("click", solicitarRecarga);
+  </script>
+</body>
+</html>
