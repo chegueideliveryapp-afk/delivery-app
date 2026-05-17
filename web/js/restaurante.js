@@ -15,17 +15,26 @@ import {
   serverTimestamp,
   query,
   where,
-  orderBy
+  orderBy,
+  runTransaction
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 let restauranteLogado = null;
 let configApp = null;
+
+let restaurantePedido = null;
+let configPedido = null;
+let pedidoCalculado = null;
 
 function dinheiro(valor) {
   return Number(valor || 0).toLocaleString("pt-BR", {
     style: "currency",
     currency: "BRL"
   });
+}
+
+function arredondarDinheiro(valor) {
+  return Math.round(Number(valor || 0) * 100) / 100;
 }
 
 function setText(id, texto) {
@@ -68,6 +77,25 @@ function statusRecargaTexto(status) {
   if (status === "aprovada") return "Aprovada";
   if (status === "recusada") return "Recusada";
   return "Pendente";
+}
+
+function calcularValorMotoboy(distanciaKm, config) {
+  const taxaBase = Number(config.taxaBaseMotoboy || 0);
+  const valorKm = Number(config.valorKmMotoboy || 0);
+  const minimo = Number(config.valorMinimoMotoboy || 0);
+
+  const adicionalChuva = Number(config.adicionalChuva || 0);
+  const adicionalEvento = Number(config.adicionalEvento || 0);
+  const adicionalFimAno = Number(config.adicionalFimAno || 0);
+
+  const calculado =
+    taxaBase +
+    (Number(distanciaKm || 0) * valorKm) +
+    adicionalChuva +
+    adicionalEvento +
+    adicionalFimAno;
+
+  return arredondarDinheiro(Math.max(calculado, minimo));
 }
 
 export async function loginRestaurante() {
@@ -336,7 +364,76 @@ export async function solicitarRecarga() {
   btn.innerText = "Solicitar recarga";
 }
 
-export async function sairRestaurante() {
-  await signOut(auth);
-  window.location.href = "./login.html";
+export function carregarNovoPedido() {
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) return;
+
+    const restauranteRef = doc(db, "restaurantes", user.uid);
+    const configRef = doc(db, "config", "app");
+
+    onSnapshot(restauranteRef, (snap) => {
+      if (!snap.exists()) return;
+
+      restaurantePedido = {
+        id: user.uid,
+        ...snap.data()
+      };
+
+      setText("saldoPedido", dinheiro(restaurantePedido.saldoPrePago));
+    });
+
+    onSnapshot(configRef, (snap) => {
+      if (!snap.exists()) return;
+
+      configPedido = snap.data();
+
+      const raioInicial = configPedido.raiosBuscaKm?.[0] || 3;
+      setText("raioInicialPedido", `${raioInicial} km`);
+    });
+  });
 }
+
+export function calcularPedido() {
+  const enderecoEntrega = document.getElementById("enderecoEntrega").value.trim();
+  const distanciaEntregaKm = Number(document.getElementById("distanciaEntregaKm").value || 0);
+  const btnCriar = document.getElementById("btnCriarPedido");
+  const msg = document.getElementById("mensagem");
+
+  msg.innerText = "";
+
+  if (!restaurantePedido) {
+    msg.innerText = "Restaurante ainda não carregado.";
+    return;
+  }
+
+  if (!configPedido) {
+    msg.innerText = "Configuração do sistema ainda não carregada.";
+    return;
+  }
+
+  if (!enderecoEntrega) {
+    msg.innerText = "Informe o endereço de entrega.";
+    return;
+  }
+
+  if (!distanciaEntregaKm || distanciaEntregaKm <= 0) {
+    msg.innerText = "Informe uma distância válida.";
+    return;
+  }
+
+  const taxaSistema = arredondarDinheiro(
+    Number(restaurantePedido.taxaSistemaPadrao ?? configPedido.taxaSistemaPadrao ?? 0)
+  );
+
+  const valorMotoboy = calcularValorMotoboy(distanciaEntregaKm, configPedido);
+  const valorTotal = arredondarDinheiro(valorMotoboy + taxaSistema);
+
+  const raiosBuscaKm = configPedido.raiosBuscaKm || [3, 5, 10, 15];
+  const raioAtualKm = raiosBuscaKm[0] || 3;
+
+  pedidoCalculado = {
+    enderecoEntrega,
+    distanciaEntregaKm,
+    taxaSistema,
+    valorMotoboy,
+    valorTotal
