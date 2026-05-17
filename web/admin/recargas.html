@@ -1,1 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Recargas - Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Recargas Pix</h1>
+    <a class="topbar-link" href="./dashboard.html">Voltar</a>
+  </header>
+
+  <main class="page">
+    <section class="panel">
+      <h2>Solicitações de recarga</h2>
+      <p class="hint">
+        Aqui aparecem as recargas solicitadas pelos restaurantes.
+      </p>
+
+      <div id="listaRecargasAdmin"></div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { protegerPagina } from "../js/auth.js";
+    import { carregarRecargasAdmin } from "../js/financeiro.js";
+
+    protegerPagina("admin");
+    carregarRecargasAdmin();
+  </script>
+</body>
+</html>
