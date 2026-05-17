@@ -28,10 +28,28 @@
     <section class="recharge-grid">
       <div class="info-card">
         <span>Dados da entrega</span>
-        <strong>Destino do pedido</strong>
+        <strong>Pedido e destino</strong>
+
+        <textarea id="pedidoCopiado" class="single-textarea large-textarea" placeholder="Cole aqui o pedido vindo do iFood, WhatsApp, Rappi, Zé Delivery ou outra plataforma"></textarea>
 
         <input id="enderecoEntrega" class="single-input" placeholder="Endereço de entrega">
-        <input id="distanciaEntregaKm" class="single-input" type="number" step="0.1" placeholder="Distância estimada em km">
+        <button id="btnBuscarDistancia" class="secondary-btn">Buscar distância</button>
+
+        <input id="distanciaEntregaKm" class="single-input" type="number" step="0.1" placeholder="Distância em km" readonly>
+
+        <select id="formaPagamento" class="single-input">
+          <option value="">Forma de pagamento</option>
+          <option value="pix">Pix</option>
+          <option value="cartao">Cartão</option>
+          <option value="dinheiro">Dinheiro</option>
+        </select>
+
+        <label class="check-row">
+          <input id="precisaRetorno" type="checkbox">
+          Motoboy precisa retornar com maquininha ou troco
+        </label>
+
+        <input id="valorTroco" class="single-input hidden" type="number" step="0.01" placeholder="Troco para quanto?">
 
         <textarea id="observacaoPedido" class="single-textarea" placeholder="Observação opcional"></textarea>
 
@@ -44,8 +62,10 @@
 
         <div class="price-lines">
           <p>Motoboy: <b id="valorMotoboyPedido">R$ 0,00</b></p>
+          <p>Taxa retorno: <b id="taxaRetornoPedido">R$ 0,00</b></p>
           <p>Taxa Cheguei: <b id="taxaSistemaPedido">R$ 0,00</b></p>
           <p>Raio inicial: <b id="raioInicialPedido">3 km</b></p>
+          <p>Distância: <b id="distanciaResumoPedido">---</b></p>
         </div>
 
         <button id="btnCriarPedido" class="primary-btn" disabled>Criar pedido</button>
@@ -58,6 +78,7 @@
     import {
       protegerRestaurante,
       carregarNovoPedido,
+      buscarDistanciaEntrega,
       calcularPedido,
       criarPedido
     } from "../js/restaurante.js";
@@ -65,8 +86,14 @@
     protegerRestaurante();
     carregarNovoPedido();
 
+    document.getElementById("btnBuscarDistancia").addEventListener("click", buscarDistanciaEntrega);
+    document.getElementById("enderecoEntrega").addEventListener("blur", buscarDistanciaEntrega);
     document.getElementById("btnCalcularPedido").addEventListener("click", calcularPedido);
     document.getElementById("btnCriarPedido").addEventListener("click", criarPedido);
+
+    document.getElementById("precisaRetorno").addEventListener("change", (event) => {
+      document.getElementById("valorTroco").classList.toggle("hidden", !event.target.checked);
+    });
   </script>
 </body>
 </html>
