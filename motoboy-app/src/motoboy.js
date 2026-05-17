@@ -39,6 +39,24 @@ function podeFicarOnline(motoboy) {
   );
 }
 
+function definirBotaoOnlineDesabilitado(btnOnline) {
+  if (!btnOnline) return;
+
+  btnOnline.disabled = true;
+  btnOnline.classList.add("is-disabled");
+  btnOnline.classList.remove("is-online", "is-offline");
+}
+
+function definirBotaoOnlineAtivo(btnOnline, online) {
+  if (!btnOnline) return;
+
+  btnOnline.disabled = false;
+  btnOnline.innerText = online ? "Ficar offline" : "Ficar online";
+  btnOnline.classList.remove("is-disabled");
+  btnOnline.classList.toggle("is-online", online === true);
+  btnOnline.classList.toggle("is-offline", online !== true);
+}
+
 function atualizarTela(motoboy) {
   motoboyAtual = motoboy;
 
@@ -53,31 +71,27 @@ function atualizarTela(motoboy) {
   if (motoboy.bloqueado) {
     setText("statusConta", "Conta bloqueada");
     setText("statusDescricao", "Entre em contato com a administração.");
-    if (btnOnline) btnOnline.disabled = true;
+    definirBotaoOnlineDesabilitado(btnOnline);
     return;
   }
 
   if (motoboy.ativo === false) {
     setText("statusConta", "Conta inativa");
     setText("statusDescricao", "Sua conta está inativa no momento.");
-    if (btnOnline) btnOnline.disabled = true;
+    definirBotaoOnlineDesabilitado(btnOnline);
     return;
   }
 
   if (motoboy.aprovado !== true) {
     setText("statusConta", "Aguardando aprovação");
     setText("statusDescricao", "Assim que a administração aprovar, você poderá ficar online.");
-    if (btnOnline) btnOnline.disabled = true;
+    definirBotaoOnlineDesabilitado(btnOnline);
     return;
   }
 
   setText("statusConta", "Conta aprovada");
   setText("statusDescricao", "Você já pode ficar online para receber corridas próximas.");
-
-  if (btnOnline) {
-    btnOnline.disabled = false;
-    btnOnline.innerText = motoboy.online ? "Ficar offline" : "Ficar online";
-  }
+  definirBotaoOnlineAtivo(btnOnline, motoboy.online === true);
 }
 
 async function marcarOffline() {
