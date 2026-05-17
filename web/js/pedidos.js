@@ -72,7 +72,10 @@ export function carregarPedidosAdmin() {
   const lista = document.getElementById("listaPedidosAdmin");
   const total = document.getElementById("totalPedidos");
 
-  if (!lista) return;
+  if (!lista) {
+    console.error("Elemento listaPedidosAdmin não encontrado.");
+    return;
+  }
 
   lista.innerHTML = `<div class="empty">Buscando pedidos...</div>`;
 
@@ -151,8 +154,14 @@ export function carregarPedidosAdmin() {
       });
     },
     (erro) => {
-      console.error(erro);
-      lista.innerHTML = `<div class="empty">Erro ao carregar pedidos: ${erro.message}</div>`;
+      console.error("Erro ao carregar pedidos:", erro);
+
+      lista.innerHTML = `
+        <div class="empty">
+          Erro ao carregar pedidos:<br>
+          ${erro.message}
+        </div>
+      `;
     }
   );
 }
