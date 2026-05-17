@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Cheguei Motoboy</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="./css/app.css">
+</head>
+<body>
+  <main class="driver-app">
+    <header class="driver-header">
+      <div>
+        <span class="driver-kicker">Cheguei Motoboy</span>
+        <h1 id="nomeMotoboy">Carregando...</h1>
+      </div>
+
+      <button id="btnSair" class="icon-btn">Sair</button>
+    </header>
+
+    <section class="balance-card">
+      <span>Saldo acumulado</span>
+      <strong id="saldoMotoboy">R$ 0,00</strong>
+
+      <div class="payday-row">
+        <span>Pagamento</span>
+        <b>Toda segunda-feira</b>
+      </div>
+    </section>
+
+    <section class="status-card" id="statusCard">
+      <div>
+        <span class="status-label">Status da conta</span>
+        <strong id="statusConta">Verificando...</strong>
+        <p id="statusDescricao">Aguarde.</p>
+      </div>
+    </section>
+
+    <section class="online-card">
+      <div class="online-info">
+        <span>Disponibilidade</span>
+        <strong id="onlineTexto">Offline</strong>
+        <p id="gpsTexto">GPS ainda não iniciado.</p>
+      </div>
+
+      <button id="btnOnline" class="online-btn">
+        Ficar online
+      </button>
+    </section>
+
+    <section class="quick-grid">
+      <div class="quick-card">
+        <span>Entregas</span>
+        <strong id="totalEntregas">0</strong>
+      </div>
+
+      <div class="quick-card">
+        <span>Recusas</span>
+        <strong id="totalRecusas">0</strong>
+      </div>
+    </section>
+
+    <section class="feed-card">
+      <h2>Corridas</h2>
+      <div id="corridasBox" class="empty-state">
+        Quando você estiver online e aprovado, novas corridas aparecerão aqui. Seus ganhos ficam acumulados para pagamento semanal.
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="./src/motoboy.js"></script>
+</body>
+</html>
