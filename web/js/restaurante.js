@@ -86,7 +86,7 @@ function montarEnderecoEntrega() {
   const cidadeRestaurante =
     restauranteLogado?.cidade ||
     restauranteLogado?.municipio ||
-    "";
+    "Mogi Guaçu";
 
   const enderecoCompleto = [
     rua,
@@ -154,23 +154,19 @@ function calcularValoresPedido() {
   };
 }
 
-function configurarModalMaps() {
-  const modal = document.getElementById("mapsModal");
+function fecharMapsInline() {
+  const box = document.getElementById("mapsInline");
   const frame = document.getElementById("mapsFrame");
-  const fechar = document.getElementById("fecharMapsModal");
-  const backdrop = document.getElementById("fecharMapsBackdrop");
 
-  function fecharModal() {
-    if (frame) frame.src = "";
-    if (modal) modal.classList.add("hidden");
-  }
+  if (frame) frame.src = "";
+  if (box) box.classList.add("hidden");
+}
+
+function configurarMapaInline() {
+  const fechar = document.getElementById("btnFecharMapsInline");
 
   if (fechar) {
-    fechar.addEventListener("click", fecharModal);
-  }
-
-  if (backdrop) {
-    backdrop.addEventListener("click", fecharModal);
+    fechar.addEventListener("click", fecharMapsInline);
   }
 }
 
@@ -179,7 +175,7 @@ function configurarBuscaAutomaticaEndereco() {
 
   novoPedidoConfigurado = true;
 
-  configurarModalMaps();
+  configurarMapaInline();
 
   const distancia = document.getElementById("distanciaEntregaKm");
   if (distancia) {
@@ -567,14 +563,15 @@ export function abrirRotaGoogleMaps() {
   const destino = endereco.enderecoCompleto;
 
   const url = new URL("https://www.google.com/maps");
+  url.searchParams.set("output", "embed");
+  url.searchParams.set("f", "d");
   url.searchParams.set("saddr", origem);
   url.searchParams.set("daddr", destino);
-  url.searchParams.set("output", "embed");
 
-  const modal = document.getElementById("mapsModal");
+  const box = document.getElementById("mapsInline");
   const frame = document.getElementById("mapsFrame");
 
-  if (!modal || !frame) {
+  if (!box || !frame) {
     window.open(
       `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origem)}&destination=${encodeURIComponent(destino)}&travelmode=driving`,
       "_blank"
@@ -583,7 +580,7 @@ export function abrirRotaGoogleMaps() {
   }
 
   frame.src = url.toString();
-  modal.classList.remove("hidden");
+  box.classList.remove("hidden");
 }
 
 export function calcularPedido() {
@@ -756,6 +753,8 @@ export async function criarPedido() {
     document.getElementById("precisaRetorno").checked = false;
     document.getElementById("valorTroco").value = "";
     document.getElementById("valorTroco").classList.add("hidden");
+
+    fecharMapsInline();
 
     pedidoCalculado = null;
 
