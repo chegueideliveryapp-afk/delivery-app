@@ -1,1 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Pedidos - Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/admin.css">
+</head>
+
+<body>
+  <main class="admin-app">
+    <header class="admin-header">
+      <div>
+        <span>Cheguei Admin</span>
+        <h1>Pedidos</h1>
+      </div>
+
+      <a class="back-link" href="./dashboard.html">Voltar</a>
+    </header>
+
+    <section class="admin-card">
+      <div class="section-head">
+        <div>
+          <span>Operação</span>
+          <h2>Pedidos criados</h2>
+        </div>
+
+        <strong id="totalPedidos">0 pedidos</strong>
+      </div>
+
+      <div id="listaPedidosAdmin" class="admin-list">
+        <div class="empty">Carregando pedidos...</div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { protegerAdmin } from "../js/auth.js";
+    import { carregarPedidosAdmin } from "../js/pedidos.js";
+
+    protegerAdmin();
+    carregarPedidosAdmin();
+  </script>
+</body>
+</html>
