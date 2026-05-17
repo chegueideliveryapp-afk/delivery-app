@@ -392,6 +392,50 @@ select.single-input:focus {
   min-height: 150px;
 }
 
+.address-grid {
+  display: grid;
+  grid-template-columns: .7fr 1.3fr;
+  gap: 12px;
+}
+
+.address-grid .single-input {
+  margin-top: 14px;
+}
+
+.address-suggestions {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.address-suggestion {
+  width: 100%;
+  border: 1px solid #e6e8ee;
+  border-radius: 14px;
+  background: #fff;
+  color: #16181d;
+  padding: 13px 14px;
+  text-align: left;
+  font-size: 14px;
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.address-suggestion:hover {
+  border-color: #ea1d2c;
+  background: #fff5f6;
+}
+
+.address-suggestion.muted {
+  color: #747985;
+  cursor: default;
+}
+
+.address-suggestion.muted:hover {
+  border-color: #e6e8ee;
+  background: #fff;
+}
+
 .field-label {
   display: block;
   margin-top: 14px;
@@ -511,5 +555,12 @@ select.single-input:focus {
 
   .restaurant-app {
     padding: 18px;
+  }
+}
+
+@media (max-width: 640px) {
+  .address-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
   }
 }
