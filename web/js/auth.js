@@ -71,3 +71,7 @@ export function protegerPagina(rolePermitida) {
     }
   });
 }
+
+export function protegerAdmin() {
+  protegerPagina("admin");
+}
