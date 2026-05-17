@@ -5,6 +5,7 @@
 :root {
   --red: #ea1d2c;
   --red-dark: #b91521;
+  --red-deep: #b80f20;
   --ink: #16181d;
   --muted: #747985;
   --soft: #f5f6f8;
@@ -41,10 +42,8 @@ button {
 
 .hero {
   position: relative;
-  min-height: 310px;
-  padding: 24px 22px 78px;
-  background:
-    linear-gradient(155deg, #f52d3d 0%, #d7192a 48%, #92121e 100%);
+  padding: 24px 22px 26px;
+  background: linear-gradient(155deg, #f52d3d 0%, #d7192a 48%, var(--red-deep) 100%);
   color: #fff;
   overflow: hidden;
 }
@@ -52,17 +51,23 @@ button {
 .hero::after {
   content: "";
   position: absolute;
-  left: -10%;
-  right: -10%;
-  bottom: -46px;
-  height: 92px;
+  left: -12%;
+  right: -12%;
+  bottom: -56px;
+  height: 100px;
   background: var(--soft);
   border-radius: 50% 50% 0 0;
+  z-index: 0;
+}
+
+.brand-row,
+.hero-copy,
+.route-card {
+  position: relative;
+  z-index: 1;
 }
 
 .brand-row {
-  position: relative;
-  z-index: 1;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -78,6 +83,7 @@ button {
   place-items: center;
   font-size: 23px;
   font-weight: 900;
+  flex: 0 0 auto;
 }
 
 .brand-row strong,
@@ -97,41 +103,34 @@ button {
 }
 
 .hero-copy {
-  position: relative;
-  z-index: 1;
-  margin-top: 38px;
+  margin-top: 34px;
 }
 
 .eyebrow {
   margin: 0 0 10px;
   font-size: 13px;
   font-weight: 800;
-  opacity: .86;
+  opacity: .9;
 }
 
 .hero h1 {
-  max-width: 360px;
   margin: 0;
-  font-size: 32px;
-  line-height: 1.05;
+  font-size: clamp(28px, 7.4vw, 34px);
+  line-height: 1.08;
   letter-spacing: 0;
 }
 
 .subtitle {
-  max-width: 360px;
   margin: 14px 0 0;
+  max-width: 380px;
   font-size: 15px;
-  line-height: 1.45;
-  opacity: .9;
+  line-height: 1.4;
+  opacity: .92;
 }
 
 .route-card {
-  position: absolute;
-  z-index: 2;
-  left: 22px;
-  right: 22px;
-  bottom: 22px;
   min-height: 72px;
+  margin-top: 22px;
   border-radius: 18px;
   padding: 16px;
   background: rgba(255, 255, 255, .96);
@@ -162,6 +161,7 @@ button {
 
 .route-info {
   margin-left: 8px;
+  min-width: 0;
 }
 
 .route-info strong,
@@ -181,9 +181,8 @@ button {
 
 .auth-panel {
   position: relative;
-  z-index: 3;
-  margin-top: -18px;
-  padding: 22px;
+  z-index: 2;
+  padding: 20px 22px 28px;
   background: var(--soft);
   border-radius: 26px 26px 0 0;
 }
@@ -299,11 +298,27 @@ input:focus {
   }
 
   .app-screen {
-    min-height: 860px;
+    min-height: auto;
     margin-top: 28px;
     margin-bottom: 28px;
     border-radius: 30px;
     overflow: hidden;
     box-shadow: 0 26px 80px rgba(0, 0, 0, .42);
+  }
+}
+
+@media (max-width: 360px) {
+  .hero {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .auth-panel {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .route-card {
+    grid-template-columns: 12px 20px 12px 1fr;
   }
 }
