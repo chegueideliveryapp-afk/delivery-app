@@ -29,6 +29,12 @@ function mostrarMensagem(texto) {
   if (msg) msg.innerText = texto;
 }
 
+function mostrarErroDashboard(texto) {
+  setText("nomeRestaurante", "Erro ao carregar");
+  setText("statusConta", "Atenção");
+  setText("statusDescricao", texto);
+}
+
 export async function loginRestaurante() {
   const email = document.getElementById("email").value.trim();
   const senha = document.getElementById("senha").value;
@@ -93,9 +99,15 @@ export function protegerRestaurante() {
       return;
     }
 
-    const userSnap = await getDoc(doc(db, "users", user.uid));
+    try {
+      const userSnap = await getDoc(doc(db, "users", user.uid));
 
-    if (!userSnap.exists() || userSnap.data().role !== "restaurante") {
+      if (!userSnap.exists() || userSnap.data().role !== "restaurante") {
+        await signOut(auth);
+        window.location.href = "./login.html";
+      }
+    } catch (erro) {
+      console.error(erro);
       await signOut(auth);
       window.location.href = "./login.html";
     }
@@ -103,42 +115,48 @@ export function protegerRestaurante() {
 }
 
 export function carregarDashboardRestaurante() {
-  onAuthStateChanged(auth, (user) => {
+  onAuthStateChanged(auth, async (user) => {
     if (!user) return;
 
     const restauranteRef = doc(db, "restaurantes", user.uid);
 
-    onSnapshot(restauranteRef, (snap) => {
-      if (!snap.exists()) {
-        signOut(auth);
-        window.location.href = "./login.html";
-        return;
+    onSnapshot(
+      restauranteRef,
+      (snap) => {
+        if (!snap.exists()) {
+          mostrarErroDashboard("Cadastro do restaurante não encontrado. Verifique se o UID do Authentication é igual ao ID do documento em restaurantes.");
+          return;
+        }
+
+        const r = snap.data();
+
+        setText("nomeRestaurante", r.nome || "Restaurante");
+        setText("saldoPrePago", dinheiro(r.saldoPrePago));
+
+        const lat = r.location?.lat ?? "---";
+        const lng = r.location?.lng ?? "---";
+        setText("localizacaoRestaurante", `${lat}, ${lng}`);
+
+        if (r.bloqueado) {
+          setText("statusConta", "Bloqueado");
+          setText("statusDescricao", "Entre em contato com a administração.");
+          return;
+        }
+
+        if (r.ativo === false) {
+          setText("statusConta", "Inativo");
+          setText("statusDescricao", "Sua conta está inativa no momento.");
+          return;
+        }
+
+        setText("statusConta", "Ativo");
+        setText("statusDescricao", "Você já pode solicitar entregas com saldo disponível.");
+      },
+      (erro) => {
+        console.error(erro);
+        mostrarErroDashboard("Sem permissão para carregar o restaurante. Confira as regras do Firestore.");
       }
-
-      const r = snap.data();
-
-      setText("nomeRestaurante", r.nome || "Restaurante");
-      setText("saldoPrePago", dinheiro(r.saldoPrePago));
-
-      const lat = r.location?.lat ?? "---";
-      const lng = r.location?.lng ?? "---";
-      setText("localizacaoRestaurante", `${lat}, ${lng}`);
-
-      if (r.bloqueado) {
-        setText("statusConta", "Bloqueado");
-        setText("statusDescricao", "Entre em contato com a administração.");
-        return;
-      }
-
-      if (r.ativo === false) {
-        setText("statusConta", "Inativo");
-        setText("statusDescricao", "Sua conta está inativa no momento.");
-        return;
-      }
-
-      setText("statusConta", "Ativo");
-      setText("statusDescricao", "Você já pode solicitar entregas com saldo disponível.");
-    });
+    );
   });
 }
 
