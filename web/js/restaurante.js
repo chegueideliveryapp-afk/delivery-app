@@ -136,10 +136,32 @@ function calcularValoresPedido() {
   };
 }
 
+function configurarModalMaps() {
+  const modal = document.getElementById("mapsModal");
+  const frame = document.getElementById("mapsFrame");
+  const fechar = document.getElementById("fecharMapsModal");
+  const backdrop = document.getElementById("fecharMapsBackdrop");
+
+  function fecharModal() {
+    if (frame) frame.src = "";
+    if (modal) modal.classList.add("hidden");
+  }
+
+  if (fechar) {
+    fechar.addEventListener("click", fecharModal);
+  }
+
+  if (backdrop) {
+    backdrop.addEventListener("click", fecharModal);
+  }
+}
+
 function configurarBuscaAutomaticaEndereco() {
   if (novoPedidoConfigurado) return;
 
   novoPedidoConfigurado = true;
+
+  configurarModalMaps();
 
   const distancia = document.getElementById("distanciaEntregaKm");
   if (distancia) {
@@ -526,13 +548,27 @@ export function abrirRotaGoogleMaps() {
   const origem = `${restauranteLogado.location.lat},${restauranteLogado.location.lng}`;
   const destino = endereco.enderecoCompleto;
 
-  const url = new URL("https://www.google.com/maps/dir/");
-  url.searchParams.set("api", "1");
-  url.searchParams.set("origin", origem);
-  url.searchParams.set("destination", destino);
-  url.searchParams.set("travelmode", "driving");
+  const url = new URL("https://www.google.com/maps");
+  url.searchParams.set("saddr", origem);
+  url.searchParams.set("daddr", destino);
+  url.searchParams.set("output", "embed");
 
-  window.open(url.toString(), "_blank");
+  const modal = document.getElementById("mapsModal");
+  const frame = document.getElementById("mapsFrame");
+
+  if (!modal || !frame) {
+    const fallbackUrl = new URL("https://www.google.com/maps/dir/");
+    fallbackUrl.searchParams.set("api", "1");
+    fallbackUrl.searchParams.set("origin", origem);
+    fallbackUrl.searchParams.set("destination", destino);
+    fallbackUrl.searchParams.set("travelmode", "driving");
+
+    window.open(fallbackUrl.toString(), "_blank");
+    return;
+  }
+
+  frame.src = url.toString();
+  modal.classList.remove("hidden");
 }
 
 export function calcularPedido() {
