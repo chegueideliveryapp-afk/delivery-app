@@ -73,6 +73,29 @@
           Ver rota no mapa
         </button>
 
+        <div id="mapsInline" class="maps-inline hidden">
+          <div class="maps-inline-header">
+            <div>
+              <span>Consulta de rota</span>
+              <strong>Google Maps</strong>
+            </div>
+
+            <button id="btnFecharMapsInline" type="button">Fechar</button>
+          </div>
+
+          <iframe
+            id="mapsFrame"
+            class="maps-frame"
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+            src="">
+          </iframe>
+
+          <p class="maps-modal-note">
+            Veja a distância exibida pelo Google Maps e informe o valor em km no campo abaixo.
+          </p>
+        </div>
+
         <input
           id="distanciaEntregaKm"
           class="single-input"
@@ -144,33 +167,6 @@
         </button>
       </div>
     </section>
-
-    <div id="mapsModal" class="maps-modal hidden">
-      <div class="maps-modal-backdrop" id="fecharMapsBackdrop"></div>
-
-      <div class="maps-modal-content">
-        <div class="maps-modal-header">
-          <div>
-            <span>Consulta de rota</span>
-            <strong>Google Maps</strong>
-          </div>
-
-          <button id="fecharMapsModal" type="button">Fechar</button>
-        </div>
-
-        <iframe
-          id="mapsFrame"
-          class="maps-frame"
-          loading="lazy"
-          referrerpolicy="no-referrer-when-downgrade"
-          src="">
-        </iframe>
-
-        <p class="maps-modal-note">
-          Veja a distância exibida pelo Google Maps e informe o valor em km no campo de distância.
-        </p>
-      </div>
-    </div>
   </main>
 
   <script type="module">
@@ -180,7 +176,7 @@
       abrirRotaGoogleMaps,
       calcularPedido,
       criarPedido
-    } from "../js/restaurante.js";
+    } from "../js/restaurante.js?v=3";
 
     protegerRestaurante();
     carregarNovoPedidoRestaurante();
