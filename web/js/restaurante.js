@@ -78,12 +78,30 @@ function statusRecargaTexto(status) {
 }
 
 function montarEnderecoEntrega() {
-  const enderecoCompleto = document.getElementById("enderecoEntrega")?.value.trim() || "";
+  const rua = document.getElementById("enderecoRua")?.value.trim() || "";
+  const numeroEndereco = document.getElementById("enderecoNumero")?.value.trim() || "";
+  const bairro = document.getElementById("enderecoBairro")?.value.trim() || "";
   const complemento = document.getElementById("enderecoComplemento")?.value.trim() || "";
 
+  const cidadeRestaurante =
+    restauranteLogado?.cidade ||
+    restauranteLogado?.municipio ||
+    "";
+
+  const enderecoCompleto = [
+    rua,
+    numeroEndereco,
+    bairro,
+    cidadeRestaurante
+  ].filter(Boolean).join(", ");
+
   return {
-    enderecoCompleto,
-    complemento
+    rua,
+    numeroEndereco,
+    bairro,
+    complemento,
+    cidade: cidadeRestaurante,
+    enderecoCompleto
   };
 }
 
@@ -540,8 +558,8 @@ export function abrirRotaGoogleMaps() {
     return;
   }
 
-  if (!endereco.enderecoCompleto) {
-    if (msg) msg.innerText = "Informe o endereço completo de entrega.";
+  if (!endereco.rua || !endereco.numeroEndereco || !endereco.bairro) {
+    if (msg) msg.innerText = "Informe rua, número e bairro para abrir a rota.";
     return;
   }
 
@@ -557,13 +575,10 @@ export function abrirRotaGoogleMaps() {
   const frame = document.getElementById("mapsFrame");
 
   if (!modal || !frame) {
-    const fallbackUrl = new URL("https://www.google.com/maps/dir/");
-    fallbackUrl.searchParams.set("api", "1");
-    fallbackUrl.searchParams.set("origin", origem);
-    fallbackUrl.searchParams.set("destination", destino);
-    fallbackUrl.searchParams.set("travelmode", "driving");
-
-    window.open(fallbackUrl.toString(), "_blank");
+    window.open(
+      `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origem)}&destination=${encodeURIComponent(destino)}&travelmode=driving`,
+      "_blank"
+    );
     return;
   }
 
@@ -618,8 +633,8 @@ export async function criarPedido() {
     return;
   }
 
-  if (!endereco.enderecoCompleto) {
-    if (msg) msg.innerText = "Informe o endereço completo de entrega.";
+  if (!endereco.rua || !endereco.numeroEndereco || !endereco.bairro) {
+    if (msg) msg.innerText = "Informe rua, número e bairro.";
     return;
   }
 
@@ -672,6 +687,10 @@ export async function criarPedido() {
         pedidoCopiado,
 
         enderecoEntrega: endereco.enderecoCompleto,
+        enderecoRua: endereco.rua,
+        enderecoNumero: endereco.numeroEndereco,
+        enderecoBairro: endereco.bairro,
+        enderecoCidade: endereco.cidade,
         enderecoComplemento: endereco.complemento,
 
         restauranteLocation: {
@@ -728,7 +747,9 @@ export async function criarPedido() {
     });
 
     document.getElementById("pedidoCopiado").value = "";
-    document.getElementById("enderecoEntrega").value = "";
+    document.getElementById("enderecoRua").value = "";
+    document.getElementById("enderecoNumero").value = "";
+    document.getElementById("enderecoBairro").value = "";
     document.getElementById("enderecoComplemento").value = "";
     document.getElementById("distanciaEntregaKm").value = "";
     document.getElementById("observacaoPedido").value = "";
