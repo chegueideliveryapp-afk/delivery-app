@@ -9,8 +9,17 @@ import {
 import {
   doc,
   getDoc,
-  onSnapshot
+  onSnapshot,
+  collection,
+  addDoc,
+  serverTimestamp,
+  query,
+  where,
+  orderBy
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+let restauranteLogado = null;
+let configApp = null;
 
 function dinheiro(valor) {
   return Number(valor || 0).toLocaleString("pt-BR", {
@@ -33,6 +42,32 @@ function mostrarErroDashboard(texto) {
   setText("nomeRestaurante", "Erro ao carregar");
   setText("statusConta", "Atenção");
   setText("statusDescricao", texto);
+}
+
+function limparTelefone(telefone) {
+  return String(telefone || "").replace(/\D/g, "");
+}
+
+function montarWhatsappSuporte(numero, restauranteNome) {
+  const numeroLimpo = limparTelefone(numero);
+
+  if (!numeroLimpo) return "#";
+
+  const telefone = numeroLimpo.startsWith("55")
+    ? numeroLimpo
+    : `55${numeroLimpo}`;
+
+  const texto = encodeURIComponent(
+    `Olá, sou do restaurante ${restauranteNome || ""}. Enviei um comprovante Pix para recarga.`
+  );
+
+  return `https://wa.me/${telefone}?text=${texto}`;
+}
+
+function statusRecargaTexto(status) {
+  if (status === "aprovada") return "Aprovada";
+  if (status === "recusada") return "Recusada";
+  return "Pendente";
 }
 
 export async function loginRestaurante() {
@@ -158,6 +193,147 @@ export function carregarDashboardRestaurante() {
       }
     );
   });
+}
+
+export function carregarRecargaRestaurante() {
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) return;
+
+    const restauranteRef = doc(db, "restaurantes", user.uid);
+    const configRef = doc(db, "config", "app");
+
+    onSnapshot(restauranteRef, (snap) => {
+      if (!snap.exists()) return;
+
+      restauranteLogado = {
+        id: user.uid,
+        ...snap.data()
+      };
+
+      setText("saldoAtual", dinheiro(restauranteLogado.saldoPrePago));
+
+      const link = document.getElementById("whatsappSuporte");
+      if (link && configApp) {
+        link.href = montarWhatsappSuporte(
+          configApp.suporteWhatsapp,
+          restauranteLogado.nome
+        );
+      }
+    });
+
+    onSnapshot(configRef, (snap) => {
+      if (!snap.exists()) return;
+
+      configApp = snap.data();
+
+      setText("chavePix", configApp.chavePix || "Chave Pix não cadastrada");
+
+      const link = document.getElementById("whatsappSuporte");
+      if (link) {
+        link.href = montarWhatsappSuporte(
+          configApp.suporteWhatsapp,
+          restauranteLogado?.nome
+        );
+      }
+    });
+
+    const q = query(
+      collection(db, "recargas_restaurante"),
+      where("restauranteId", "==", user.uid),
+      orderBy("solicitadoAt", "desc")
+    );
+
+    onSnapshot(
+      q,
+      (snapshot) => {
+        const lista = document.getElementById("listaRecargas");
+        if (!lista) return;
+
+        lista.innerHTML = "";
+
+        if (snapshot.empty) {
+          lista.innerHTML = `<div class="empty-mini">Nenhuma recarga solicitada ainda.</div>`;
+          return;
+        }
+
+        snapshot.forEach((docSnap) => {
+          const r = docSnap.data();
+
+          const item = document.createElement("div");
+          item.className = "recharge-item";
+
+          item.innerHTML = `
+            <div>
+              <strong>${dinheiro(r.valor)}</strong>
+              <p>${r.observacao || "Sem observação"}</p>
+            </div>
+            <span class="status-pill ${r.status || "pendente"}">
+              ${statusRecargaTexto(r.status)}
+            </span>
+          `;
+
+          lista.appendChild(item);
+        });
+      },
+      (erro) => {
+        console.error(erro);
+        const lista = document.getElementById("listaRecargas");
+        if (lista) {
+          lista.innerHTML = `<div class="empty-mini">Erro ao carregar recargas.</div>`;
+        }
+      }
+    );
+  });
+}
+
+export async function solicitarRecarga() {
+  const valor = Number(document.getElementById("valorRecarga").value || 0);
+  const observacao = document.getElementById("observacaoRecarga").value.trim();
+  const msg = document.getElementById("mensagem");
+  const btn = document.getElementById("btnSolicitarRecarga");
+
+  msg.innerText = "";
+
+  if (!restauranteLogado) {
+    msg.innerText = "Restaurante não carregado.";
+    return;
+  }
+
+  if (!valor || valor <= 0) {
+    msg.innerText = "Informe um valor válido.";
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerText = "Solicitando...";
+
+  try {
+    await addDoc(collection(db, "recargas_restaurante"), {
+      restauranteId: restauranteLogado.id,
+      restauranteNome: restauranteLogado.nome || "",
+      valor,
+      status: "pendente",
+      metodo: "pix",
+      chavePixUsada: configApp?.chavePix || "",
+      observacao,
+      solicitadoAt: serverTimestamp(),
+      aprovadoAt: null,
+      aprovadoPor: null,
+      recusadoAt: null,
+      recusadoPor: null,
+      motivoRecusa: ""
+    });
+
+    document.getElementById("valorRecarga").value = "";
+    document.getElementById("observacaoRecarga").value = "";
+    msg.innerText = "Solicitação enviada. Envie o comprovante pelo WhatsApp.";
+  } catch (erro) {
+    console.error(erro);
+    msg.innerText = "Erro ao solicitar recarga.";
+  }
+
+  btn.disabled = false;
+  btn.innerText = "Solicitar recarga";
 }
 
 export async function sairRestaurante() {
