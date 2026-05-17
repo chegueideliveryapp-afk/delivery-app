@@ -93,26 +93,24 @@ function distanciaLinhaRetaKm(lat1, lng1, lat2, lng2) {
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
-async function geocodificarEndereco(endereco) {
+async function buscarSugestoesEndereco(endereco) {
   const url = new URL("https://nominatim.openstreetmap.org/search");
 
   url.searchParams.set("format", "json");
-  url.searchParams.set("limit", "1");
+  url.searchParams.set("addressdetails", "1");
+  url.searchParams.set("limit", "5");
   url.searchParams.set("countrycodes", "br");
   url.searchParams.set("q", endereco);
 
   const resposta = await fetch(url.toString());
   const dados = await resposta.json();
 
-  if (!dados.length) {
-    throw new Error("Endereço não encontrado.");
-  }
-
-  return {
-    lat: Number(dados[0].lat),
-    lng: Number(dados[0].lon),
-    displayName: dados[0].display_name
-  };
+  return dados.map((item) => ({
+    lat: Number(item.lat),
+    lng: Number(item.lon),
+    displayName: item.display_name,
+    address: item.address || {}
+  }));
 }
 
 async function calcularRotaKm(origem, destino) {
@@ -148,6 +146,138 @@ function montarEnderecoEntrega() {
       .filter(Boolean)
       .join(", ")
   };
+}
+
+function esconderSugestoesEndereco() {
+  const box = document.getElementById("enderecoSugestoes");
+
+  if (!box) return;
+
+  box.innerHTML = "";
+  box.classList.add("hidden");
+}
+
+function preencherEnderecoPorSugestao(sugestao) {
+  entregaLocation = {
+    lat: sugestao.lat,
+    lng: sugestao.lng,
+    displayName: sugestao.displayName
+  };
+
+  const address = sugestao.address || {};
+
+  const rua =
+    address.road ||
+    address.pedestrian ||
+    address.residential ||
+    "";
+
+  const bairro =
+    address.suburb ||
+    address.neighbourhood ||
+    address.city_district ||
+    address.quarter ||
+    "";
+
+  const cidade =
+    address.city ||
+    address.town ||
+    address.village ||
+    address.municipality ||
+    "";
+
+  if (rua) document.getElementById("enderecoRua").value = rua;
+  if (bairro) document.getElementById("enderecoBairro").value = bairro;
+  if (cidade) document.getElementById("enderecoCidade").value = cidade;
+
+  esconderSugestoesEndereco();
+  calcularDistanciaComLocationSelecionada();
+}
+
+async function mostrarSugestoesEndereco() {
+  const msg = document.getElementById("mensagem");
+  const box = document.getElementById("enderecoSugestoes");
+  const endereco = montarEnderecoEntrega();
+
+  if (!box) return;
+
+  if (!endereco.rua || !endereco.bairro || !endereco.cidade) {
+    esconderSugestoesEndereco();
+    return;
+  }
+
+  try {
+    const sugestoes = await buscarSugestoesEndereco(endereco.enderecoCompleto);
+
+    box.innerHTML = "";
+
+    if (!sugestoes.length) {
+      box.innerHTML = `
+        <div class="address-suggestion muted">
+          Nenhum endereço encontrado. Confira rua, bairro e cidade.
+        </div>
+      `;
+      box.classList.remove("hidden");
+      return;
+    }
+
+    sugestoes.forEach((sugestao) => {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "address-suggestion";
+      item.innerText = sugestao.displayName;
+
+      item.addEventListener("click", () => {
+        preencherEnderecoPorSugestao(sugestao);
+      });
+
+      box.appendChild(item);
+    });
+
+    box.classList.remove("hidden");
+  } catch (erro) {
+    console.error(erro);
+
+    if (msg) {
+      msg.innerText = "Erro ao buscar sugestões de endereço.";
+    }
+  }
+}
+
+async function calcularDistanciaComLocationSelecionada() {
+  const msg = document.getElementById("mensagem");
+
+  if (msg) msg.innerText = "";
+
+  if (!restauranteLogado?.location?.lat || !restauranteLogado?.location?.lng) {
+    if (msg) msg.innerText = "Restaurante sem localização fixa cadastrada.";
+    return;
+  }
+
+  if (!entregaLocation?.lat || !entregaLocation?.lng) {
+    if (msg) msg.innerText = "Selecione um endereço válido.";
+    return;
+  }
+
+  try {
+    const origem = {
+      lat: Number(restauranteLogado.location.lat),
+      lng: Number(restauranteLogado.location.lng)
+    };
+
+    const distanciaKm = await calcularRotaKm(origem, entregaLocation);
+
+    document.getElementById("distanciaEntregaKm").value = distanciaKm.toFixed(2);
+    setText("distanciaResumoPedido", `${distanciaKm.toFixed(2)} km`);
+
+    calcularPedido();
+  } catch (erro) {
+    console.error(erro);
+
+    if (msg) {
+      msg.innerText = "Não consegui calcular a distância desse endereço.";
+    }
+  }
 }
 
 function atualizarResumoPagamento() {
@@ -215,20 +345,18 @@ function configurarBuscaAutomaticaEndereco() {
     if (!campo) return;
 
     campo.addEventListener("input", () => {
+      entregaLocation = null;
+
+      const distancia = document.getElementById("distanciaEntregaKm");
+      if (distancia) distancia.value = "";
+
+      setText("distanciaResumoPedido", "---");
+
       clearTimeout(timerBuscaEndereco);
 
       timerBuscaEndereco = setTimeout(() => {
-        const endereco = montarEnderecoEntrega();
-
-        if (
-          endereco.rua &&
-          endereco.numeroEndereco &&
-          endereco.bairro &&
-          endereco.cidade
-        ) {
-          buscarDistanciaEntrega();
-        }
-      }, 1200);
+        mostrarSugestoesEndereco();
+      }, 700);
     });
   });
 
@@ -248,6 +376,16 @@ function configurarBuscaAutomaticaEndereco() {
       calcularPedido();
     });
   }
+
+  document.addEventListener("click", (event) => {
+    const box = document.getElementById("enderecoSugestoes");
+
+    if (!box) return;
+
+    if (!box.contains(event.target)) {
+      esconderSugestoesEndereco();
+    }
+  });
 }
 
 export async function loginRestaurante() {
@@ -600,40 +738,29 @@ export async function buscarDistanciaEntrega() {
     return;
   }
 
-  if (!restauranteLogado.location?.lat || !restauranteLogado.location?.lng) {
-    if (msg) msg.innerText = "Restaurante sem localização fixa cadastrada.";
-    return;
-  }
-
-  if (!endereco.rua || !endereco.numeroEndereco || !endereco.bairro || !endereco.cidade) {
-    if (msg) msg.innerText = "Informe rua, número, bairro e cidade para calcular a distância.";
+  if (!endereco.rua || !endereco.bairro || !endereco.cidade) {
+    if (msg) msg.innerText = "Informe pelo menos rua, bairro e cidade.";
     return;
   }
 
   if (btn) {
     btn.disabled = true;
-    btn.innerText = "Calculando...";
+    btn.innerText = "Buscando endereço...";
   }
 
   try {
-    entregaLocation = await geocodificarEndereco(endereco.enderecoCompleto);
+    const sugestoes = await buscarSugestoesEndereco(endereco.enderecoCompleto);
 
-    const origem = {
-      lat: Number(restauranteLogado.location.lat),
-      lng: Number(restauranteLogado.location.lng)
-    };
+    if (!sugestoes.length) {
+      throw new Error("Endereço não encontrado.");
+    }
 
-    const distanciaKm = await calcularRotaKm(origem, entregaLocation);
-
-    document.getElementById("distanciaEntregaKm").value = distanciaKm.toFixed(2);
-    setText("distanciaResumoPedido", `${distanciaKm.toFixed(2)} km`);
-
-    calcularPedido();
+    preencherEnderecoPorSugestao(sugestoes[0]);
   } catch (erro) {
     console.error(erro);
 
     if (msg) {
-      msg.innerText = "Não consegui calcular esse endereço. Confira rua, número, bairro e cidade.";
+      msg.innerText = "Não encontrei esse endereço. Tente informar rua, número, bairro e cidade.";
     }
   }
 
@@ -694,7 +821,7 @@ export async function criarPedido() {
   }
 
   if (!pedidoCalculado || !pedidoCalculado.distanciaKm) {
-    if (msg) msg.innerText = "Aguarde o cálculo da distância antes de criar o pedido.";
+    if (msg) msg.innerText = "Selecione uma sugestão de endereço para calcular a distância.";
     return;
   }
 
@@ -757,6 +884,8 @@ export async function criarPedido() {
           lat: entregaLocation.lat,
           lng: entregaLocation.lng
         },
+
+        entregaEnderecoEncontrado: entregaLocation.displayName || "",
 
         restauranteLocation: {
           lat: Number(restaurante.location.lat),
@@ -822,6 +951,8 @@ export async function criarPedido() {
     document.getElementById("precisaRetorno").checked = false;
     document.getElementById("valorTroco").value = "";
     document.getElementById("valorTroco").classList.add("hidden");
+
+    esconderSugestoesEndereco();
 
     pedidoCalculado = null;
     entregaLocation = null;
