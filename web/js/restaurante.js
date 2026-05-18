@@ -182,6 +182,8 @@ function mostrarSugestaoMensagem(texto) {
 function formatarEnderecoPhoton(feature) {
   const p = feature.properties || {};
 
+  if (p.display_name) return p.display_name;
+
   return [
     p.name,
     p.street,
@@ -191,6 +193,66 @@ function formatarEnderecoPhoton(feature) {
     p.city,
     p.state
   ].filter(Boolean).join(", ");
+}
+
+async function buscarEnderecoPhoton(endereco) {
+  const params = new URLSearchParams({
+    q: endereco.enderecoCompleto,
+    limit: "5",
+    lang: "pt"
+  });
+
+  if (restauranteLogado?.location?.lat && restauranteLogado?.location?.lng) {
+    params.set("lat", restauranteLogado.location.lat);
+    params.set("lon", restauranteLogado.location.lng);
+  }
+
+  const resposta = await fetch(`https://photon.komoot.io/api/?${params.toString()}`);
+
+  if (!resposta.ok) {
+    throw new Error("Photon indisponível.");
+  }
+
+  const dados = await resposta.json();
+
+  return dados.features || [];
+}
+
+async function buscarEnderecoNominatim(endereco) {
+  const params = new URLSearchParams({
+    q: endereco.enderecoCompleto,
+    format: "geojson",
+    limit: "5",
+    countrycodes: "br",
+    addressdetails: "1"
+  });
+
+  const resposta = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`);
+
+  if (!resposta.ok) {
+    throw new Error("Nominatim indisponível.");
+  }
+
+  const dados = await resposta.json();
+
+  return (dados.features || []).map((feature) => {
+    const props = feature.properties || {};
+    const address = props.address || {};
+
+    return {
+      geometry: feature.geometry,
+      properties: {
+        name: props.name || address.road || props.display_name,
+        street: address.road,
+        housenumber: address.house_number,
+        district: address.neighbourhood || address.suburb,
+        suburb: address.suburb,
+        city: address.city || address.town || address.village || address.municipality,
+        state: address.state,
+        display_name: props.display_name
+      }
+    };
+  });
 }
 
 async function calcularRotaOSRM(origem, destino) {
@@ -340,25 +402,14 @@ export async function buscarEnderecoEntrega() {
   mostrarSugestaoMensagem("Buscando endereço...");
 
   try {
-    const params = new URLSearchParams({
-      q: endereco.enderecoCompleto,
-      limit: "5",
-      lang: "pt"
-    });
+    let features = [];
 
-    if (restauranteLogado?.location?.lat && restauranteLogado?.location?.lng) {
-      params.set("lat", restauranteLogado.location.lat);
-      params.set("lon", restauranteLogado.location.lng);
+    try {
+      features = await buscarEnderecoPhoton(endereco);
+    } catch (erroPhoton) {
+      console.warn("Photon falhou. Tentando Nominatim...", erroPhoton);
+      features = await buscarEnderecoNominatim(endereco);
     }
-
-    const resposta = await fetch(`https://photon.komoot.io/api/?${params.toString()}`);
-
-    if (!resposta.ok) {
-      throw new Error("Erro ao buscar endereço.");
-    }
-
-    const dados = await resposta.json();
-    const features = dados.features || [];
 
     if (!features.length) {
       mostrarSugestaoMensagem("Nenhum endereço encontrado. Confira rua, número, bairro e cidade.");
@@ -374,7 +425,10 @@ export async function buscarEnderecoEntrega() {
       const botao = document.createElement("button");
       botao.type = "button";
       botao.className = "address-suggestion";
-      botao.innerText = formatarEnderecoPhoton(feature) || endereco.enderecoCompleto;
+      botao.innerText =
+        formatarEnderecoPhoton(feature) ||
+        feature.properties?.display_name ||
+        endereco.enderecoCompleto;
 
       botao.addEventListener("click", () => {
         selecionarEndereco(feature);
@@ -384,7 +438,7 @@ export async function buscarEnderecoEntrega() {
     });
   } catch (erro) {
     console.error(erro);
-    mostrarSugestaoMensagem("Erro ao buscar endereço. Tente novamente.");
+    mostrarSugestaoMensagem("Erro ao buscar endereço. Tente novamente em alguns segundos.");
   }
 }
 
@@ -818,7 +872,7 @@ export async function criarPedido() {
 
         distanciaKm: pedidoCalculado.distanciaKm,
         duracaoMinutos: entregaSelecionada.duracaoMinutos || null,
-        distanciaCalculadaPor: "photon_osrm",
+        distanciaCalculadaPor: "photon_nominatim_osrm",
 
         formaPagamento,
         precisaRetorno,
