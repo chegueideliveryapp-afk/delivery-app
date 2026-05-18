@@ -5,9 +5,9 @@
   <title>Novo Pedido - Cheguei Delivery</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <link rel="stylesheet" href="../css/base.css?v=6">
-  <link rel="stylesheet" href="../css/restaurante.css?v=6">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/restaurante.css">
 </head>
 
 <body>
@@ -17,6 +17,7 @@
         <span>Cheguei Restaurantes</span>
         <h1>Novo Pedido</h1>
       </div>
+
       <a class="back-link" href="./dashboard.html">Voltar</a>
     </header>
 
@@ -31,7 +32,11 @@
         <span>Pedido copiado</span>
         <strong>Dados da entrega</strong>
 
-        <textarea id="pedidoCopiado" class="single-textarea large-textarea" placeholder="Cole aqui o pedido vindo do iFood, WhatsApp, Rappi, Zé Delivery ou qualquer outra plataforma."></textarea>
+        <textarea
+          id="pedidoCopiado"
+          class="single-textarea large-textarea"
+          placeholder="Cole aqui o pedido vindo do iFood, WhatsApp, Rappi, Zé Delivery ou qualquer outra plataforma."
+        ></textarea>
 
         <label class="field-label">Endereço de entrega</label>
 
@@ -42,32 +47,49 @@
           <input id="enderecoBairro" class="single-input" placeholder="Bairro">
         </div>
 
-        <input id="enderecoComplemento" class="single-input" placeholder="Complemento ou referência (opcional)">
+        <input id="enderecoCidade" class="single-input" placeholder="Cidade">
 
-        <button id="btnAbrirMaps" class="secondary-action maps-action" type="button">
-          Abrir mapa e marcar entrega
+        <input
+          id="enderecoComplemento"
+          class="single-input"
+          placeholder="Complemento ou referência (opcional)"
+        >
+
+        <button
+          id="btnBuscarEndereco"
+          class="secondary-action maps-action"
+          type="button"
+        >
+          Buscar endereço e calcular rota
         </button>
 
-        <div id="mapsInline" class="maps-inline hidden">
+        <div id="sugestoesEndereco" class="address-suggestions"></div>
+
+        <div id="mapaEntregaBox" class="maps-inline hidden">
           <div class="maps-inline-header">
             <div>
-              <span>Mapa de entrega</span>
-              <strong>Marque o destino</strong>
+              <span>Rota calculada</span>
+              <strong>Entrega</strong>
             </div>
-            <button id="btnFecharMapsInline" type="button">Fechar</button>
           </div>
 
-          <div id="mapaPedido" class="leaflet-order-map"></div>
+          <div id="mapaEntrega" class="leaflet-delivery-map"></div>
 
           <p class="maps-modal-note">
-            Clique no ponto de entrega no mapa. A distância será calculada automaticamente pela rota.
+            A distância é calculada automaticamente pela rota entre o restaurante e o endereço encontrado.
           </p>
         </div>
 
-        <input id="distanciaEntregaKm" class="single-input" placeholder="Distância calculada automaticamente" type="number" min="0" step="0.1" readonly>
+        <input
+          id="distanciaEntregaKm"
+          class="single-input"
+          placeholder="Distância calculada automaticamente"
+          type="text"
+          readonly
+        >
 
         <p class="helper-text">
-          A distância é calculada automaticamente ao marcar o destino no mapa.
+          Selecione o endereço correto na lista para calcular automaticamente a distância.
         </p>
 
         <label class="field-label">Forma de pagamento do cliente</label>
@@ -83,9 +105,20 @@
           <span>Motoboy precisa retornar com maquininha, troco ou item</span>
         </label>
 
-        <input id="valorTroco" class="single-input hidden" placeholder="Troco para quanto? Ex: 100" type="number" min="0" step="0.01">
+        <input
+          id="valorTroco"
+          class="single-input hidden"
+          placeholder="Troco para quanto? Ex: 100"
+          type="number"
+          min="0"
+          step="0.01"
+        >
 
-        <textarea id="observacaoPedido" class="single-textarea" placeholder="Observação para o motoboy. Ex: retirar na portaria, levar maquininha, cliente paga em dinheiro..."></textarea>
+        <textarea
+          id="observacaoPedido"
+          class="single-textarea"
+          placeholder="Observação para o motoboy. Ex: retirar na portaria, levar maquininha, cliente paga em dinheiro..."
+        ></textarea>
 
         <p id="mensagem" class="form-message"></p>
       </div>
@@ -121,15 +154,15 @@
     import {
       protegerRestaurante,
       carregarNovoPedidoRestaurante,
-      abrirRotaGoogleMaps,
+      buscarEnderecoEntrega,
       calcularPedido,
       criarPedido
-    } from "../js/restaurante.js?v=6";
+    } from "../js/restaurante.js?v=10";
 
     protegerRestaurante();
     carregarNovoPedidoRestaurante();
 
-    document.getElementById("btnAbrirMaps").addEventListener("click", abrirRotaGoogleMaps);
+    document.getElementById("btnBuscarEndereco").addEventListener("click", buscarEnderecoEntrega);
     document.getElementById("formaPagamento").addEventListener("change", calcularPedido);
 
     document.getElementById("precisaRetorno").addEventListener("change", (event) => {
