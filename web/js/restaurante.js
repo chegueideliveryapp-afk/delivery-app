@@ -23,6 +23,12 @@ let configApp = null;
 let pedidoCalculado = null;
 let novoPedidoConfigurado = false;
 
+let mapaPedido = null;
+let marcadorRestaurante = null;
+let marcadorEntrega = null;
+let rotaLayer = null;
+let entregaLocation = null;
+
 function dinheiro(valor) {
   return Number(valor || 0).toLocaleString("pt-BR", {
     style: "currency",
@@ -156,10 +162,10 @@ function calcularValoresPedido() {
 
 function fecharMapsInline() {
   const box = document.getElementById("mapsInline");
-  const frame = document.getElementById("mapsFrame");
 
-  if (frame) frame.src = "";
-  if (box) box.classList.add("hidden");
+  if (box) {
+    box.classList.add("hidden");
+  }
 }
 
 function configurarMapaInline() {
@@ -177,11 +183,6 @@ function configurarBuscaAutomaticaEndereco() {
 
   configurarMapaInline();
 
-  const distancia = document.getElementById("distanciaEntregaKm");
-  if (distancia) {
-    distancia.addEventListener("input", calcularPedido);
-  }
-
   const formaPagamento = document.getElementById("formaPagamento");
   if (formaPagamento) {
     formaPagamento.addEventListener("change", calcularPedido);
@@ -197,6 +198,175 @@ function configurarBuscaAutomaticaEndereco() {
 
       calcularPedido();
     });
+  }
+}
+
+function validarRestauranteComLocalizacao() {
+  return Boolean(
+    restauranteLogado &&
+    restauranteLogado.location &&
+    restauranteLogado.location.lat &&
+    restauranteLogado.location.lng
+  );
+}
+
+function criarIconeRestaurante() {
+  return L.divIcon({
+    html: `<div class="map-pin restaurant-pin">R</div>`,
+    className: "",
+    iconSize: [34, 34],
+    iconAnchor: [17, 17]
+  });
+}
+
+function criarIconeEntrega() {
+  return L.divIcon({
+    html: `<div class="map-pin delivery-pin">E</div>`,
+    className: "",
+    iconSize: [34, 34],
+    iconAnchor: [17, 17]
+  });
+}
+
+function iniciarMapaPedido() {
+  if (!validarRestauranteComLocalizacao()) {
+    mostrarMensagem("Restaurante sem localização fixa cadastrada.");
+    return;
+  }
+
+  const box = document.getElementById("mapsInline");
+  if (box) box.classList.remove("hidden");
+
+  const lat = Number(restauranteLogado.location.lat);
+  const lng = Number(restauranteLogado.location.lng);
+
+  if (!mapaPedido) {
+    mapaPedido = L.map("mapaPedido", {
+      zoomControl: true
+    }).setView([lat, lng], 15);
+
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap"
+    }).addTo(mapaPedido);
+
+    mapaPedido.on("click", async (event) => {
+      await definirDestinoEntrega(event.latlng.lat, event.latlng.lng);
+    });
+  }
+
+  setTimeout(() => {
+    mapaPedido.invalidateSize();
+    mapaPedido.setView([lat, lng], 15);
+  }, 150);
+
+  if (!marcadorRestaurante) {
+    marcadorRestaurante = L.marker([lat, lng], {
+      icon: criarIconeRestaurante()
+    })
+      .addTo(mapaPedido)
+      .bindPopup("Restaurante");
+  } else {
+    marcadorRestaurante.setLatLng([lat, lng]);
+  }
+}
+
+async function definirDestinoEntrega(lat, lng) {
+  entregaLocation = {
+    lat,
+    lng
+  };
+
+  if (marcadorEntrega) {
+    marcadorEntrega.setLatLng([lat, lng]);
+  } else {
+    marcadorEntrega = L.marker([lat, lng], {
+      icon: criarIconeEntrega()
+    })
+      .addTo(mapaPedido)
+      .bindPopup("Entrega");
+  }
+
+  await calcularRotaEntrega();
+}
+
+async function calcularRotaEntrega() {
+  const msg = document.getElementById("mensagem");
+  if (msg) msg.innerText = "";
+
+  if (!validarRestauranteComLocalizacao()) {
+    mostrarMensagem("Restaurante sem localização fixa cadastrada.");
+    return;
+  }
+
+  if (!entregaLocation?.lat || !entregaLocation?.lng) {
+    mostrarMensagem("Marque o ponto de entrega no mapa.");
+    return;
+  }
+
+  const origem = {
+    lat: Number(restauranteLogado.location.lat),
+    lng: Number(restauranteLogado.location.lng)
+  };
+
+  const destino = {
+    lat: Number(entregaLocation.lat),
+    lng: Number(entregaLocation.lng)
+  };
+
+  const url =
+    `https://router.project-osrm.org/route/v1/driving/` +
+    `${origem.lng},${origem.lat};${destino.lng},${destino.lat}` +
+    `?overview=full&geometries=geojson`;
+
+  try {
+    const resposta = await fetch(url);
+    const dados = await resposta.json();
+
+    if (!dados.routes || !dados.routes.length) {
+      throw new Error("Rota não encontrada.");
+    }
+
+    const rota = dados.routes[0];
+    const distanciaKm = rota.distance / 1000;
+
+    const distanciaInput = document.getElementById("distanciaEntregaKm");
+    if (distanciaInput) {
+      distanciaInput.value = distanciaKm.toFixed(2);
+    }
+
+    setText("distanciaResumoPedido", `${distanciaKm.toFixed(2)} km`);
+
+    const coordenadas = rota.geometry.coordinates.map((ponto) => [
+      ponto[1],
+      ponto[0]
+    ]);
+
+    if (rotaLayer) {
+      rotaLayer.remove();
+    }
+
+    rotaLayer = L.polyline(coordenadas, {
+      color: "#ea1d2c",
+      weight: 5,
+      opacity: 0.9
+    }).addTo(mapaPedido);
+
+    const bounds = L.latLngBounds([
+      [origem.lat, origem.lng],
+      [destino.lat, destino.lng],
+      ...coordenadas
+    ]);
+
+    mapaPedido.fitBounds(bounds, {
+      padding: [30, 30],
+      maxZoom: 16
+    });
+
+    calcularPedido();
+  } catch (erro) {
+    console.error(erro);
+    mostrarMensagem("Não foi possível calcular a rota. Tente marcar outro ponto próximo.");
   }
 }
 
@@ -549,38 +719,12 @@ export function abrirRotaGoogleMaps() {
     return;
   }
 
-  if (!restauranteLogado.location?.lat || !restauranteLogado.location?.lng) {
-    if (msg) msg.innerText = "Restaurante sem localização fixa cadastrada.";
-    return;
-  }
-
   if (!endereco.rua || !endereco.numeroEndereco || !endereco.bairro) {
-    if (msg) msg.innerText = "Informe rua, número e bairro para abrir a rota.";
+    if (msg) msg.innerText = "Informe rua, número e bairro antes de abrir o mapa.";
     return;
   }
 
-  const origem = `${restauranteLogado.location.lat},${restauranteLogado.location.lng}`;
-  const destino = endereco.enderecoCompleto;
-
-  const url = new URL("https://www.google.com/maps");
-  url.searchParams.set("output", "embed");
-  url.searchParams.set("f", "d");
-  url.searchParams.set("saddr", origem);
-  url.searchParams.set("daddr", destino);
-
-  const box = document.getElementById("mapsInline");
-  const frame = document.getElementById("mapsFrame");
-
-  if (!box || !frame) {
-    window.open(
-      `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origem)}&destination=${encodeURIComponent(destino)}&travelmode=driving`,
-      "_blank"
-    );
-    return;
-  }
-
-  frame.src = url.toString();
-  box.classList.remove("hidden");
+  iniciarMapaPedido();
 }
 
 export function calcularPedido() {
@@ -635,8 +779,13 @@ export async function criarPedido() {
     return;
   }
 
+  if (!entregaLocation?.lat || !entregaLocation?.lng) {
+    if (msg) msg.innerText = "Marque o ponto de entrega no mapa.";
+    return;
+  }
+
   if (!pedidoCalculado || !pedidoCalculado.distanciaKm) {
-    if (msg) msg.innerText = "Informe a distância vista no Google Maps.";
+    if (msg) msg.innerText = "Calcule a rota marcando o ponto de entrega no mapa.";
     return;
   }
 
@@ -695,7 +844,13 @@ export async function criarPedido() {
           lng: Number(restaurante.location.lng)
         },
 
+        entregaLocation: {
+          lat: Number(entregaLocation.lat),
+          lng: Number(entregaLocation.lng)
+        },
+
         distanciaKm: pedidoCalculado.distanciaKm,
+        distanciaCalculadaPor: "osrm_publico",
 
         formaPagamento,
         precisaRetorno,
@@ -754,9 +909,20 @@ export async function criarPedido() {
     document.getElementById("valorTroco").value = "";
     document.getElementById("valorTroco").classList.add("hidden");
 
-    fecharMapsInline();
-
+    entregaLocation = null;
     pedidoCalculado = null;
+
+    if (marcadorEntrega) {
+      marcadorEntrega.remove();
+      marcadorEntrega = null;
+    }
+
+    if (rotaLayer) {
+      rotaLayer.remove();
+      rotaLayer = null;
+    }
+
+    fecharMapsInline();
 
     setText("valorTotalPedido", dinheiro(0));
     setText("valorMotoboyPedido", dinheiro(0));
