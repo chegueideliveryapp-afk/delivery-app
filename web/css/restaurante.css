@@ -603,6 +603,32 @@ select.single-input:focus {
   display: block;
 }
 
+.leaflet-order-map {
+  width: 100%;
+  height: 380px;
+  background: #eef0f4;
+}
+
+.map-pin {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: 900;
+  border: 3px solid #fff;
+  box-shadow: 0 10px 20px rgba(17, 24, 39, .22);
+}
+
+.restaurant-pin {
+  background: #16181d;
+}
+
+.delivery-pin {
+  background: #ea1d2c;
+}
+
 .maps-modal-note {
   margin: 0;
   padding: 13px 18px;
@@ -650,7 +676,8 @@ select.single-input:focus {
   }
 
   .maps-frame,
-  .maps-inline .maps-frame {
+  .maps-inline .maps-frame,
+  .leaflet-order-map {
     height: 300px;
   }
 }
