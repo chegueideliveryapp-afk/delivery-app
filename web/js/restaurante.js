@@ -63,7 +63,6 @@ function limparTelefone(telefone) {
 
 function montarWhatsappSuporte(numero, restauranteNome) {
   const numeroLimpo = limparTelefone(numero);
-
   if (!numeroLimpo) return "#";
 
   const telefone = numeroLimpo.startsWith("55")
@@ -162,31 +161,22 @@ function calcularValoresPedido() {
 
 function fecharMapsInline() {
   const box = document.getElementById("mapsInline");
-
-  if (box) {
-    box.classList.add("hidden");
-  }
+  if (box) box.classList.add("hidden");
 }
 
 function configurarMapaInline() {
   const fechar = document.getElementById("btnFecharMapsInline");
-
-  if (fechar) {
-    fechar.addEventListener("click", fecharMapsInline);
-  }
+  if (fechar) fechar.addEventListener("click", fecharMapsInline);
 }
 
 function configurarBuscaAutomaticaEndereco() {
   if (novoPedidoConfigurado) return;
 
   novoPedidoConfigurado = true;
-
   configurarMapaInline();
 
   const formaPagamento = document.getElementById("formaPagamento");
-  if (formaPagamento) {
-    formaPagamento.addEventListener("change", calcularPedido);
-  }
+  if (formaPagamento) formaPagamento.addEventListener("change", calcularPedido);
 
   const precisaRetorno = document.getElementById("precisaRetorno");
   if (precisaRetorno) {
@@ -195,7 +185,6 @@ function configurarBuscaAutomaticaEndereco() {
         "hidden",
         !event.target.checked
       );
-
       calcularPedido();
     });
   }
@@ -229,6 +218,11 @@ function criarIconeEntrega() {
 }
 
 function iniciarMapaPedido() {
+  if (typeof L === "undefined") {
+    mostrarMensagem("Biblioteca do mapa não carregou. Atualize a página com Ctrl + F5.");
+    return;
+  }
+
   if (!validarRestauranteComLocalizacao()) {
     mostrarMensagem("Restaurante sem localização fixa cadastrada.");
     return;
@@ -256,9 +250,9 @@ function iniciarMapaPedido() {
   }
 
   setTimeout(() => {
-    mapaPedido.invalidateSize();
+    mapaPedido.invalidateSize(true);
     mapaPedido.setView([lat, lng], 15);
-  }, 150);
+  }, 300);
 
   if (!marcadorRestaurante) {
     marcadorRestaurante = L.marker([lat, lng], {
@@ -272,10 +266,7 @@ function iniciarMapaPedido() {
 }
 
 async function definirDestinoEntrega(lat, lng) {
-  entregaLocation = {
-    lat,
-    lng
-  };
+  entregaLocation = { lat, lng };
 
   if (marcadorEntrega) {
     marcadorEntrega.setLatLng([lat, lng]);
@@ -331,9 +322,7 @@ async function calcularRotaEntrega() {
     const distanciaKm = rota.distance / 1000;
 
     const distanciaInput = document.getElementById("distanciaEntregaKm");
-    if (distanciaInput) {
-      distanciaInput.value = distanciaKm.toFixed(2);
-    }
+    if (distanciaInput) distanciaInput.value = distanciaKm.toFixed(2);
 
     setText("distanciaResumoPedido", `${distanciaKm.toFixed(2)} km`);
 
@@ -342,9 +331,7 @@ async function calcularRotaEntrega() {
       ponto[0]
     ]);
 
-    if (rotaLayer) {
-      rotaLayer.remove();
-    }
+    if (rotaLayer) rotaLayer.remove();
 
     rotaLayer = L.polyline(coordenadas, {
       color: "#ea1d2c",
@@ -675,7 +662,6 @@ export function carregarNovoPedidoRestaurante() {
         };
 
         setText("saldoPrePago", dinheiro(restauranteLogado.saldoPrePago));
-
         calcularPedido();
       },
       (erro) => {
@@ -736,9 +722,7 @@ export function calcularPedido() {
 
   atualizarResumoPagamento();
 
-  if (!configApp || !restauranteLogado) {
-    return;
-  }
+  if (!configApp || !restauranteLogado) return;
 
   const valores = calcularValoresPedido();
 
@@ -802,26 +786,17 @@ export async function criarPedido() {
     await runTransaction(db, async (transaction) => {
       const restauranteSnap = await transaction.get(restauranteRef);
 
-      if (!restauranteSnap.exists()) {
-        throw new Error("Restaurante não encontrado.");
-      }
+      if (!restauranteSnap.exists()) throw new Error("Restaurante não encontrado.");
 
       const restaurante = restauranteSnap.data();
 
-      if (restaurante.ativo === false) {
-        throw new Error("Restaurante inativo.");
-      }
-
-      if (restaurante.bloqueado === true) {
-        throw new Error("Restaurante bloqueado.");
-      }
+      if (restaurante.ativo === false) throw new Error("Restaurante inativo.");
+      if (restaurante.bloqueado === true) throw new Error("Restaurante bloqueado.");
 
       const saldoAntes = numero(restaurante.saldoPrePago, 0);
       const taxaSistema = numero(pedidoCalculado.taxaSistema, 0);
 
-      if (saldoAntes < taxaSistema) {
-        throw new Error("Saldo insuficiente para a taxa Cheguei.");
-      }
+      if (saldoAntes < taxaSistema) throw new Error("Saldo insuficiente para a taxa Cheguei.");
 
       const saldoDepois = saldoAntes - taxaSistema;
       const raiosBuscaKm = configApp?.raiosBuscaKm || [3, 5, 10, 15];
@@ -829,48 +804,38 @@ export async function criarPedido() {
       transaction.set(pedidoRef, {
         restauranteId: restauranteLogado.id,
         restauranteNome: restaurante.nome || restauranteLogado.nome || "",
-
         pedidoCopiado,
-
         enderecoEntrega: endereco.enderecoCompleto,
         enderecoRua: endereco.rua,
         enderecoNumero: endereco.numeroEndereco,
         enderecoBairro: endereco.bairro,
         enderecoCidade: endereco.cidade,
         enderecoComplemento: endereco.complemento,
-
         restauranteLocation: {
           lat: Number(restaurante.location.lat),
           lng: Number(restaurante.location.lng)
         },
-
         entregaLocation: {
           lat: Number(entregaLocation.lat),
           lng: Number(entregaLocation.lng)
         },
-
         distanciaKm: pedidoCalculado.distanciaKm,
         distanciaCalculadaPor: "osrm_publico",
-
         formaPagamento,
         precisaRetorno,
         valorTroco,
         observacao,
-
         valorMotoboy: pedidoCalculado.valorMotoboy,
         taxaSistema: pedidoCalculado.taxaSistema,
         taxaRetornoMotoboy: pedidoCalculado.taxaRetornoMotoboy,
         valorTotal: pedidoCalculado.valorTotal,
-
         status: "pendente",
         motoboyId: "",
         motoboyNome: "",
         recusadoPor: [],
-
         raioAtualKm: raiosBuscaKm[0] || 3,
         raiosBuscaKm,
         tentativaBusca: 0,
-
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         aceitoAt: null,
@@ -933,10 +898,7 @@ export async function criarPedido() {
     if (msg) msg.innerText = "Pedido criado com sucesso.";
   } catch (erro) {
     console.error(erro);
-
-    if (msg) {
-      msg.innerText = erro.message || "Erro ao criar pedido.";
-    }
+    if (msg) msg.innerText = erro.message || "Erro ao criar pedido.";
   }
 
   if (btn) {
