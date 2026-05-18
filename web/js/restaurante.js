@@ -21,13 +21,11 @@ import {
 let restauranteLogado = null;
 let configApp = null;
 let pedidoCalculado = null;
-let novoPedidoConfigurado = false;
-
-let mapaPedido = null;
+let entregaSelecionada = null;
+let mapaEntrega = null;
+let camadaRota = null;
 let marcadorRestaurante = null;
 let marcadorEntrega = null;
-let rotaLayer = null;
-let entregaLocation = null;
 
 function dinheiro(valor) {
   return Number(valor || 0).toLocaleString("pt-BR", {
@@ -46,12 +44,6 @@ function mostrarMensagem(texto) {
   if (msg) msg.innerText = texto;
 }
 
-function mostrarErroDashboard(texto) {
-  setText("nomeRestaurante", "Erro ao carregar");
-  setText("statusConta", "Atenção");
-  setText("statusDescricao", texto);
-}
-
 function numero(valor, padrao = 0) {
   const n = Number(valor || padrao);
   return Number.isFinite(n) ? n : padrao;
@@ -63,6 +55,7 @@ function limparTelefone(telefone) {
 
 function montarWhatsappSuporte(numero, restauranteNome) {
   const numeroLimpo = limparTelefone(numero);
+
   if (!numeroLimpo) return "#";
 
   const telefone = numeroLimpo.startsWith("55")
@@ -82,30 +75,40 @@ function statusRecargaTexto(status) {
   return "Pendente";
 }
 
+function mostrarErroDashboard(texto) {
+  setText("nomeRestaurante", "Erro ao carregar");
+  setText("statusConta", "Atenção");
+  setText("statusDescricao", texto);
+}
+
 function montarEnderecoEntrega() {
   const rua = document.getElementById("enderecoRua")?.value.trim() || "";
   const numeroEndereco = document.getElementById("enderecoNumero")?.value.trim() || "";
   const bairro = document.getElementById("enderecoBairro")?.value.trim() || "";
+  const cidadeDigitada = document.getElementById("enderecoCidade")?.value.trim() || "";
   const complemento = document.getElementById("enderecoComplemento")?.value.trim() || "";
 
   const cidadeRestaurante =
     restauranteLogado?.cidade ||
     restauranteLogado?.municipio ||
-    "Mogi Guaçu";
+    "";
+
+  const cidade = cidadeDigitada || cidadeRestaurante;
 
   const enderecoCompleto = [
     rua,
     numeroEndereco,
     bairro,
-    cidadeRestaurante
+    cidade,
+    "Brasil"
   ].filter(Boolean).join(", ");
 
   return {
     rua,
     numeroEndereco,
     bairro,
+    cidade,
     complemento,
-    cidade: cidadeRestaurante,
     enderecoCompleto
   };
 }
@@ -122,15 +125,16 @@ function atualizarResumoPagamento() {
 
   setText("pagamentoResumo", pagamentoTexto[forma] || "Pix");
 
-  if (precisaRetorno) {
-    setText("retornoResumo", "Com retorno ao restaurante.");
-  } else {
-    setText("retornoResumo", "Sem retorno ao restaurante.");
-  }
+  setText(
+    "retornoResumo",
+    precisaRetorno
+      ? "Com retorno ao restaurante."
+      : "Sem retorno ao restaurante."
+  );
 }
 
 function calcularValoresPedido() {
-  const distanciaKm = numero(document.getElementById("distanciaEntregaKm")?.value, 0);
+  const distanciaKm = entregaSelecionada?.distanciaKm || 0;
   const precisaRetorno = document.getElementById("precisaRetorno")?.checked === true;
 
   const taxaBaseMotoboy = numero(configApp?.taxaBaseMotoboy, 0);
@@ -159,201 +163,228 @@ function calcularValoresPedido() {
   };
 }
 
-function fecharMapsInline() {
-  const box = document.getElementById("mapsInline");
-  if (box) box.classList.add("hidden");
+function limparSugestoes() {
+  const lista = document.getElementById("sugestoesEndereco");
+  if (lista) lista.innerHTML = "";
 }
 
-function configurarMapaInline() {
-  const fechar = document.getElementById("btnFecharMapsInline");
-  if (fechar) fechar.addEventListener("click", fecharMapsInline);
+function mostrarSugestaoMensagem(texto) {
+  const lista = document.getElementById("sugestoesEndereco");
+  if (!lista) return;
+
+  lista.innerHTML = `
+    <div class="address-suggestion muted">
+      ${texto}
+    </div>
+  `;
 }
 
-function configurarBuscaAutomaticaEndereco() {
-  if (novoPedidoConfigurado) return;
+function formatarEnderecoPhoton(feature) {
+  const p = feature.properties || {};
 
-  novoPedidoConfigurado = true;
-  configurarMapaInline();
-
-  const formaPagamento = document.getElementById("formaPagamento");
-  if (formaPagamento) formaPagamento.addEventListener("change", calcularPedido);
-
-  const precisaRetorno = document.getElementById("precisaRetorno");
-  if (precisaRetorno) {
-    precisaRetorno.addEventListener("change", (event) => {
-      document.getElementById("valorTroco")?.classList.toggle(
-        "hidden",
-        !event.target.checked
-      );
-      calcularPedido();
-    });
-  }
+  return [
+    p.name,
+    p.street,
+    p.housenumber,
+    p.district,
+    p.suburb,
+    p.city,
+    p.state
+  ].filter(Boolean).join(", ");
 }
 
-function validarRestauranteComLocalizacao() {
-  return Boolean(
-    restauranteLogado &&
-    restauranteLogado.location &&
-    restauranteLogado.location.lat &&
-    restauranteLogado.location.lng
-  );
-}
+async function calcularRotaOSRM(origem, destino) {
+  const url =
+    `https://router.project-osrm.org/route/v1/driving/` +
+    `${origem.lng},${origem.lat};${destino.lng},${destino.lat}` +
+    `?overview=full&geometries=geojson&alternatives=false&steps=false`;
 
-function criarIconeRestaurante() {
-  return L.divIcon({
-    html: `<div class="map-pin restaurant-pin">R</div>`,
-    className: "",
-    iconSize: [34, 34],
-    iconAnchor: [17, 17]
-  });
-}
+  const resposta = await fetch(url);
 
-function criarIconeEntrega() {
-  return L.divIcon({
-    html: `<div class="map-pin delivery-pin">E</div>`,
-    className: "",
-    iconSize: [34, 34],
-    iconAnchor: [17, 17]
-  });
-}
-
-function iniciarMapaPedido() {
-  if (typeof L === "undefined") {
-    mostrarMensagem("Biblioteca do mapa não carregou. Atualize a página com Ctrl + F5.");
-    return;
+  if (!resposta.ok) {
+    throw new Error("Erro ao consultar rota.");
   }
 
-  if (!validarRestauranteComLocalizacao()) {
-    mostrarMensagem("Restaurante sem localização fixa cadastrada.");
-    return;
+  const dados = await resposta.json();
+
+  if (dados.code !== "Ok" || !dados.routes?.length) {
+    throw new Error("Não foi possível calcular a rota para esse endereço.");
   }
 
-  const box = document.getElementById("mapsInline");
-  if (box) box.classList.remove("hidden");
+  const rota = dados.routes[0];
 
-  const lat = Number(restauranteLogado.location.lat);
-  const lng = Number(restauranteLogado.location.lng);
+  return {
+    distanciaKm: Number((rota.distance / 1000).toFixed(2)),
+    duracaoMinutos: Math.round(rota.duration / 60),
+    geometry: rota.geometry
+  };
+}
 
-  if (!mapaPedido) {
-    mapaPedido = L.map("mapaPedido", {
-      zoomControl: true
-    }).setView([lat, lng], 15);
+function iniciarMapaSeNecessario(origem) {
+  const box = document.getElementById("mapaEntregaBox");
+  const mapEl = document.getElementById("mapaEntrega");
+
+  if (!box || !mapEl) return;
+
+  box.classList.remove("hidden");
+
+  if (!mapaEntrega) {
+    mapaEntrega = L.map("mapaEntrega").setView([origem.lat, origem.lng], 14);
 
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
       attribution: "&copy; OpenStreetMap"
-    }).addTo(mapaPedido);
-
-    mapaPedido.on("click", async (event) => {
-      await definirDestinoEntrega(event.latlng.lat, event.latlng.lng);
-    });
+    }).addTo(mapaEntrega);
   }
 
   setTimeout(() => {
-    mapaPedido.invalidateSize(true);
-    mapaPedido.setView([lat, lng], 15);
-  }, 300);
-
-  if (!marcadorRestaurante) {
-    marcadorRestaurante = L.marker([lat, lng], {
-      icon: criarIconeRestaurante()
-    })
-      .addTo(mapaPedido)
-      .bindPopup("Restaurante");
-  } else {
-    marcadorRestaurante.setLatLng([lat, lng]);
-  }
+    mapaEntrega.invalidateSize();
+  }, 120);
 }
 
-async function definirDestinoEntrega(lat, lng) {
-  entregaLocation = { lat, lng };
+function desenharRotaNoMapa(origem, destino, geometry) {
+  iniciarMapaSeNecessario(origem);
 
-  if (marcadorEntrega) {
-    marcadorEntrega.setLatLng([lat, lng]);
-  } else {
-    marcadorEntrega = L.marker([lat, lng], {
-      icon: criarIconeEntrega()
-    })
-      .addTo(mapaPedido)
-      .bindPopup("Entrega");
-  }
+  if (!mapaEntrega) return;
 
-  await calcularRotaEntrega();
-}
+  if (camadaRota) mapaEntrega.removeLayer(camadaRota);
+  if (marcadorRestaurante) mapaEntrega.removeLayer(marcadorRestaurante);
+  if (marcadorEntrega) mapaEntrega.removeLayer(marcadorEntrega);
 
-async function calcularRotaEntrega() {
-  const msg = document.getElementById("mensagem");
-  if (msg) msg.innerText = "";
+  marcadorRestaurante = L.marker([origem.lat, origem.lng])
+    .addTo(mapaEntrega)
+    .bindPopup("Restaurante");
 
-  if (!validarRestauranteComLocalizacao()) {
-    mostrarMensagem("Restaurante sem localização fixa cadastrada.");
-    return;
-  }
+  marcadorEntrega = L.marker([destino.lat, destino.lng])
+    .addTo(mapaEntrega)
+    .bindPopup("Entrega");
 
-  if (!entregaLocation?.lat || !entregaLocation?.lng) {
-    mostrarMensagem("Marque o ponto de entrega no mapa.");
-    return;
-  }
-
-  const origem = {
-    lat: Number(restauranteLogado.location.lat),
-    lng: Number(restauranteLogado.location.lng)
-  };
-
-  const destino = {
-    lat: Number(entregaLocation.lat),
-    lng: Number(entregaLocation.lng)
-  };
-
-  const url =
-    `https://router.project-osrm.org/route/v1/driving/` +
-    `${origem.lng},${origem.lat};${destino.lng},${destino.lat}` +
-    `?overview=full&geometries=geojson`;
-
-  try {
-    const resposta = await fetch(url);
-    const dados = await resposta.json();
-
-    if (!dados.routes || !dados.routes.length) {
-      throw new Error("Rota não encontrada.");
-    }
-
-    const rota = dados.routes[0];
-    const distanciaKm = rota.distance / 1000;
-
-    const distanciaInput = document.getElementById("distanciaEntregaKm");
-    if (distanciaInput) distanciaInput.value = distanciaKm.toFixed(2);
-
-    setText("distanciaResumoPedido", `${distanciaKm.toFixed(2)} km`);
-
-    const coordenadas = rota.geometry.coordinates.map((ponto) => [
-      ponto[1],
-      ponto[0]
-    ]);
-
-    if (rotaLayer) rotaLayer.remove();
-
-    rotaLayer = L.polyline(coordenadas, {
+  camadaRota = L.geoJSON(geometry, {
+    style: {
       color: "#ea1d2c",
       weight: 5,
       opacity: 0.9
-    }).addTo(mapaPedido);
+    }
+  }).addTo(mapaEntrega);
 
-    const bounds = L.latLngBounds([
-      [origem.lat, origem.lng],
-      [destino.lat, destino.lng],
-      ...coordenadas
-    ]);
+  mapaEntrega.fitBounds(camadaRota.getBounds(), {
+    padding: [28, 28]
+  });
+}
 
-    mapaPedido.fitBounds(bounds, {
-      padding: [30, 30],
-      maxZoom: 16
-    });
+async function selecionarEndereco(feature) {
+  try {
+    mostrarMensagem("Calculando rota...");
 
+    if (!restauranteLogado?.location?.lat || !restauranteLogado?.location?.lng) {
+      mostrarMensagem("Restaurante sem localização fixa cadastrada.");
+      return;
+    }
+
+    const destino = {
+      lat: feature.geometry.coordinates[1],
+      lng: feature.geometry.coordinates[0]
+    };
+
+    const origem = {
+      lat: Number(restauranteLogado.location.lat),
+      lng: Number(restauranteLogado.location.lng)
+    };
+
+    const rota = await calcularRotaOSRM(origem, destino);
+
+    entregaSelecionada = {
+      enderecoFormatado: formatarEnderecoPhoton(feature),
+      location: destino,
+      distanciaKm: rota.distanciaKm,
+      duracaoMinutos: rota.duracaoMinutos
+    };
+
+    const distanciaInput = document.getElementById("distanciaEntregaKm");
+    if (distanciaInput) {
+      distanciaInput.value = `${rota.distanciaKm.toFixed(2)} km`;
+    }
+
+    desenharRotaNoMapa(origem, destino, rota.geometry);
+    limparSugestoes();
     calcularPedido();
+
+    mostrarMensagem("");
   } catch (erro) {
     console.error(erro);
-    mostrarMensagem("Não foi possível calcular a rota. Tente marcar outro ponto próximo.");
+    mostrarMensagem(erro.message || "Erro ao calcular rota.");
+  }
+}
+
+export async function buscarEnderecoEntrega() {
+  const endereco = montarEnderecoEntrega();
+
+  entregaSelecionada = null;
+  pedidoCalculado = null;
+
+  setText("valorTotalPedido", dinheiro(0));
+  setText("valorMotoboyPedido", dinheiro(0));
+  setText("taxaSistemaPedido", dinheiro(0));
+  setText("taxaRetornoPedido", dinheiro(0));
+  setText("distanciaResumoPedido", "---");
+
+  const distanciaInput = document.getElementById("distanciaEntregaKm");
+  if (distanciaInput) distanciaInput.value = "";
+
+  if (!endereco.rua || !endereco.numeroEndereco || !endereco.bairro || !endereco.cidade) {
+    mostrarMensagem("Informe rua, número, bairro e cidade.");
+    return;
+  }
+
+  mostrarMensagem("");
+  mostrarSugestaoMensagem("Buscando endereço...");
+
+  try {
+    const params = new URLSearchParams({
+      q: endereco.enderecoCompleto,
+      limit: "5",
+      lang: "pt"
+    });
+
+    if (restauranteLogado?.location?.lat && restauranteLogado?.location?.lng) {
+      params.set("lat", restauranteLogado.location.lat);
+      params.set("lon", restauranteLogado.location.lng);
+    }
+
+    const resposta = await fetch(`https://photon.komoot.io/api/?${params.toString()}`);
+
+    if (!resposta.ok) {
+      throw new Error("Erro ao buscar endereço.");
+    }
+
+    const dados = await resposta.json();
+    const features = dados.features || [];
+
+    if (!features.length) {
+      mostrarSugestaoMensagem("Nenhum endereço encontrado. Confira rua, número, bairro e cidade.");
+      return;
+    }
+
+    const lista = document.getElementById("sugestoesEndereco");
+    if (!lista) return;
+
+    lista.innerHTML = "";
+
+    features.forEach((feature) => {
+      const botao = document.createElement("button");
+      botao.type = "button";
+      botao.className = "address-suggestion";
+      botao.innerText = formatarEnderecoPhoton(feature) || endereco.enderecoCompleto;
+
+      botao.addEventListener("click", () => {
+        selecionarEndereco(feature);
+      });
+
+      lista.appendChild(botao);
+    });
+  } catch (erro) {
+    console.error(erro);
+    mostrarSugestaoMensagem("Erro ao buscar endereço. Tente novamente.");
   }
 }
 
@@ -446,7 +477,7 @@ export function carregarDashboardRestaurante() {
       restauranteRef,
       (snap) => {
         if (!snap.exists()) {
-          mostrarErroDashboard("Cadastro do restaurante não encontrado. Verifique se o UID do Authentication é igual ao ID do documento em restaurantes.");
+          mostrarErroDashboard("Cadastro do restaurante não encontrado.");
           return;
         }
 
@@ -476,7 +507,7 @@ export function carregarDashboardRestaurante() {
       },
       (erro) => {
         console.error(erro);
-        mostrarErroDashboard("Sem permissão para carregar o restaurante. Confira as regras do Firestore.");
+        mostrarErroDashboard("Sem permissão para carregar o restaurante.");
       }
     );
   });
@@ -529,59 +560,49 @@ export function carregarRecargaRestaurante() {
       where("restauranteId", "==", user.uid)
     );
 
-    onSnapshot(
-      q,
-      (snapshot) => {
-        const lista = document.getElementById("listaRecargas");
-        if (!lista) return;
+    onSnapshot(q, (snapshot) => {
+      const lista = document.getElementById("listaRecargas");
+      if (!lista) return;
 
-        lista.innerHTML = "";
+      lista.innerHTML = "";
 
-        if (snapshot.empty) {
-          lista.innerHTML = `<div class="empty-mini">Nenhuma recarga solicitada ainda.</div>`;
-          return;
-        }
-
-        const recargas = [];
-
-        snapshot.forEach((docSnap) => {
-          recargas.push({
-            id: docSnap.id,
-            ...docSnap.data()
-          });
-        });
-
-        recargas.sort((a, b) => {
-          const dataA = a.solicitadoAt?.toMillis?.() || 0;
-          const dataB = b.solicitadoAt?.toMillis?.() || 0;
-          return dataB - dataA;
-        });
-
-        recargas.forEach((r) => {
-          const item = document.createElement("div");
-          item.className = "recharge-item";
-
-          item.innerHTML = `
-            <div>
-              <strong>${dinheiro(r.valor)}</strong>
-              <p>${r.observacao || "Sem observação"}</p>
-            </div>
-            <span class="status-pill ${r.status || "pendente"}">
-              ${statusRecargaTexto(r.status)}
-            </span>
-          `;
-
-          lista.appendChild(item);
-        });
-      },
-      (erro) => {
-        console.error(erro);
-        const lista = document.getElementById("listaRecargas");
-        if (lista) {
-          lista.innerHTML = `<div class="empty-mini">Erro ao carregar recargas.</div>`;
-        }
+      if (snapshot.empty) {
+        lista.innerHTML = `<div class="empty-mini">Nenhuma recarga solicitada ainda.</div>`;
+        return;
       }
-    );
+
+      const recargas = [];
+
+      snapshot.forEach((docSnap) => {
+        recargas.push({
+          id: docSnap.id,
+          ...docSnap.data()
+        });
+      });
+
+      recargas.sort((a, b) => {
+        const dataA = a.solicitadoAt?.toMillis?.() || 0;
+        const dataB = b.solicitadoAt?.toMillis?.() || 0;
+        return dataB - dataA;
+      });
+
+      recargas.forEach((r) => {
+        const item = document.createElement("div");
+        item.className = "recharge-item";
+
+        item.innerHTML = `
+          <div>
+            <strong>${dinheiro(r.valor)}</strong>
+            <p>${r.observacao || "Sem observação"}</p>
+          </div>
+          <span class="status-pill ${r.status || "pendente"}">
+            ${statusRecargaTexto(r.status)}
+          </span>
+        `;
+
+        lista.appendChild(item);
+      });
+    });
   });
 }
 
@@ -642,84 +663,51 @@ export function carregarNovoPedidoRestaurante() {
       return;
     }
 
-    configurarBuscaAutomaticaEndereco();
-
     const restauranteRef = doc(db, "restaurantes", user.uid);
     const configRef = doc(db, "config", "app");
 
-    onSnapshot(
-      restauranteRef,
-      (snap) => {
-        if (!snap.exists()) {
-          setText("saldoPrePago", "Cadastro não encontrado");
-          mostrarMensagem("Restaurante não encontrado no Firestore.");
-          return;
-        }
-
-        restauranteLogado = {
-          id: user.uid,
-          ...snap.data()
-        };
-
-        setText("saldoPrePago", dinheiro(restauranteLogado.saldoPrePago));
-        calcularPedido();
-      },
-      (erro) => {
-        console.error(erro);
-        setText("saldoPrePago", "Erro");
-        mostrarMensagem("Erro ao carregar saldo do restaurante.");
+    onSnapshot(restauranteRef, (snap) => {
+      if (!snap.exists()) {
+        setText("saldoPrePago", "Cadastro não encontrado");
+        mostrarMensagem("Restaurante não encontrado no Firestore.");
+        return;
       }
-    );
 
-    onSnapshot(
-      configRef,
-      (snap) => {
-        if (!snap.exists()) {
-          mostrarMensagem("Configuração do app não encontrada.");
-          return;
-        }
+      restauranteLogado = {
+        id: user.uid,
+        ...snap.data()
+      };
 
-        configApp = snap.data();
+      setText("saldoPrePago", dinheiro(restauranteLogado.saldoPrePago));
 
-        const raios = configApp.raiosBuscaKm || [3, 5, 10, 15];
-        setText("raioInicialPedido", `${raios[0] || 3} km`);
-
-        calcularPedido();
-      },
-      (erro) => {
-        console.error(erro);
-        mostrarMensagem("Erro ao carregar configurações do app.");
+      const cidadeInput = document.getElementById("enderecoCidade");
+      if (cidadeInput && !cidadeInput.value) {
+        cidadeInput.value =
+          restauranteLogado.cidade ||
+          restauranteLogado.municipio ||
+          "";
       }
-    );
+
+      calcularPedido();
+    });
+
+    onSnapshot(configRef, (snap) => {
+      if (!snap.exists()) {
+        mostrarMensagem("Configuração do app não encontrada.");
+        return;
+      }
+
+      configApp = snap.data();
+
+      const raios = configApp.raiosBuscaKm || [3, 5, 10, 15];
+      setText("raioInicialPedido", `${raios[0] || 3} km`);
+
+      calcularPedido();
+    });
   });
 }
 
-export function abrirRotaGoogleMaps() {
-  const msg = document.getElementById("mensagem");
-  const endereco = montarEnderecoEntrega();
-
-  if (msg) msg.innerText = "";
-
-  if (!restauranteLogado) {
-    if (msg) msg.innerText = "Restaurante ainda não carregado.";
-    return;
-  }
-
-  if (!endereco.rua || !endereco.numeroEndereco || !endereco.bairro) {
-    if (msg) msg.innerText = "Informe rua, número e bairro antes de abrir o mapa.";
-    return;
-  }
-
-  iniciarMapaPedido();
-}
-
 export function calcularPedido() {
-  const msg = document.getElementById("mensagem");
-
-  if (msg && msg.innerText === "Restaurante ainda não carregado.") {
-    msg.innerText = "";
-  }
-
   atualizarResumoPagamento();
 
   if (!configApp || !restauranteLogado) return;
@@ -758,18 +746,13 @@ export async function criarPedido() {
     return;
   }
 
-  if (!endereco.rua || !endereco.numeroEndereco || !endereco.bairro) {
-    if (msg) msg.innerText = "Informe rua, número e bairro.";
-    return;
-  }
-
-  if (!entregaLocation?.lat || !entregaLocation?.lng) {
-    if (msg) msg.innerText = "Marque o ponto de entrega no mapa.";
+  if (!entregaSelecionada) {
+    if (msg) msg.innerText = "Busque e selecione o endereço de entrega antes de criar o pedido.";
     return;
   }
 
   if (!pedidoCalculado || !pedidoCalculado.distanciaKm) {
-    if (msg) msg.innerText = "Calcule a rota marcando o ponto de entrega no mapa.";
+    if (msg) msg.innerText = "A distância ainda não foi calculada.";
     return;
   }
 
@@ -786,17 +769,26 @@ export async function criarPedido() {
     await runTransaction(db, async (transaction) => {
       const restauranteSnap = await transaction.get(restauranteRef);
 
-      if (!restauranteSnap.exists()) throw new Error("Restaurante não encontrado.");
+      if (!restauranteSnap.exists()) {
+        throw new Error("Restaurante não encontrado.");
+      }
 
       const restaurante = restauranteSnap.data();
 
-      if (restaurante.ativo === false) throw new Error("Restaurante inativo.");
-      if (restaurante.bloqueado === true) throw new Error("Restaurante bloqueado.");
+      if (restaurante.ativo === false) {
+        throw new Error("Restaurante inativo.");
+      }
+
+      if (restaurante.bloqueado === true) {
+        throw new Error("Restaurante bloqueado.");
+      }
 
       const saldoAntes = numero(restaurante.saldoPrePago, 0);
       const taxaSistema = numero(pedidoCalculado.taxaSistema, 0);
 
-      if (saldoAntes < taxaSistema) throw new Error("Saldo insuficiente para a taxa Cheguei.");
+      if (saldoAntes < taxaSistema) {
+        throw new Error("Saldo insuficiente para a taxa Cheguei.");
+      }
 
       const saldoDepois = saldoAntes - taxaSistema;
       const raiosBuscaKm = configApp?.raiosBuscaKm || [3, 5, 10, 15];
@@ -804,38 +796,49 @@ export async function criarPedido() {
       transaction.set(pedidoRef, {
         restauranteId: restauranteLogado.id,
         restauranteNome: restaurante.nome || restauranteLogado.nome || "",
+
         pedidoCopiado,
-        enderecoEntrega: endereco.enderecoCompleto,
+
+        enderecoEntrega: entregaSelecionada.enderecoFormatado || endereco.enderecoCompleto,
         enderecoRua: endereco.rua,
         enderecoNumero: endereco.numeroEndereco,
         enderecoBairro: endereco.bairro,
         enderecoCidade: endereco.cidade,
         enderecoComplemento: endereco.complemento,
+
         restauranteLocation: {
           lat: Number(restaurante.location.lat),
           lng: Number(restaurante.location.lng)
         },
+
         entregaLocation: {
-          lat: Number(entregaLocation.lat),
-          lng: Number(entregaLocation.lng)
+          lat: entregaSelecionada.location.lat,
+          lng: entregaSelecionada.location.lng
         },
+
         distanciaKm: pedidoCalculado.distanciaKm,
-        distanciaCalculadaPor: "osrm_publico",
+        duracaoMinutos: entregaSelecionada.duracaoMinutos || null,
+        distanciaCalculadaPor: "photon_osrm",
+
         formaPagamento,
         precisaRetorno,
         valorTroco,
         observacao,
+
         valorMotoboy: pedidoCalculado.valorMotoboy,
         taxaSistema: pedidoCalculado.taxaSistema,
         taxaRetornoMotoboy: pedidoCalculado.taxaRetornoMotoboy,
         valorTotal: pedidoCalculado.valorTotal,
+
         status: "pendente",
         motoboyId: "",
         motoboyNome: "",
         recusadoPor: [],
+
         raioAtualKm: raiosBuscaKm[0] || 3,
         raiosBuscaKm,
         tentativaBusca: 0,
+
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         aceitoAt: null,
@@ -874,20 +877,9 @@ export async function criarPedido() {
     document.getElementById("valorTroco").value = "";
     document.getElementById("valorTroco").classList.add("hidden");
 
-    entregaLocation = null;
+    entregaSelecionada = null;
     pedidoCalculado = null;
-
-    if (marcadorEntrega) {
-      marcadorEntrega.remove();
-      marcadorEntrega = null;
-    }
-
-    if (rotaLayer) {
-      rotaLayer.remove();
-      rotaLayer = null;
-    }
-
-    fecharMapsInline();
+    limparSugestoes();
 
     setText("valorTotalPedido", dinheiro(0));
     setText("valorMotoboyPedido", dinheiro(0));
