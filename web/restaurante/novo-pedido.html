@@ -7,6 +7,11 @@
 
   <link rel="stylesheet" href="../css/base.css">
   <link rel="stylesheet" href="../css/restaurante.css">
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  >
 </head>
 
 <body>
@@ -70,43 +75,38 @@
           class="secondary-action maps-action"
           type="button"
         >
-          Ver rota no mapa
+          Abrir mapa e marcar entrega
         </button>
 
         <div id="mapsInline" class="maps-inline hidden">
           <div class="maps-inline-header">
             <div>
-              <span>Consulta de rota</span>
-              <strong>Google Maps</strong>
+              <span>Mapa de entrega</span>
+              <strong>Marque o destino</strong>
             </div>
 
             <button id="btnFecharMapsInline" type="button">Fechar</button>
           </div>
 
-          <iframe
-            id="mapsFrame"
-            class="maps-frame"
-            loading="lazy"
-            referrerpolicy="no-referrer-when-downgrade"
-            src="">
-          </iframe>
+          <div id="mapaPedido" class="leaflet-order-map"></div>
 
           <p class="maps-modal-note">
-            Veja a distância exibida pelo Google Maps e informe o valor em km no campo abaixo.
+            Clique no ponto de entrega no mapa. A distância será calculada automaticamente pela rota.
           </p>
         </div>
 
         <input
           id="distanciaEntregaKm"
           class="single-input"
-          placeholder="Digite a distância vista no Google Maps em km"
+          placeholder="Distância calculada automaticamente"
           type="number"
           min="0"
           step="0.1"
+          readonly
         >
 
         <p class="helper-text">
-          Abra a rota no mapa, veja a distância de carro e informe o valor em km acima.
+          A distância é calculada automaticamente ao marcar o destino no mapa.
         </p>
 
         <label class="field-label">Forma de pagamento do cliente</label>
@@ -169,6 +169,8 @@
     </section>
   </main>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
   <script type="module">
     import {
       protegerRestaurante,
@@ -176,13 +178,12 @@
       abrirRotaGoogleMaps,
       calcularPedido,
       criarPedido
-    } from "../js/restaurante.js?v=3";
+    } from "../js/restaurante.js?v=4";
 
     protegerRestaurante();
     carregarNovoPedidoRestaurante();
 
     document.getElementById("btnAbrirMaps").addEventListener("click", abrirRotaGoogleMaps);
-    document.getElementById("distanciaEntregaKm").addEventListener("input", calcularPedido);
     document.getElementById("formaPagamento").addEventListener("change", calcularPedido);
 
     document.getElementById("precisaRetorno").addEventListener("change", (event) => {
