@@ -10,6 +10,7 @@ import {
   getDoc,
   onSnapshot,
   query,
+  where,
   runTransaction,
   serverTimestamp,
   arrayUnion,
@@ -18,6 +19,7 @@ import {
 
 let uid = null;
 let motoboyAtual = null;
+let pedidosMap = new Map();
 let pedidosCache = [];
 let renderInterval = null;
 
@@ -37,6 +39,18 @@ function dinheiro(valor) {
 function setHtml(id, html) {
   const el = document.getElementById(id);
   if (el) el.innerHTML = html;
+}
+
+function atualizarCachePedidos() {
+  pedidosCache = Array.from(pedidosMap.values());
+
+  pedidosCache.sort((a, b) => {
+    const dataA = a.pedido.createdAt?.toMillis?.() || 0;
+    const dataB = b.pedido.createdAt?.toMillis?.() || 0;
+    return dataB - dataA;
+  });
+
+  renderizarPedidos();
 }
 
 function normalizarRaios(valor) {
@@ -542,27 +556,72 @@ function carregarMotoboyLogado() {
   });
 }
 
-function carregarPedidos() {
-  const q = query(collection(db, "pedidos"));
+function carregarPedidosPendentes() {
+  const q = query(
+    collection(db, "pedidos"),
+    where("status", "==", "pendente")
+  );
 
-  onSnapshot(q, (snapshot) => {
-    pedidosCache = [];
+  onSnapshot(
+    q,
+    (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        const id = change.doc.id;
 
-    snapshot.forEach((docSnap) => {
-      pedidosCache.push({
-        id: docSnap.id,
-        pedido: docSnap.data()
+        if (change.type === "removed") {
+          pedidosMap.delete(id);
+          return;
+        }
+
+        pedidosMap.set(id, {
+          id,
+          pedido: change.doc.data()
+        });
       });
-    });
 
-    pedidosCache.sort((a, b) => {
-      const dataA = a.pedido.createdAt?.toMillis?.() || 0;
-      const dataB = b.pedido.createdAt?.toMillis?.() || 0;
-      return dataB - dataA;
-    });
+      atualizarCachePedidos();
+    },
+    (erro) => {
+      console.error("Erro ao carregar pedidos pendentes:", erro);
 
-    renderizarPedidos();
-  });
+      setHtml("listaPedidosMotoboy", `
+        <div class="empty-state">
+          Erro ao carregar pedidos pendentes: ${erro.message}
+        </div>
+      `);
+    }
+  );
+}
+
+function carregarMinhasCorridas() {
+  const q = query(
+    collection(db, "pedidos"),
+    where("motoboyId", "==", uid)
+  );
+
+  onSnapshot(
+    q,
+    (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        const id = change.doc.id;
+
+        if (change.type === "removed") {
+          pedidosMap.delete(id);
+          return;
+        }
+
+        pedidosMap.set(id, {
+          id,
+          pedido: change.doc.data()
+        });
+      });
+
+      atualizarCachePedidos();
+    },
+    (erro) => {
+      console.error("Erro ao carregar minhas corridas:", erro);
+    }
+  );
 }
 
 onAuthStateChanged(auth, async (user) => {
@@ -578,7 +637,8 @@ onAuthStateChanged(auth, async (user) => {
 
   carregarConfig();
   carregarMotoboyLogado();
-  carregarPedidos();
+  carregarPedidosPendentes();
+  carregarMinhasCorridas();
 
   if (!renderInterval) {
     renderInterval = setInterval(() => {
