@@ -140,6 +140,23 @@ function calcularRaioEfetivo(pedido) {
   return Math.max(raioCalculado, raioSalvoNoPedido);
 }
 
+function buscaEsgotada(pedido) {
+  const raios = Array.isArray(pedido.raiosBuscaKm) && pedido.raiosBuscaKm.length
+    ? pedido.raiosBuscaKm
+    : (configApp?.raiosBuscaKm || [3, 5, 10, 15]);
+
+  const tempoPorRaio = Number(
+    pedido.tempoPorRaioSegundos ||
+    configApp?.tempoPorRaioSegundos ||
+    15
+  );
+
+  const tempoTotalBusca = raios.length * tempoPorRaio;
+  const tempoDecorrido = segundosDesdeCriacao(pedido);
+
+  return tempoDecorrido >= tempoTotalBusca;
+}
+
 function proximoRaioTexto(pedido) {
   const raios = Array.isArray(pedido.raiosBuscaKm) && pedido.raiosBuscaKm.length
     ? pedido.raiosBuscaKm
@@ -286,7 +303,7 @@ function configurarBotoesPedidos() {
         await recusarPedido(pedidoId);
       } catch (erro) {
         console.error(erro);
-        alert("Erro ao recusar pedido.");
+        alert(erro.message || "Erro ao recusar pedido.");
         button.disabled = false;
         button.innerText = "Recusar";
       }
@@ -331,7 +348,7 @@ function escutarPedidosPendentes() {
 
   unsubscribePedidosPendentes = onSnapshot(
     q,
-    (snapshot) => {
+    async (snapshot) => {
       if (!motoboyPodeReceberPedidos()) {
         setHtml(
           listaId,
@@ -342,18 +359,23 @@ function escutarPedidosPendentes() {
 
       const pedidosDisponiveis = [];
 
-      snapshot.forEach((docSnap) => {
+      for (const docSnap of snapshot.docs) {
         const pedido = docSnap.data();
 
-        if (pedidoJaFoiRecusado(pedido)) return;
+        if (buscaEsgotada(pedido)) {
+          await marcarPedidoSemMotoboy(docSnap.id);
+          continue;
+        }
+
+        if (pedidoJaFoiRecusado(pedido)) continue;
 
         const distanciaKm = distanciaAteRestaurante(pedido);
 
-        if (distanciaKm === null) return;
+        if (distanciaKm === null) continue;
 
         const raioEfetivoKm = calcularRaioEfetivo(pedido);
 
-        if (distanciaKm > raioEfetivoKm) return;
+        if (distanciaKm > raioEfetivoKm) continue;
 
         pedidosDisponiveis.push({
           id: docSnap.id,
@@ -361,7 +383,7 @@ function escutarPedidosPendentes() {
           distanciaKm,
           raioEfetivoKm
         });
-      });
+      }
 
       pedidosDisponiveis.sort((a, b) => a.distanciaKm - b.distanciaKm);
 
@@ -456,6 +478,21 @@ function escutarMinhasCorridas() {
   );
 }
 
+async function marcarPedidoSemMotoboy(pedidoId) {
+  const pedidoRef = doc(db, "pedidos", pedidoId);
+
+  try {
+    await updateDoc(pedidoRef, {
+      status: "sem_motoboy",
+      semMotoboyAt: serverTimestamp(),
+      motivoSemMotoboy: "Todos os raios de busca foram esgotados sem aceite.",
+      updatedAt: serverTimestamp()
+    });
+  } catch (erro) {
+    console.error("Erro ao marcar pedido sem motoboy:", erro);
+  }
+}
+
 async function atualizarRastreamentoCorridasAceitas() {
   if (!uidMotoboy || !motoboyAtual?.location) return;
   if (!corridasAceitas.length) return;
@@ -525,7 +562,7 @@ async function aceitarPedido(pedidoId) {
     const motoboy = motoboySnap.data();
 
     if (pedido.status !== "pendente") {
-      throw new Error("Essa corrida já foi aceita por outro motoboy.");
+      throw new Error("Essa corrida já foi aceita ou encerrada.");
     }
 
     if (Array.isArray(pedido.recusadoPor) && pedido.recusadoPor.includes(uidMotoboy)) {
@@ -555,10 +592,36 @@ async function recusarPedido(pedidoId) {
   if (!uidMotoboy) return;
 
   const pedidoRef = doc(db, "pedidos", pedidoId);
+  const motoboyRef = doc(db, "motoboys", uidMotoboy);
 
-  await updateDoc(pedidoRef, {
-    recusadoPor: arrayUnion(uidMotoboy),
-    updatedAt: serverTimestamp()
+  await runTransaction(db, async (transaction) => {
+    const pedidoSnap = await transaction.get(pedidoRef);
+    const motoboySnap = await transaction.get(motoboyRef);
+
+    if (!pedidoSnap.exists()) {
+      throw new Error("Pedido não encontrado.");
+    }
+
+    if (!motoboySnap.exists()) {
+      throw new Error("Motoboy não encontrado.");
+    }
+
+    const pedido = pedidoSnap.data();
+    const motoboy = motoboySnap.data();
+
+    if (pedido.status !== "pendente") {
+      throw new Error("Pedido não está mais pendente.");
+    }
+
+    transaction.update(pedidoRef, {
+      recusadoPor: arrayUnion(uidMotoboy),
+      updatedAt: serverTimestamp()
+    });
+
+    transaction.update(motoboyRef, {
+      totalRecusas: Number(motoboy.totalRecusas || 0) + 1,
+      updatedAt: serverTimestamp()
+    });
   });
 }
 
