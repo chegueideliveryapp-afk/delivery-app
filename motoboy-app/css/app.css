@@ -569,6 +569,24 @@ input:focus {
   font-size: 13px;
 }
 
+.finish-btn {
+  width: 100%;
+  min-height: 50px;
+  margin-top: 16px;
+  border: 0;
+  border-radius: 15px;
+  background: #ea1d2c;
+  color: #fff;
+  font-weight: 900;
+  font-size: 15px;
+  box-shadow: 0 12px 24px rgba(234, 29, 44, .22);
+}
+
+.finish-btn:disabled {
+  opacity: .7;
+  cursor: wait;
+}
+
 @media (min-width: 760px) {
   body {
     background: #17191f;
