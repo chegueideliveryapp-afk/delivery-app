@@ -5,8 +5,8 @@
   <title>Novo Pedido - Cheguei Delivery</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <link rel="stylesheet" href="/delivery-app/web/css/base.css?v=40">
-  <link rel="stylesheet" href="/delivery-app/web/css/restaurante.css?v=40">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/restaurante.css">
 </head>
 
 <body>
@@ -39,14 +39,31 @@
 
         <label class="field-label">Endereço de entrega</label>
 
-        <input id="enderecoRua" class="single-input" placeholder="Rua / Avenida">
+        <input
+          id="enderecoRua"
+          class="single-input"
+          placeholder="Rua / Avenida"
+        >
 
         <div class="address-grid">
-          <input id="enderecoNumero" class="single-input" placeholder="Número">
-          <input id="enderecoBairro" class="single-input" placeholder="Bairro">
+          <input
+            id="enderecoNumero"
+            class="single-input"
+            placeholder="Número"
+          >
+
+          <input
+            id="enderecoBairro"
+            class="single-input"
+            placeholder="Bairro"
+          >
         </div>
 
-        <input id="enderecoCidade" class="single-input" placeholder="Cidade">
+        <input
+          id="enderecoCidade"
+          class="single-input"
+          placeholder="Cidade"
+        >
 
         <input
           id="enderecoComplemento"
@@ -54,7 +71,11 @@
           placeholder="Complemento ou referência (opcional)"
         >
 
-        <button id="btnBuscarEndereco" class="secondary-action maps-action" type="button">
+        <button
+          id="btnBuscarEndereco"
+          class="secondary-action maps-action"
+          type="button"
+        >
           Buscar endereço
         </button>
 
@@ -62,21 +83,21 @@
           Primeiro o sistema procura no cache. Se não encontrar, usa o Google Places uma única vez e salva o endereço para os próximos pedidos.
         </p>
 
-        <div id="sugestoesEndereco" class="address-suggestions"></div>
-
-        <div id="enderecoSelecionadoBox" class="selected-address hidden">
-          <span>Endereço selecionado</span>
-          <strong id="enderecoSelecionadoResumo">---</strong>
-          <p id="origemEnderecoResumo">---</p>
-        </div>
+        <div id="resultadoEndereco" class="address-suggestions"></div>
 
         <input
           id="distanciaEntregaKm"
           class="single-input"
           placeholder="Distância calculada automaticamente"
-          type="text"
+          type="number"
+          min="0"
+          step="0.1"
           readonly
         >
+
+        <p class="helper-text">
+          A distância é calculada automaticamente para evitar erro manual no valor do motoboy.
+        </p>
 
         <label class="field-label">Forma de pagamento do cliente</label>
 
@@ -127,9 +148,28 @@
           <p id="retornoResumo">Sem retorno ao restaurante.</p>
         </div>
 
-        <button id="btnCriarPedido" class="primary-btn" type="button">
+        <button
+          id="btnCriarPedido"
+          class="primary-btn"
+          type="button"
+        >
           Criar pedido
         </button>
+      </div>
+    </section>
+
+    <section class="history-card info-card">
+      <span>Aguardando motoboy</span>
+      <strong>Pedidos pendentes</strong>
+
+      <p class="helper-text">
+        Aqui aparecem somente os pedidos que ainda estão procurando motoboy.
+      </p>
+
+      <div id="listaPedidosPendentesNovoPedido">
+        <div class="empty-mini">
+          Carregando pedidos pendentes...
+        </div>
       </div>
     </section>
   </main>
@@ -137,19 +177,22 @@
   <script type="module">
     import {
       protegerRestaurante,
-      carregarGooglePlaces,
       carregarNovoPedidoRestaurante,
       buscarEnderecoEntrega,
       calcularPedido,
       criarPedido
-    } from "/delivery-app/web/js/restaurante.js?v=40";
+    } from "../js/restaurante.js?v=180";
+
+    import {
+      carregarPedidosPendentesNovoPedido
+    } from "../js/restaurante-pendentes.js?v=180";
 
     protegerRestaurante();
-
-    carregarGooglePlaces("AIzaSyApRas85TE6FYQRzKMxjY2mTPs-XplM0u4");
     carregarNovoPedidoRestaurante();
+    carregarPedidosPendentesNovoPedido();
 
     document.getElementById("btnBuscarEndereco").addEventListener("click", buscarEnderecoEntrega);
+    document.getElementById("distanciaEntregaKm").addEventListener("input", calcularPedido);
     document.getElementById("formaPagamento").addEventListener("change", calcularPedido);
 
     document.getElementById("precisaRetorno").addEventListener("change", (event) => {
