@@ -19,11 +19,10 @@ import {
 let uid = null;
 let motoboyAtual = null;
 let pedidosCache = [];
+
 let configApp = {
   raiosBuscaKm: [3, 5, 10, 15],
-  tempoPorRaioSegundos: 15,
-  distanciaValidacaoRestauranteMetros: 800,
-  distanciaValidacaoClienteMetros: 1000
+  raioKm: 10
 };
 
 function dinheiro(valor) {
@@ -63,6 +62,10 @@ function temGpsMotoboy() {
 }
 
 function gpsAtual() {
+  if (!temGpsMotoboy()) {
+    return null;
+  }
+
   return {
     lat: Number(motoboyAtual.location.lat),
     lng: Number(motoboyAtual.location.lng)
@@ -81,7 +84,11 @@ function podeReceberPedido() {
 }
 
 function localizacaoPedido(pedido) {
-  const origem = pedido.restauranteLocation || pedido.locationRestaurante || pedido.location;
+  const origem =
+    pedido.restauranteLocation ||
+    pedido.locationRestaurante ||
+    pedido.location ||
+    null;
 
   if (!origem?.lat || !origem?.lng) {
     return null;
@@ -91,39 +98,6 @@ function localizacaoPedido(pedido) {
     lat: Number(origem.lat),
     lng: Number(origem.lng)
   };
-}
-
-function localizacaoEntrega(pedido) {
-  const destino = pedido.entregaLocation || pedido.destinoLocation || pedido.locationEntrega;
-
-  if (!destino?.lat || !destino?.lng) {
-    return null;
-  }
-
-  return {
-    lat: Number(destino.lat),
-    lng: Number(destino.lng)
-  };
-}
-
-function statusTexto(status) {
-  if (status === "aceito") return "Aceito";
-  if (status === "no_restaurante") return "No restaurante";
-  if (status === "coletado") return "Pedido coletado";
-  if (status === "no_cliente") return "No cliente";
-  if (status === "entregue") return "Entregue";
-  if (status === "sem_motoboy") return "Sem motoboy";
-  return "Pendente";
-}
-
-function pagamentoTexto(forma) {
-  if (forma === "cartao") return "Cartão";
-  if (forma === "dinheiro") return "Dinheiro";
-  return "Pix";
-}
-
-function textoRetorno(pedido) {
-  return pedido.precisaRetorno ? "Sim" : "Não";
 }
 
 function distanciaAteRestaurante(pedido) {
@@ -137,15 +111,22 @@ function distanciaAteRestaurante(pedido) {
   return distanciaKm(gps.lat, gps.lng, origem.lat, origem.lng);
 }
 
-function distanciaAteCliente(pedido) {
-  if (!temGpsMotoboy()) return null;
+function pagamentoTexto(forma) {
+  if (forma === "cartao") return "Cartão";
+  if (forma === "dinheiro") return "Dinheiro";
+  return "Pix";
+}
 
-  const destino = localizacaoEntrega(pedido);
-  if (!destino) return null;
+function textoRetorno(pedido) {
+  return pedido.precisaRetorno ? "Sim" : "Não";
+}
 
-  const gps = gpsAtual();
-
-  return distanciaKm(gps.lat, gps.lng, destino.lat, destino.lng);
+function statusTexto(status) {
+  if (status === "pendente") return "Pendente";
+  if (status === "aceito") return "Aceito";
+  if (status === "entregue") return "Entregue";
+  if (status === "sem_motoboy") return "Sem motoboy";
+  return status || "Sem status";
 }
 
 function pedidoEstaProximo(pedido) {
@@ -153,7 +134,12 @@ function pedidoEstaProximo(pedido) {
 
   if (distancia === null) return false;
 
-  const raioAtual = Number(pedido.raioAtualKm || configApp.raiosBuscaKm?.[0] || 3);
+  const raioAtual = Number(
+    pedido.raioAtualKm ||
+    configApp.raioKm ||
+    configApp.raiosBuscaKm?.[0] ||
+    10
+  );
 
   return distancia <= raioAtual;
 }
@@ -205,41 +191,6 @@ function renderPedidoDisponivel(id, pedido) {
 
 function renderCorridaAtual(id, pedido) {
   const distanciaRestaurante = distanciaAteRestaurante(pedido);
-  const distanciaCliente = distanciaAteCliente(pedido);
-
-  let botoes = "";
-
-  if (pedido.status === "aceito") {
-    botoes = `
-      <button type="button" class="primary-btn compact-btn" data-action="noRestaurante" data-id="${id}">
-        Cheguei no restaurante
-      </button>
-    `;
-  }
-
-  if (pedido.status === "no_restaurante") {
-    botoes = `
-      <button type="button" class="primary-btn compact-btn" data-action="coletado" data-id="${id}">
-        Pedido coletado
-      </button>
-    `;
-  }
-
-  if (pedido.status === "coletado") {
-    botoes = `
-      <button type="button" class="primary-btn compact-btn" data-action="noCliente" data-id="${id}">
-        Cheguei no cliente
-      </button>
-    `;
-  }
-
-  if (pedido.status === "no_cliente") {
-    botoes = `
-      <button type="button" class="finish-btn compact-btn" data-action="finalizar" data-id="${id}">
-        Finalizar entrega
-      </button>
-    `;
-  }
 
   return `
     <div class="delivery-card current-delivery">
@@ -263,12 +214,6 @@ function renderCorridaAtual(id, pedido) {
       }
 
       ${
-        distanciaCliente !== null
-          ? `<p><b>Distância até cliente:</b> ${distanciaCliente.toFixed(2)} km</p>`
-          : ""
-      }
-
-      ${
         pedido.valorTroco
           ? `<p><b>Troco:</b> ${dinheiro(pedido.valorTroco)}</p>`
           : ""
@@ -281,7 +226,9 @@ function renderCorridaAtual(id, pedido) {
       }
 
       <div class="delivery-actions">
-        ${botoes}
+        <button type="button" class="finish-btn compact-btn" data-action="finalizar" data-id="${id}">
+          Finalizar entrega
+        </button>
       </div>
     </div>
   `;
@@ -293,7 +240,7 @@ function renderizarPedidos() {
   const corridaAtual = pedidosCache.find((item) => {
     return (
       item.pedido.motoboyId === uid &&
-      ["aceito", "no_restaurante", "coletado", "no_cliente"].includes(item.pedido.status)
+      item.pedido.status === "aceito"
     );
   });
 
@@ -369,18 +316,6 @@ function configurarBotoesPedidos() {
 
         if (action === "recusar") {
           await recusarPedido(pedidoId);
-        }
-
-        if (action === "noRestaurante") {
-          await marcarNoRestaurante(pedidoId);
-        }
-
-        if (action === "coletado") {
-          await marcarColetado(pedidoId);
-        }
-
-        if (action === "noCliente") {
-          await marcarNoCliente(pedidoId);
         }
 
         if (action === "finalizar") {
@@ -466,103 +401,6 @@ async function recusarPedido(pedidoId) {
   });
 }
 
-async function marcarNoRestaurante(pedidoId) {
-  const pedidoRef = doc(db, "pedidos", pedidoId);
-  const pedido = pedidosCache.find((item) => item.id === pedidoId)?.pedido;
-
-  if (!pedido) {
-    throw new Error("Pedido não encontrado na tela.");
-  }
-
-  const distancia = distanciaAteRestaurante(pedido);
-  const limiteKm = Number(configApp.distanciaValidacaoRestauranteMetros || 800) / 1000;
-
-  if (distancia !== null && distancia > limiteKm) {
-    throw new Error(`Você ainda está longe do restaurante. Distância atual: ${distancia.toFixed(2)} km.`);
-  }
-
-  await runTransaction(db, async (transaction) => {
-    const snap = await transaction.get(pedidoRef);
-
-    if (!snap.exists()) throw new Error("Pedido não encontrado.");
-
-    const p = snap.data();
-
-    if (p.motoboyId !== uid || p.status !== "aceito") {
-      throw new Error("Essa etapa não pode ser feita agora.");
-    }
-
-    transaction.update(pedidoRef, {
-      status: "no_restaurante",
-      gpsNoRestaurante: gpsAtual(),
-      noRestauranteAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
-  });
-}
-
-async function marcarColetado(pedidoId) {
-  const pedidoRef = doc(db, "pedidos", pedidoId);
-
-  await runTransaction(db, async (transaction) => {
-    const snap = await transaction.get(pedidoRef);
-
-    if (!snap.exists()) throw new Error("Pedido não encontrado.");
-
-    const p = snap.data();
-
-    if (p.motoboyId !== uid || p.status !== "no_restaurante") {
-      throw new Error("Confirme primeiro que chegou ao restaurante.");
-    }
-
-    transaction.update(pedidoRef, {
-      status: "coletado",
-      gpsColeta: gpsAtual(),
-      coletadoAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
-  });
-}
-
-async function marcarNoCliente(pedidoId) {
-  const pedidoRef = doc(db, "pedidos", pedidoId);
-  const pedido = pedidosCache.find((item) => item.id === pedidoId)?.pedido;
-
-  if (!pedido) {
-    throw new Error("Pedido não encontrado na tela.");
-  }
-
-  const destino = localizacaoEntrega(pedido);
-
-  if (destino) {
-    const distancia = distanciaAteCliente(pedido);
-    const limiteKm = Number(configApp.distanciaValidacaoClienteMetros || 1000) / 1000;
-
-    if (distancia !== null && distancia > limiteKm) {
-      throw new Error(`Você ainda está longe do cliente. Distância atual: ${distancia.toFixed(2)} km.`);
-    }
-  }
-
-  await runTransaction(db, async (transaction) => {
-    const snap = await transaction.get(pedidoRef);
-
-    if (!snap.exists()) throw new Error("Pedido não encontrado.");
-
-    const p = snap.data();
-
-    if (p.motoboyId !== uid || p.status !== "coletado") {
-      throw new Error("Confirme primeiro que o pedido foi coletado.");
-    }
-
-    transaction.update(pedidoRef, {
-      status: "no_cliente",
-      gpsNoCliente: gpsAtual(),
-      noClienteAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
-  });
-}
-
 async function finalizarEntrega(pedidoId) {
   const pedidoRef = doc(db, "pedidos", pedidoId);
   const motoboyRef = doc(db, "motoboys", uid);
@@ -588,8 +426,8 @@ async function finalizarEntrega(pedidoId) {
       throw new Error("Essa corrida não pertence a você.");
     }
 
-    if (pedido.status !== "no_cliente") {
-      throw new Error("Antes de finalizar, confirme que chegou no cliente.");
+    if (pedido.status !== "aceito") {
+      throw new Error("Essa corrida não está em andamento.");
     }
 
     if (pedido.pagamentoMotoboyCreditado === true) {
@@ -603,7 +441,6 @@ async function finalizarEntrega(pedidoId) {
     transaction.update(pedidoRef, {
       status: "entregue",
       entregueAt: serverTimestamp(),
-      gpsFinalizacao: gpsAtual(),
       pagamentoMotoboyCreditado: true,
       pagamentoMotoboyEstornado: false,
       updatedAt: serverTimestamp()
