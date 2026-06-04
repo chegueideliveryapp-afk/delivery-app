@@ -36,8 +36,51 @@
       <div class="form-grid">
         <input id="dataInicioRelatorio" type="date">
         <input id="dataFimRelatorio" type="date">
-        <input id="buscaRestauranteRelatorio" placeholder="Pesquisar restaurante">
-        <input id="buscaMotoboyRelatorio" placeholder="Pesquisar motoboy">
+      </div>
+
+      <div class="form-grid" style="margin-top: 14px;">
+        <input id="buscaRestauranteRelatorio" placeholder="Restaurante: nome, e-mail ou telefone">
+
+        <select id="statusRestauranteRelatorio">
+          <option value="todos">Restaurantes: todos</option>
+          <option value="ativo">Somente ativos</option>
+          <option value="inativo">Somente inativos</option>
+          <option value="bloqueado">Somente bloqueados</option>
+          <option value="liberado">Somente liberados</option>
+        </select>
+
+        <select id="ordenacaoRestauranteRelatorio">
+          <option value="nome">Ordenar restaurantes por nome</option>
+          <option value="creditoUsado">Maior crédito usado</option>
+          <option value="recargas">Maior valor recarregado</option>
+          <option value="saldoAtual">Maior saldo atual</option>
+          <option value="pedidos">Maior quantidade de pedidos</option>
+        </select>
+      </div>
+
+      <div class="form-grid" style="margin-top: 14px;">
+        <input id="buscaMotoboyRelatorio" placeholder="Motoboy: nome, CPF ou telefone">
+
+        <select id="statusMotoboyRelatorio">
+          <option value="todos">Motoboys: todos</option>
+          <option value="online">Somente online</option>
+          <option value="offline">Somente offline</option>
+          <option value="aprovado">Somente aprovados</option>
+          <option value="pendente">Somente pendentes</option>
+          <option value="bloqueado">Somente bloqueados</option>
+          <option value="liberado">Somente liberados</option>
+        </select>
+
+        <select id="ordenacaoMotoboyRelatorio">
+          <option value="nome">Ordenar motoboys por nome</option>
+          <option value="valorGerado">Maior valor gerado</option>
+          <option value="valorPago">Maior valor pago</option>
+          <option value="valorAberto">Maior valor em aberto</option>
+          <option value="entregas">Maior quantidade de entregas</option>
+        </select>
+      </div>
+
+      <div class="form-grid" style="margin-top: 14px;">
         <button id="btnAplicarRelatorio" class="primary-btn" type="button">
           Aplicar filtros
         </button>
@@ -96,7 +139,7 @@
 
   <script type="module">
     import { protegerPagina, logout } from "../js/auth.js";
-    import { carregarDashboardAdmin } from "../js/admin-dashboard.js?v=230";
+    import { carregarDashboardAdmin } from "../js/admin-dashboard.js?v=270";
 
     protegerPagina("admin");
     carregarDashboardAdmin();
