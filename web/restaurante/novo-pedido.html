@@ -2,11 +2,11 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>Novo Pedido 2 - Cheguei Delivery</title>
+  <title>Novo Pedido - Cheguei Delivery</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <link rel="stylesheet" href="../css/base.css">
-  <link rel="stylesheet" href="../css/restaurante.css?v=420">
+  <link rel="stylesheet" href="../css/restaurante.css?v=430">
 </head>
 
 <body>
@@ -88,7 +88,9 @@
         <div id="enderecoConfirmadoBox" class="confirmed-address hidden">
           <span>Endereço confirmado</span>
           <strong id="enderecoConfirmadoTexto">---</strong>
-          <p id="enderecoConfirmadoDetalhe">Confira se o endereço está correto antes de criar o pedido.</p>
+          <p id="enderecoConfirmadoDetalhe">
+            Confira se o endereço está correto antes de criar o pedido.
+          </p>
         </div>
 
         <input
@@ -184,20 +186,10 @@
       buscarEnderecoEntrega,
       calcularPedido,
       criarPedido
-    } from "../js/restaurante.js?v=420";
-
-    import {
-      iniciarFluxoPedidosRestaurante
-    } from "../js/fluxo-pedidos-restaurante.js?v=420";
-
-    import {
-      carregarPedidosPendentesRestaurante
-    } from "../js/restaurante-pendentes.js?v=420";
+    } from "../js/restaurante.js?v=430";
 
     protegerRestaurante();
     carregarNovoPedidoRestaurante();
-    iniciarFluxoPedidosRestaurante();
-    carregarPedidosPendentesRestaurante();
 
     const btnBuscarEndereco = document.getElementById("btnBuscarEndereco");
     if (btnBuscarEndereco) {
@@ -226,6 +218,35 @@
     if (btnCriarPedido) {
       btnCriarPedido.addEventListener("click", criarPedido);
     }
+
+    import("../js/fluxo-pedidos-restaurante.js?v=430")
+      .then((modulo) => {
+        if (typeof modulo.iniciarFluxoPedidosRestaurante === "function") {
+          modulo.iniciarFluxoPedidosRestaurante();
+        }
+      })
+      .catch((erro) => {
+        console.warn("Fluxo de pedidos não carregado:", erro);
+      });
+
+    import("../js/restaurante-pendentes.js?v=430")
+      .then((modulo) => {
+        if (typeof modulo.carregarPedidosPendentesRestaurante === "function") {
+          modulo.carregarPedidosPendentesRestaurante();
+        }
+      })
+      .catch((erro) => {
+        console.warn("Lista de pedidos pendentes não carregada:", erro);
+
+        const lista = document.getElementById("listaPedidosPendentesRestaurante");
+        if (lista) {
+          lista.innerHTML = `
+            <div class="empty-mini">
+              Lista de pedidos pendentes indisponível no momento.
+            </div>
+          `;
+        }
+      });
   </script>
 </body>
 </html>
