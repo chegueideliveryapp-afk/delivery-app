@@ -1,14 +1,12 @@
 import { auth, db } from "./firebase.js";
 
 import {
-  onAuthStateChanged,
-  signOut
+  onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 import {
   collection,
   doc,
-  getDoc,
   onSnapshot,
   query,
   where,
@@ -32,132 +30,106 @@ function dataTexto(timestamp) {
   });
 }
 
-function setHtml(id, html) {
-  const el = document.getElementById(id);
-  if (el) el.innerHTML = html;
+function statusTexto(status) {
+  if (status === "pendente") return "Buscando motoboy";
+  if (status === "sem_motoboy") return "Sem motoboy";
+  if (status === "aceito") return "Aceito";
+  if (status === "entregue") return "Entregue";
+  return status || "Pendente";
+}
+
+function statusClasse(status) {
+  if (status === "sem_motoboy") return "recusada";
+  if (status === "aceito") return "aprovada";
+  return "pendente";
 }
 
 function pagamentoTexto(forma) {
-  if (forma === "pix") return "Pix";
   if (forma === "cartao") return "Cartão";
   if (forma === "dinheiro") return "Dinheiro";
-  return "Não informado";
+  return "Pix";
 }
 
-async function validarRestaurante(user) {
-  const userSnap = await getDoc(doc(db, "users", user.uid));
-
-  if (!userSnap.exists()) {
-    await signOut(auth);
-    window.location.href = "./login.html";
-    return false;
-  }
-
-  const perfil = userSnap.data();
-
-  if (
-    perfil.role !== "restaurante" ||
-    perfil.ativo !== true ||
-    perfil.bloqueado === true
-  ) {
-    await signOut(auth);
-    window.location.href = "./login.html";
-    return false;
-  }
-
-  return true;
-}
-
-function renderizarPedido(pedido) {
-  const semMotoboy = pedido.status === "sem_motoboy";
+function renderPedido(id, pedido) {
+  const podeTentarNovamente = pedido.status === "sem_motoboy";
 
   return `
-    <div class="recharge-item order-history-item">
-      <div>
-        <strong>${pedido.enderecoEntrega || "Endereço não informado"}</strong>
+    <div class="pending-order-item">
+      <div class="pending-order-main">
+        <div class="pending-order-top">
+          <strong>${pedido.enderecoEntrega || "Endereço não informado"}</strong>
 
-        <p>Status: ${semMotoboy ? "sem motoboy encontrado" : "aguardando motoboy"}</p>
-        <p>Pagamento: ${pagamentoTexto(pedido.formaPagamento)}</p>
-        <p>Retorno: ${pedido.precisaRetorno ? "Sim" : "Não"}</p>
-        <p>Distância: ${Number(pedido.distanciaKm || 0).toFixed(2)} km</p>
-        <p>Motoboy: ainda não aceito</p>
+          <span class="status-pill ${statusClasse(pedido.status)}">
+            ${statusTexto(pedido.status)}
+          </span>
+        </div>
 
-        <p>Valor total: ${dinheiro(pedido.valorTotal)}</p>
-        <p>Taxa Cheguei: ${dinheiro(pedido.taxaSistema)}</p>
-        <p>Valor motoboy: ${dinheiro(pedido.valorMotoboy)}</p>
-
-        ${
-          pedido.raioAtualKm
-            ? `<p>Raio inicial: ${pedido.raioAtualKm} km</p>`
-            : ""
-        }
+        <p><b>Status:</b> ${statusTexto(pedido.status)}</p>
+        <p><b>Pagamento:</b> ${pagamentoTexto(pedido.formaPagamento)}</p>
+        <p><b>Retorno:</b> ${pedido.precisaRetorno ? "Sim" : "Não"}</p>
+        <p><b>Distância:</b> ${Number(pedido.distanciaKm || 0).toFixed(2)} km</p>
+        <p><b>Raio atual:</b> ${pedido.raioAtualKm || 3} km</p>
+        <p><b>Motoboy:</b> ${pedido.motoboyNome || "Ainda não aceito"}</p>
+        <p><b>Valor motoboy:</b> ${dinheiro(pedido.valorMotoboy)}</p>
+        <p><b>Taxa Cheguei:</b> ${dinheiro(pedido.taxaSistema)}</p>
+        <p><b>Total debitado:</b> ${dinheiro(pedido.valorTotal)}</p>
+        <p><b>Criado em:</b> ${dataTexto(pedido.createdAt)}</p>
 
         ${
           pedido.observacao
-            ? `<p>Observação: ${pedido.observacao}</p>`
-            : ""
-        }
-
-        <p>Criado em: ${dataTexto(pedido.createdAt)}</p>
-
-        ${
-          semMotoboy
-            ? `<p>Encerrado em: ${dataTexto(pedido.semMotoboyAt)}</p>
-               <p>Motivo: ${pedido.motivoSemMotoboy || "Nenhum motoboy aceitou dentro dos raios configurados."}</p>`
-            : ""
-        }
-
-        ${
-          semMotoboy
-            ? `<button class="support-link" data-action="tentarNovamente" data-id="${pedido.id}">
-                Tentar novamente
-              </button>`
+            ? `<p><b>Observação:</b> ${pedido.observacao}</p>`
             : ""
         }
       </div>
 
-      <span class="status-pill ${semMotoboy ? "recusada" : "pendente"}">
-        ${semMotoboy ? "Sem motoboy" : "Pendente"}
-      </span>
+      ${
+        podeTentarNovamente
+          ? `
+            <button
+              class="secondary-action retry-order-btn"
+              type="button"
+              data-action="tentarNovamente"
+              data-id="${id}"
+            >
+              Tentar novamente
+            </button>
+          `
+          : ""
+      }
     </div>
   `;
 }
 
-async function tentarNovamentePedido(pedidoId) {
+async function tentarNovamente(pedidoId) {
   const pedidoRef = doc(db, "pedidos", pedidoId);
 
   await updateDoc(pedidoRef, {
     status: "pendente",
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+    motoboyId: "",
+    motoboyNome: "",
     recusadoPor: [],
     raioAtualKm: 3,
     tentativaBusca: 0,
-    motoboyId: "",
-    motoboyNome: "",
-    aceitoAt: null,
-    entregueAt: null,
     semMotoboyAt: null,
-    motivoSemMotoboy: ""
+    ultimaExpansaoAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
   });
 }
 
 function configurarBotoes() {
-  document.querySelectorAll("button[data-action='tentarNovamente']").forEach((button) => {
+  document.querySelectorAll("[data-action='tentarNovamente']").forEach((button) => {
     button.addEventListener("click", async () => {
       const pedidoId = button.dataset.id;
 
-      const confirmar = confirm(
-        "Tentar buscar motoboy novamente para este pedido?"
-      );
+      const confirmar = confirm("Deseja tentar buscar motoboy novamente para este pedido?");
 
       if (!confirmar) return;
 
       button.disabled = true;
-      button.innerText = "Tentando...";
+      button.innerText = "Reiniciando busca...";
 
       try {
-        await tentarNovamentePedido(pedidoId);
+        await tentarNovamente(pedidoId);
       } catch (erro) {
         console.error(erro);
         alert("Erro ao tentar novamente.");
@@ -168,16 +140,21 @@ function configurarBotoes() {
   });
 }
 
-export function carregarPedidosPendentesNovoPedido() {
-  onAuthStateChanged(auth, async (user) => {
+export function carregarPedidosPendentesRestaurante() {
+  const lista = document.getElementById("listaPedidosPendentesRestaurante");
+
+  if (!lista) {
+    console.error("Elemento listaPedidosPendentesRestaurante não encontrado.");
+    return;
+  }
+
+  lista.innerHTML = `<div class="empty-mini">Carregando pedidos pendentes...</div>`;
+
+  onAuthStateChanged(auth, (user) => {
     if (!user) {
-      window.location.href = "./login.html";
+      lista.innerHTML = `<div class="empty-mini">Faça login para ver os pedidos.</div>`;
       return;
     }
-
-    const valido = await validarRestaurante(user);
-
-    if (!valido) return;
 
     const q = query(
       collection(db, "pedidos"),
@@ -190,16 +167,16 @@ export function carregarPedidosPendentesNovoPedido() {
         const pedidos = [];
 
         snapshot.forEach((docSnap) => {
-          const pedido = {
-            id: docSnap.id,
-            ...docSnap.data()
-          };
+          const pedido = docSnap.data();
 
           if (
             pedido.status === "pendente" ||
             pedido.status === "sem_motoboy"
           ) {
-            pedidos.push(pedido);
+            pedidos.push({
+              id: docSnap.id,
+              ...pedido
+            });
           }
         });
 
@@ -210,27 +187,28 @@ export function carregarPedidosPendentesNovoPedido() {
         });
 
         if (!pedidos.length) {
-          setHtml(
-            "listaPedidosPendentesNovoPedido",
-            `<div class="empty-mini">Nenhum pedido pendente no momento.</div>`
-          );
+          lista.innerHTML = `
+            <div class="empty-mini">
+              Nenhum pedido pendente no momento.
+            </div>
+          `;
           return;
         }
 
-        setHtml(
-          "listaPedidosPendentesNovoPedido",
-          pedidos.map(renderizarPedido).join("")
-        );
+        lista.innerHTML = pedidos
+          .map((pedido) => renderPedido(pedido.id, pedido))
+          .join("");
 
         configurarBotoes();
       },
       (erro) => {
-        console.error(erro);
+        console.error("Erro ao carregar pedidos pendentes:", erro);
 
-        setHtml(
-          "listaPedidosPendentesNovoPedido",
-          `<div class="empty-mini">Erro ao carregar pedidos pendentes.</div>`
-        );
+        lista.innerHTML = `
+          <div class="empty-mini">
+            Erro ao carregar pedidos pendentes: ${erro.message}
+          </div>
+        `;
       }
     );
   });
