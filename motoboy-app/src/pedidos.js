@@ -23,7 +23,7 @@ let renderInterval = null;
 
 let configApp = {
   raiosBuscaKm: [3, 5, 10, 15],
-  raioKm: 10,
+  raioKm: 15,
   tempoPorRaioSegundos: 15
 };
 
@@ -58,33 +58,22 @@ function normalizarRaios(valor) {
   return [3, 5, 10, 15];
 }
 
-function timestampMillis(timestamp) {
-  if (timestamp?.toMillis) {
-    return timestamp.toMillis();
-  }
+function maiorRaioPedido(pedido) {
+  const raios = normalizarRaios(pedido.raiosBuscaKm || configApp.raiosBuscaKm);
+  const maior = Math.max(...raios);
 
-  return Date.now();
+  return Number.isFinite(maior) && maior > 0
+    ? maior
+    : Number(configApp.raioKm || 15);
 }
 
-function raioEfetivoPedido(pedido) {
+function raioAtualTexto(pedido) {
+  const raio = Number(pedido.raioAtualKm || 0);
+
+  if (raio > 0) return raio;
+
   const raios = normalizarRaios(pedido.raiosBuscaKm || configApp.raiosBuscaKm);
-  const tempoPorRaio = Number(
-    pedido.tempoPorRaioSegundos ||
-    configApp.tempoPorRaioSegundos ||
-    15
-  );
-
-  const criadoEm = timestampMillis(pedido.createdAt);
-  const segundos = Math.max(0, Math.floor((Date.now() - criadoEm) / 1000));
-  const indice = Math.min(
-    Math.floor(segundos / tempoPorRaio),
-    raios.length - 1
-  );
-
-  const raioPeloTempo = Number(raios[indice] || raios[0] || 3);
-  const raioDoDocumento = Number(pedido.raioAtualKm || 0);
-
-  return Math.max(raioDoDocumento, raioPeloTempo);
+  return raios[0] || 3;
 }
 
 function distanciaKm(lat1, lng1, lat2, lng2) {
@@ -179,20 +168,21 @@ function statusTexto(status) {
   return status || "Sem status";
 }
 
-function pedidoEstaProximo(pedido) {
+function pedidoEstaDentroDoRaioMaximo(pedido) {
   const distancia = distanciaAteRestaurante(pedido);
 
   if (distancia === null) return false;
 
-  const raioAtual = raioEfetivoPedido(pedido);
+  const raioMaximo = maiorRaioPedido(pedido);
 
-  return distancia <= raioAtual;
+  return distancia <= raioMaximo;
 }
 
 function renderPedidoDisponivel(id, pedido) {
   const distanciaRestaurante = distanciaAteRestaurante(pedido);
   const distanciaEntrega = Number(pedido.distanciaKm || 0);
-  const raioAtual = raioEfetivoPedido(pedido);
+  const raioAtual = raioAtualTexto(pedido);
+  const raioMaximo = maiorRaioPedido(pedido);
 
   return `
     <div class="delivery-card">
@@ -208,6 +198,7 @@ function renderPedidoDisponivel(id, pedido) {
       <p><b>Distância até restaurante:</b> ${distanciaRestaurante !== null ? distanciaRestaurante.toFixed(2) + " km" : "---"}</p>
       <p><b>Distância da entrega:</b> ${distanciaEntrega ? distanciaEntrega.toFixed(2) + " km" : "---"}</p>
       <p><b>Raio atual:</b> ${raioAtual} km</p>
+      <p><b>Raio máximo:</b> ${raioMaximo} km</p>
       <p><b>Pagamento:</b> ${pagamentoTexto(pedido.formaPagamento)}</p>
       <p><b>Retorno:</b> ${textoRetorno(pedido)}</p>
 
@@ -327,7 +318,7 @@ function renderizarPedidos() {
       pedido.status === "pendente" &&
       !pedido.motoboyId &&
       !recusados.includes(uid) &&
-      pedidoEstaProximo(pedido)
+      pedidoEstaDentroDoRaioMaximo(pedido)
     );
   });
 
@@ -338,7 +329,7 @@ function renderizarPedidos() {
     setHtml("listaPedidosMotoboy", `
       <div class="empty-state">
         Nenhuma corrida próxima no momento.<br>
-        ${totalPendentes ? `${totalPendentes} pedido(s) pendente(s), mas fora do seu raio atual.` : ""}
+        ${totalPendentes ? `${totalPendentes} pedido(s) pendente(s), mas fora do raio máximo permitido.` : ""}
       </div>
     `);
     return;
