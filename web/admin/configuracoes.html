@@ -7,6 +7,70 @@
 
   <link rel="stylesheet" href="../css/base.css">
   <link rel="stylesheet" href="../css/admin.css">
+
+  <style>
+    .config-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      margin-top: 18px;
+    }
+
+    .config-field {
+      display: grid;
+      gap: 7px;
+    }
+
+    .config-field label {
+      color: #15171c;
+      font-weight: 900;
+      font-size: 14px;
+    }
+
+    .config-field input {
+      width: 100%;
+      min-height: 50px;
+      padding: 0 14px;
+      border: 1px solid #e4e7ec;
+      border-radius: 14px;
+      background: #fff;
+      color: #15171c;
+      outline: none;
+      font-size: 15px;
+    }
+
+    .config-field input:focus {
+      border-color: #ea1d2c;
+      box-shadow: 0 0 0 4px rgba(234, 29, 44, .1);
+    }
+
+    .field-help {
+      margin: 0;
+      color: #6f7682;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .formula-box {
+      margin-top: 18px;
+      padding: 16px;
+      border-radius: 18px;
+      background: #f5f6f8;
+      border: 1px solid #e4e7ec;
+    }
+
+    .formula-box strong {
+      display: block;
+      margin-bottom: 8px;
+      color: #15171c;
+    }
+
+    .formula-box p {
+      margin: 6px 0;
+      color: #4b5563;
+      line-height: 1.45;
+    }
+  </style>
 </head>
 
 <body>
@@ -19,66 +83,174 @@
     <section class="panel">
       <h2>Taxas da operação</h2>
       <p class="hint">
-        Esses valores controlam quanto o restaurante paga, quanto o motoboy recebe e como a busca por motoboys funciona.
+        Esses valores controlam quanto o restaurante paga, quanto o motoboy recebe e qual será o lucro da Cheguei.
       </p>
 
-      <div class="form-grid">
-        <input id="taxaSistemaPadrao" type="number" step="0.01" placeholder="Taxa Cheguei padrão. Ex: 5">
-
-        <input id="taxaBaseMotoboy" type="number" step="0.01" placeholder="Taxa base motoboy. Ex: 5">
-
-        <input id="valorKmMotoboy" type="number" step="0.01" placeholder="Valor por km do motoboy. Ex: 1.5">
-
-        <input id="valorMinimoMotoboy" type="number" step="0.01" placeholder="Valor mínimo motoboy. Ex: 10">
-
-        <input id="taxaRetornoMotoboy" type="number" step="0.01" placeholder="Taxa retorno motoboy. Ex: 5">
-
-        <input id="multiplicadorDemanda" type="number" step="0.01" placeholder="Multiplicador demanda. Ex: 1">
+      <div class="formula-box">
+        <strong>Fórmula usada nos pedidos</strong>
+        <p>Valor do motoboy = taxa base + distância em km x valor por km x multiplicador de demanda.</p>
+        <p>Se o resultado ficar abaixo do valor mínimo, o sistema usa o valor mínimo.</p>
+        <p>Se tiver retorno ao restaurante, soma a taxa de retorno.</p>
+        <p>Valor total do pedido = valor do motoboy + taxa Cheguei.</p>
       </div>
 
-      <p class="hint">
-        Use o multiplicador para chuva, eventos ou fim de ano. Exemplo: 1 normal, 1.2 aumenta 20%, 1.5 aumenta 50%.
-      </p>
+      <div class="config-grid">
+        <div class="config-field">
+          <label for="taxaSistemaPadrao">Taxa Cheguei padrão</label>
+          <input id="taxaSistemaPadrao" type="number" step="0.01" placeholder="Ex: 5">
+          <p class="field-help">
+            É o valor que fica para a plataforma em cada pedido. Exemplo: se colocar 5, a Cheguei ganha R$ 5,00 por entrega.
+          </p>
+        </div>
+
+        <div class="config-field">
+          <label for="taxaBaseMotoboy">Taxa base do motoboy</label>
+          <input id="taxaBaseMotoboy" type="number" step="0.01" placeholder="Ex: 7">
+          <p class="field-help">
+            Valor inicial pago ao motoboy antes de calcular a distância. Exemplo: R$ 7,00 só por aceitar/sair para a entrega.
+          </p>
+        </div>
+
+        <div class="config-field">
+          <label for="valorKmMotoboy">Valor por km do motoboy</label>
+          <input id="valorKmMotoboy" type="number" step="0.01" placeholder="Ex: 1.50">
+          <p class="field-help">
+            Valor pago por quilômetro da entrega. Exemplo: 10 km x R$ 1,50 = R$ 15,00, além da taxa base.
+          </p>
+        </div>
+
+        <div class="config-field">
+          <label for="valorMinimoMotoboy">Valor mínimo do motoboy</label>
+          <input id="valorMinimoMotoboy" type="number" step="0.01" placeholder="Ex: 10">
+          <p class="field-help">
+            Menor valor que o motoboy pode receber por uma entrega. Mesmo que o cálculo dê menos, o sistema respeita esse mínimo.
+          </p>
+        </div>
+
+        <div class="config-field">
+          <label for="taxaRetornoMotoboy">Taxa de retorno do motoboy</label>
+          <input id="taxaRetornoMotoboy" type="number" step="0.01" placeholder="Ex: 3">
+          <p class="field-help">
+            Valor extra pago ao motoboy quando ele precisa voltar ao restaurante com maquininha, troco, item ou qualquer retorno.
+          </p>
+        </div>
+
+        <div class="config-field">
+          <label for="multiplicadorDemanda">Multiplicador de demanda</label>
+          <input id="multiplicadorDemanda" type="number" step="0.01" placeholder="Ex: 1">
+          <p class="field-help">
+            Ajusta o valor do motoboy em situações especiais. Use 1 para normal, 1.2 para aumentar 20%, 1.5 para aumentar 50%.
+          </p>
+        </div>
+      </div>
+
+      <div class="formula-box">
+        <strong>Exemplo prático</strong>
+        <p>Taxa base: R$ 7,00</p>
+        <p>Distância: 10 km</p>
+        <p>Valor por km: R$ 1,50</p>
+        <p>Multiplicador: 1</p>
+        <p>Motoboy recebe: 7 + (10 x 1,50 x 1) = R$ 22,00</p>
+        <p>Se a Taxa Cheguei for R$ 5,00, o restaurante paga R$ 27,00.</p>
+      </div>
     </section>
 
     <section class="panel">
       <h2>Busca de motoboys</h2>
       <p class="hint">
-        Configure os raios progressivos e o tempo de expansão da busca.
+        Esses campos controlam como o sistema procura motoboys próximos ao restaurante.
       </p>
 
-      <div class="form-grid">
-        <input id="raiosBuscaKm" placeholder="Raios separados por vírgula. Ex: 3,5,10,15">
+      <div class="config-grid">
+        <div class="config-field">
+          <label for="raiosBuscaKm">Raios de busca em km</label>
+          <input id="raiosBuscaKm" placeholder="Ex: 3,5,10,15">
+          <p class="field-help">
+            Lista de distâncias usadas na busca. Exemplo: primeiro procura até 3 km, depois 5 km, depois 10 km, depois 15 km.
+          </p>
+        </div>
 
-        <input id="tempoPorRaioSegundos" type="number" step="1" placeholder="Tempo por raio em segundos. Ex: 15">
+        <div class="config-field">
+          <label for="tempoPorRaioSegundos">Tempo por raio em segundos</label>
+          <input id="tempoPorRaioSegundos" type="number" step="1" placeholder="Ex: 15">
+          <p class="field-help">
+            Tempo que o sistema espera antes de aumentar o raio. Exemplo: 15 significa 15 segundos em 3 km, depois passa para 5 km.
+          </p>
+        </div>
 
-        <input id="timeoutAceiteSegundos" type="number" step="1" placeholder="Timeout aceite em segundos. Ex: 15">
+        <div class="config-field">
+          <label for="timeoutAceiteSegundos">Tempo para aceitar corrida</label>
+          <input id="timeoutAceiteSegundos" type="number" step="1" placeholder="Ex: 15">
+          <p class="field-help">
+            Tempo ideal para o motoboy aceitar uma corrida. Por enquanto é configuração operacional; depois pode ser usado para timeout automático.
+          </p>
+        </div>
 
-        <input id="raioKm" type="number" step="0.01" placeholder="Raio padrão antigo. Ex: 10">
+        <div class="config-field">
+          <label for="raioKm">Raio padrão antigo</label>
+          <input id="raioKm" type="number" step="0.01" placeholder="Ex: 10">
+          <p class="field-help">
+            Campo de compatibilidade. Mantenha 10 se não tiver certeza. A regra principal agora é a lista de raios acima.
+          </p>
+        </div>
+      </div>
+
+      <div class="formula-box">
+        <strong>Exemplo da busca</strong>
+        <p>Raios: 3,5,10,15</p>
+        <p>Tempo por raio: 15 segundos</p>
+        <p>0 a 15 segundos: motoboys até 3 km recebem.</p>
+        <p>15 a 30 segundos: motoboys até 5 km recebem.</p>
+        <p>30 a 45 segundos: motoboys até 10 km recebem.</p>
+        <p>Depois de 45 segundos: motoboys até 15 km recebem.</p>
       </div>
     </section>
 
     <section class="panel">
       <h2>Pix e suporte</h2>
       <p class="hint">
-        Dados usados na tela de recarga Pix dos restaurantes.
+        Esses dados aparecem para o restaurante quando ele solicita recarga Pix.
       </p>
 
-      <div class="form-grid">
-        <input id="chavePix" placeholder="Chave Pix da empresa">
+      <div class="config-grid">
+        <div class="config-field">
+          <label for="chavePix">Chave Pix da empresa</label>
+          <input id="chavePix" placeholder="Ex: financeiro@cheguei.com">
+          <p class="field-help">
+            Chave Pix que o restaurante deve usar para fazer recarga pré-paga.
+          </p>
+        </div>
 
-        <input id="suporteWhatsapp" placeholder="WhatsApp suporte. Ex: 5519999999999">
+        <div class="config-field">
+          <label for="suporteWhatsapp">WhatsApp de suporte</label>
+          <input id="suporteWhatsapp" placeholder="Ex: 5519999999999">
+          <p class="field-help">
+            Número usado para o restaurante enviar comprovante ou falar com a administração. Use com DDI 55, DDD e número.
+          </p>
+        </div>
 
-        <input id="appMotoboyMinVersion" placeholder="Versão mínima do app motoboy. Ex: 1.0.0">
+        <div class="config-field">
+          <label for="appMotoboyMinVersion">Versão mínima do app motoboy</label>
+          <input id="appMotoboyMinVersion" placeholder="Ex: 1.0.0">
+          <p class="field-help">
+            Controle futuro para obrigar motoboys a atualizarem o aplicativo. Pode manter 1.0.0 por enquanto.
+          </p>
+        </div>
 
-        <input id="motivoMultiplicador" placeholder="Motivo do multiplicador. Ex: Chuva forte">
+        <div class="config-field">
+          <label for="motivoMultiplicador">Motivo do multiplicador</label>
+          <input id="motivoMultiplicador" placeholder="Ex: Chuva forte">
+          <p class="field-help">
+            Explique por que o multiplicador está diferente de 1. Exemplo: chuva, evento, feriado, fim de ano ou alta demanda.
+          </p>
+        </div>
       </div>
     </section>
 
     <section class="panel">
       <h2>Salvar</h2>
       <p class="hint">
-        Após salvar, novos pedidos já passam a usar essas taxas.
+        Após salvar, novos pedidos já passam a usar essas configurações.
       </p>
 
       <button id="btnSalvarConfig" class="primary-btn" type="button">
@@ -94,7 +266,7 @@
     import {
       carregarConfiguracoesAdmin,
       salvarConfiguracoesAdmin
-    } from "../js/admin-configuracoes.js?v=280";
+    } from "../js/admin-configuracoes.js?v=290";
 
     protegerPagina("admin");
     carregarConfiguracoesAdmin();
