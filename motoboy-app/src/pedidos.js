@@ -7,7 +7,6 @@ import {
 import {
   collection,
   doc,
-  getDoc,
   onSnapshot,
   query,
   where,
@@ -118,6 +117,12 @@ function renderizarPedidoPendente(id, pedido, distanciaKm) {
       <p><b>Retorno:</b> ${pedido.precisaRetorno ? "Sim" : "Não"}</p>
 
       ${
+        pedido.valorTroco
+          ? `<p><b>Troco:</b> ${dinheiro(pedido.valorTroco)}</p>`
+          : ""
+      }
+
+      ${
         pedido.observacao
           ? `<p><b>Observação:</b> ${pedido.observacao}</p>`
           : ""
@@ -156,6 +161,12 @@ function renderizarCorridaAtual(id, pedido) {
       <p><b>Pagamento:</b> ${pagamentoTexto[pedido.formaPagamento] || "Não informado"}</p>
       <p><b>Retorno:</b> ${pedido.precisaRetorno ? "Sim" : "Não"}</p>
       <p><b>Status:</b> ${pedido.status || "aceito"}</p>
+
+      ${
+        pedido.valorTroco
+          ? `<p><b>Troco:</b> ${dinheiro(pedido.valorTroco)}</p>`
+          : ""
+      }
 
       ${
         pedido.observacao
