@@ -10,59 +10,30 @@
 </head>
 
 <body>
-  <main class="admin-app">
-    <header class="admin-header">
-      <div>
-        <span>Cheguei Admin</span>
-        <h1>Pedidos</h1>
-      </div>
+  <header class="topbar">
+    <h1>Pedidos</h1>
+    <a class="topbar-link" href="./dashboard.html">Voltar</a>
+  </header>
 
-      <a class="back-link" href="./dashboard.html">Voltar</a>
-    </header>
+  <main class="page">
+    <section class="panel">
+      <h2>Pedidos criados</h2>
+      <p class="hint">
+        Acompanhe pedidos pendentes, em andamento, entregues e faça correções operacionais quando necessário.
+      </p>
 
-    <section class="admin-card">
-      <div class="section-head">
-        <div>
-          <span>Operação</span>
-          <h2>Pedidos criados</h2>
-        </div>
-
-        <strong id="totalPedidos">0 pedidos</strong>
-      </div>
-
-      <div id="listaPedidosAdmin" class="admin-list">
+      <div id="listaPedidosAdmin">
         <div class="empty">Carregando pedidos...</div>
       </div>
     </section>
   </main>
 
   <script type="module">
-    const lista = document.getElementById("listaPedidosAdmin");
+    import { protegerPagina } from "../js/auth.js";
+    import { carregarPedidosAdmin } from "../js/admin-pedidos.js?v=100";
 
-    try {
-      const authModule = await import("../js/auth.js?v=2");
-      const pedidosModule = await import("../js/pedidos.js?v=2");
-
-      if (!authModule.protegerAdmin) {
-        throw new Error("A função protegerAdmin não foi encontrada em web/js/auth.js");
-      }
-
-      if (!pedidosModule.carregarPedidosAdmin) {
-        throw new Error("A função carregarPedidosAdmin não foi encontrada em web/js/pedidos.js");
-      }
-
-      authModule.protegerAdmin();
-      pedidosModule.carregarPedidosAdmin();
-    } catch (erro) {
-      console.error(erro);
-
-      lista.innerHTML = `
-        <div class="empty">
-          Erro ao carregar a página de pedidos:<br>
-          ${erro.message}
-        </div>
-      `;
-    }
+    protegerPagina("admin");
+    carregarPedidosAdmin();
   </script>
 </body>
 </html>
