@@ -23,14 +23,16 @@
       margin-top: 16px;
     }
 
-    .map-legend {
+    .map-legend,
+    .map-filters {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
       margin-top: 16px;
     }
 
-    .legend-item {
+    .legend-item,
+    .filter-item {
       display: inline-flex;
       align-items: center;
       gap: 8px;
@@ -42,6 +44,12 @@
       font-weight: 900;
     }
 
+    .filter-item input {
+      width: 16px;
+      height: 16px;
+      accent-color: #ea1d2c;
+    }
+
     .legend-dot {
       width: 11px;
       height: 11px;
@@ -51,6 +59,10 @@
 
     .legend-dot.green {
       background: #16a34a;
+    }
+
+    .legend-dot.gray {
+      background: #6b7280;
     }
 
     .legend-dot.blue {
@@ -122,7 +134,7 @@
     <section class="panel">
       <h2>Operação em tempo real</h2>
       <p class="hint">
-        Acompanhe motoboys online, pedidos pendentes, corridas aceitas e restaurantes cadastrados.
+        Acompanhe motoboys online/offline, pedidos pendentes, corridas em andamento e restaurantes cadastrados.
       </p>
 
       <div class="map-grid">
@@ -147,10 +159,42 @@
         </div>
       </div>
 
+      <div class="map-filters">
+        <label class="filter-item">
+          <input type="checkbox" data-map-filter="motoboysOnline" checked>
+          Motoboys online
+        </label>
+
+        <label class="filter-item">
+          <input type="checkbox" data-map-filter="motoboysOffline" checked>
+          Motoboys offline
+        </label>
+
+        <label class="filter-item">
+          <input type="checkbox" data-map-filter="pedidosPendentes" checked>
+          Pedidos pendentes
+        </label>
+
+        <label class="filter-item">
+          <input type="checkbox" data-map-filter="corridasAndamento" checked>
+          Corridas em andamento
+        </label>
+
+        <label class="filter-item">
+          <input type="checkbox" data-map-filter="restaurantes" checked>
+          Restaurantes
+        </label>
+      </div>
+
       <div class="map-legend">
         <div class="legend-item">
           <span class="legend-dot green"></span>
           Motoboy online
+        </div>
+
+        <div class="legend-item">
+          <span class="legend-dot gray"></span>
+          Motoboy offline
         </div>
 
         <div class="legend-item">
@@ -177,7 +221,7 @@
 
   <script type="module">
     import { protegerPagina } from "../js/auth.js";
-    import { carregarMapaAdmin } from "../js/admin-mapa.js?v=250";
+    import { carregarMapaAdmin } from "../js/admin-mapa.js?v=260";
 
     protegerPagina("admin");
     carregarMapaAdmin();
