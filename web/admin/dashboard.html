@@ -3,13 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <title>Painel Admin - Cheguei Delivery</title>
-  <link rel="stylesheet" href="../css/base.css">
-  <link rel="stylesheet" href="../css/admin.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="../css/admin.css?v=80">
 </head>
+
 <body>
   <header class="topbar">
     <h1>Painel Admin</h1>
-    <button id="btnSair">Sair</button>
+
+    <button id="btnSair" type="button">
+      Sair
+    </button>
   </header>
 
   <main class="container">
@@ -21,10 +26,28 @@
     <a class="menu-card" href="./mapa.html">Mapa</a>
   </main>
 
-  <script type="module">
-    import { protegerPagina, logout } from "../js/auth.js";
+  <section class="page">
+    <div class="panel">
+      <h2>Distribuição automática</h2>
+      <p class="hint">
+        Enquanto este painel estiver aberto, o sistema aumenta automaticamente o raio dos pedidos pendentes.
+      </p>
 
-    protegerPagina("admin");
+      <div class="status-row">
+        <span class="badge green">Ativo</span>
+        <span class="badge gray">3 km</span>
+        <span class="badge gray">5 km</span>
+        <span class="badge gray">10 km</span>
+        <span class="badge gray">15 km</span>
+      </div>
+    </div>
+  </section>
+
+  <script type="module">
+    import { protegerAdmin, logout } from "../js/auth.js?v=80";
+    import "../js/distribuicao.js?v=80";
+
+    protegerAdmin();
 
     document.getElementById("btnSair").addEventListener("click", async () => {
       await logout();
@@ -33,4 +56,3 @@
   </script>
 </body>
 </html>
-
