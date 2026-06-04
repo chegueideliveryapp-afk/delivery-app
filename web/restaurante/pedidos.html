@@ -1,1 +1,54 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Pedidos - Cheguei Delivery</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/restaurante.css">
+</head>
+
+<body>
+  <main class="restaurant-app">
+    <header class="restaurant-header">
+      <div>
+        <span>Cheguei Restaurantes</span>
+        <h1>Pedidos</h1>
+      </div>
+
+      <a class="back-link" href="./dashboard.html">Voltar</a>
+    </header>
+
+    <section class="wallet-card">
+      <span>Total de pedidos</span>
+      <strong id="totalPedidosRestaurante">Carregando...</strong>
+      <p>Acompanhe aqui os pedidos criados pelo restaurante.</p>
+    </section>
+
+    <section class="history-card info-card">
+      <span>Operação</span>
+      <strong>Pedidos criados</strong>
+
+      <div id="listaPedidosRestaurante">
+        <div class="empty-mini">
+          Carregando pedidos...
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import {
+      protegerRestaurante
+    } from "../js/restaurante.js?v=150";
+
+    import {
+      carregarPedidosRestaurante
+    } from "../js/restaurante-pedidos.js?v=150";
+
+    protegerRestaurante();
+    carregarPedidosRestaurante();
+  </script>
+</body>
+</html>
