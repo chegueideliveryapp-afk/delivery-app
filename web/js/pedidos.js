@@ -1,10 +1,25 @@
-import { db } from "./firebase.js";
+import { auth, db } from "./firebase.js";
+
+import {
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 import {
   collection,
+  doc,
   onSnapshot,
-  query
+  query,
+  where,
+  runTransaction,
+  updateDoc,
+  arrayUnion,
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+let uidMotoboy = null;
+let motoboyAtual = null;
+let unsubscribePedidosPendentes = null;
+let unsubscribeMinhasCorridas = null;
 
 function dinheiro(valor) {
   return Number(valor || 0).toLocaleString("pt-BR", {
@@ -13,155 +28,511 @@ function dinheiro(valor) {
   });
 }
 
-function dataTexto(timestamp) {
-  if (!timestamp?.toDate) return "Data não informada";
-
-  return timestamp.toDate().toLocaleString("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short"
-  });
+function setHtml(id, html) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = html;
 }
 
-function statusTexto(status) {
-  const mapa = {
-    pendente: "Pendente",
-    sem_motoboy: "Sem motoboy",
-    aceito: "Aceito",
-    em_rota: "Em rota",
-    entregue: "Entregue",
-    cancelado: "Cancelado"
-  };
+function calcularDistanciaKm(lat1, lng1, lat2, lng2) {
+  const raioTerraKm = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
 
-  return mapa[status] || status || "Sem status";
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) *
+    Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return raioTerraKm * c;
 }
 
-function statusClasse(status) {
-  const mapa = {
-    pendente: "yellow",
-    sem_motoboy: "red",
-    aceito: "blue",
-    em_rota: "blue",
-    entregue: "green",
-    cancelado: "red"
-  };
-
-  return mapa[status] || "yellow";
+function motoboyPodeReceberPedidos() {
+  return (
+    motoboyAtual &&
+    motoboyAtual.aprovado === true &&
+    motoboyAtual.ativo !== false &&
+    motoboyAtual.bloqueado !== true &&
+    motoboyAtual.online === true &&
+    motoboyAtual.location &&
+    Number(motoboyAtual.location.lat) &&
+    Number(motoboyAtual.location.lng)
+  );
 }
 
-function pagamentoTexto(forma) {
-  const mapa = {
+function pedidoJaFoiRecusado(pedido) {
+  return Array.isArray(pedido.recusadoPor) && pedido.recusadoPor.includes(uidMotoboy);
+}
+
+function distanciaAteRestaurante(pedido) {
+  const motoLat = Number(motoboyAtual?.location?.lat);
+  const motoLng = Number(motoboyAtual?.location?.lng);
+
+  const restauranteLat = Number(
+    pedido.restauranteLocation?.lat ??
+    pedido.restauranteLat ??
+    pedido.lat
+  );
+
+  const restauranteLng = Number(
+    pedido.restauranteLocation?.lng ??
+    pedido.restauranteLng ??
+    pedido.lng
+  );
+
+  if (!motoLat || !motoLng || !restauranteLat || !restauranteLng) {
+    return null;
+  }
+
+  return calcularDistanciaKm(
+    motoLat,
+    motoLng,
+    restauranteLat,
+    restauranteLng
+  );
+}
+
+function renderizarPedidoPendente(id, pedido, distanciaKm) {
+  const pagamentoTexto = {
     pix: "Pix",
     cartao: "Cartão",
     dinheiro: "Dinheiro"
   };
 
-  return mapa[forma] || "Não informado";
-}
+  return `
+    <div class="delivery-card">
+      <div class="delivery-topline">
+        <span>Nova corrida</span>
+        <strong>${dinheiro(pedido.valorMotoboy)}</strong>
+      </div>
 
-function retornoTexto(pedido) {
-  if (!pedido.precisaRetorno) return "Não";
+      <h3>${pedido.restauranteNome || "Restaurante"}</h3>
 
-  if (pedido.formaPagamento === "dinheiro" && pedido.valorTroco) {
-    return `Sim - troco para ${dinheiro(pedido.valorTroco)}`;
-  }
+      <p><b>Entrega:</b> ${pedido.enderecoEntrega || "Endereço não informado"}</p>
+      <p><b>Distância até restaurante:</b> ${distanciaKm.toFixed(2)} km</p>
+      <p><b>Distância da entrega:</b> ${Number(pedido.distanciaKm || 0).toFixed(2)} km</p>
+      <p><b>Pagamento:</b> ${pagamentoTexto[pedido.formaPagamento] || "Não informado"}</p>
+      <p><b>Retorno:</b> ${pedido.precisaRetorno ? "Sim" : "Não"}</p>
 
-  return "Sim";
-}
-
-export function carregarPedidosAdmin() {
-  const lista = document.getElementById("listaPedidosAdmin");
-  const total = document.getElementById("totalPedidos");
-
-  if (!lista) {
-    console.error("Elemento listaPedidosAdmin não encontrado.");
-    return;
-  }
-
-  lista.innerHTML = `<div class="empty">Buscando pedidos...</div>`;
-
-  const q = query(collection(db, "pedidos"));
-
-  onSnapshot(
-    q,
-    (snapshot) => {
-      lista.innerHTML = "";
-
-      if (total) {
-        total.innerText = `${snapshot.size} pedido(s)`;
+      ${
+        pedido.valorTroco
+          ? `<p><b>Troco:</b> ${dinheiro(pedido.valorTroco)}</p>`
+          : ""
       }
 
-      if (snapshot.empty) {
-        lista.innerHTML = `<div class="empty">Nenhum pedido criado ainda.</div>`;
+      ${
+        pedido.observacao
+          ? `<p><b>Observação:</b> ${pedido.observacao}</p>`
+          : ""
+      }
+
+      <div class="delivery-actions">
+        <button class="accept-btn" data-action="aceitarPedido" data-id="${id}">
+          Aceitar
+        </button>
+
+        <button class="decline-btn" data-action="recusarPedido" data-id="${id}">
+          Recusar
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function renderizarCorridaAtual(id, pedido) {
+  const pagamentoTexto = {
+    pix: "Pix",
+    cartao: "Cartão",
+    dinheiro: "Dinheiro"
+  };
+
+  return `
+    <div class="delivery-card active-delivery">
+      <div class="delivery-topline">
+        <span>Corrida em andamento</span>
+        <strong>${dinheiro(pedido.valorMotoboy)}</strong>
+      </div>
+
+      <h3>${pedido.restauranteNome || "Restaurante"}</h3>
+
+      <p><b>Entrega:</b> ${pedido.enderecoEntrega || "Endereço não informado"}</p>
+      <p><b>Pagamento:</b> ${pagamentoTexto[pedido.formaPagamento] || "Não informado"}</p>
+      <p><b>Retorno:</b> ${pedido.precisaRetorno ? "Sim" : "Não"}</p>
+      <p><b>Status:</b> ${pedido.status || "aceito"}</p>
+
+      ${
+        pedido.valorTroco
+          ? `<p><b>Troco:</b> ${dinheiro(pedido.valorTroco)}</p>`
+          : ""
+      }
+
+      ${
+        pedido.observacao
+          ? `<p><b>Observação:</b> ${pedido.observacao}</p>`
+          : ""
+      }
+
+      <button class="finish-btn" data-action="finalizarPedido" data-id="${id}">
+        Finalizar entrega
+      </button>
+    </div>
+  `;
+}
+
+function configurarBotoesPedidos() {
+  document.querySelectorAll("button[data-action='aceitarPedido']").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const pedidoId = button.dataset.id;
+
+      button.disabled = true;
+      button.innerText = "Aceitando...";
+
+      try {
+        await aceitarPedido(pedidoId);
+      } catch (erro) {
+        console.error(erro);
+        alert(erro.message || "Erro ao aceitar pedido.");
+        button.disabled = false;
+        button.innerText = "Aceitar";
+      }
+    });
+  });
+
+  document.querySelectorAll("button[data-action='recusarPedido']").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const pedidoId = button.dataset.id;
+
+      button.disabled = true;
+      button.innerText = "Recusando...";
+
+      try {
+        await recusarPedido(pedidoId);
+      } catch (erro) {
+        console.error(erro);
+        alert("Erro ao recusar pedido.");
+        button.disabled = false;
+        button.innerText = "Recusar";
+      }
+    });
+  });
+
+  document.querySelectorAll("button[data-action='finalizarPedido']").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const pedidoId = button.dataset.id;
+
+      const confirmar = confirm("Confirmar finalização desta entrega?");
+
+      if (!confirmar) return;
+
+      button.disabled = true;
+      button.innerText = "Finalizando...";
+
+      try {
+        await finalizarEntrega(pedidoId);
+        alert("Entrega finalizada. Saldo atualizado.");
+      } catch (erro) {
+        console.error(erro);
+        alert(erro.message || "Erro ao finalizar entrega.");
+        button.disabled = false;
+        button.innerText = "Finalizar entrega";
+      }
+    });
+  });
+}
+
+function escutarPedidosPendentes() {
+  const listaId = "listaPedidosMotoboy";
+
+  if (unsubscribePedidosPendentes) {
+    unsubscribePedidosPendentes();
+  }
+
+  const q = query(
+    collection(db, "pedidos"),
+    where("status", "==", "pendente")
+  );
+
+  unsubscribePedidosPendentes = onSnapshot(
+    q,
+    (snapshot) => {
+      if (!motoboyPodeReceberPedidos()) {
+        setHtml(
+          listaId,
+          `<div class="empty-state">Fique online com GPS ativo para receber corridas próximas.</div>`
+        );
         return;
       }
 
-      const pedidos = [];
+      const pedidosDisponiveis = [];
 
       snapshot.forEach((docSnap) => {
-        pedidos.push({
+        const pedido = docSnap.data();
+
+        if (pedidoJaFoiRecusado(pedido)) return;
+
+        const distanciaKm = distanciaAteRestaurante(pedido);
+
+        if (distanciaKm === null) return;
+
+        const raioAtualKm = Number(pedido.raioAtualKm || 3);
+
+        if (distanciaKm > raioAtualKm) return;
+
+        pedidosDisponiveis.push({
           id: docSnap.id,
-          ...docSnap.data()
+          pedido,
+          distanciaKm
         });
       });
 
-      pedidos.sort((a, b) => {
-        const dataA = a.createdAt?.toMillis?.() || 0;
-        const dataB = b.createdAt?.toMillis?.() || 0;
-        return dataB - dataA;
-      });
+      pedidosDisponiveis.sort((a, b) => a.distanciaKm - b.distanciaKm);
 
-      pedidos.forEach((pedido) => {
-        const card = document.createElement("div");
-        card.className = "list-card";
+      if (!pedidosDisponiveis.length) {
+        setHtml(
+          listaId,
+          `<div class="empty-state">Nenhuma corrida próxima no momento.</div>`
+        );
+        return;
+      }
 
-        card.innerHTML = `
-          <div>
-            <div class="list-title-row">
-              <strong>${pedido.restauranteNome || "Restaurante não informado"}</strong>
-              <span class="badge ${statusClasse(pedido.status)}">
-                ${statusTexto(pedido.status)}
-              </span>
-            </div>
+      setHtml(
+        listaId,
+        pedidosDisponiveis
+          .map((item) => renderizarPedidoPendente(item.id, item.pedido, item.distanciaKm))
+          .join("")
+      );
 
-            <p><b>Endereço:</b> ${pedido.enderecoEntrega || "Não informado"}</p>
-            <p><b>Complemento:</b> ${pedido.enderecoComplemento || "Sem complemento"}</p>
-            <p><b>Distância:</b> ${Number(pedido.distanciaKm || 0).toFixed(2)} km</p>
-
-            <p><b>Pagamento:</b> ${pagamentoTexto(pedido.formaPagamento)}</p>
-            <p><b>Retorno:</b> ${retornoTexto(pedido)}</p>
-
-            <p><b>Motoboy:</b> ${pedido.motoboyNome || pedido.motoboyId || "Ainda não aceito"}</p>
-
-            <p><b>Valor motoboy:</b> ${dinheiro(pedido.valorMotoboy)}</p>
-            <p><b>Taxa Cheguei:</b> ${dinheiro(pedido.taxaSistema)}</p>
-            <p><b>Total:</b> ${dinheiro(pedido.valorTotal)}</p>
-
-            <p><b>Raio atual:</b> ${pedido.raioAtualKm || 0} km</p>
-            <p><b>Criado em:</b> ${dataTexto(pedido.createdAt)}</p>
-
-            ${
-              pedido.pedidoCopiado
-                ? `<details>
-                    <summary>Ver pedido copiado</summary>
-                    <pre>${pedido.pedidoCopiado}</pre>
-                  </details>`
-                : ""
-            }
-          </div>
-        `;
-
-        lista.appendChild(card);
-      });
+      configurarBotoesPedidos();
     },
     (erro) => {
-      console.error("Erro ao carregar pedidos:", erro);
-
-      lista.innerHTML = `
-        <div class="empty">
-          Erro ao carregar pedidos:<br>
-          ${erro.message}
-        </div>
-      `;
+      console.error(erro);
+      setHtml(
+        listaId,
+        `<div class="empty-state">Erro ao carregar pedidos. Confira as regras do Firestore.</div>`
+      );
     }
   );
 }
+
+function escutarMinhasCorridas() {
+  const listaId = "corridaAtualMotoboy";
+
+  if (unsubscribeMinhasCorridas) {
+    unsubscribeMinhasCorridas();
+  }
+
+  const q = query(
+    collection(db, "pedidos"),
+    where("motoboyId", "==", uidMotoboy)
+  );
+
+  unsubscribeMinhasCorridas = onSnapshot(
+    q,
+    (snapshot) => {
+      const corridas = [];
+
+      snapshot.forEach((docSnap) => {
+        const pedido = docSnap.data();
+
+        if (pedido.status === "aceito") {
+          corridas.push({
+            id: docSnap.id,
+            pedido
+          });
+        }
+      });
+
+      if (!corridas.length) {
+        setHtml(
+          listaId,
+          `<div class="empty-state">Nenhuma corrida em andamento.</div>`
+        );
+        return;
+      }
+
+      setHtml(
+        listaId,
+        corridas
+          .map((item) => renderizarCorridaAtual(item.id, item.pedido))
+          .join("")
+      );
+
+      configurarBotoesPedidos();
+    },
+    (erro) => {
+      console.error(erro);
+      setHtml(
+        listaId,
+        `<div class="empty-state">Erro ao carregar sua corrida atual.</div>`
+      );
+    }
+  );
+}
+
+async function aceitarPedido(pedidoId) {
+  if (!uidMotoboy || !motoboyAtual) {
+    throw new Error("Motoboy não carregado.");
+  }
+
+  if (!motoboyPodeReceberPedidos()) {
+    throw new Error("Você precisa estar online, aprovado e com GPS ativo.");
+  }
+
+  const pedidoRef = doc(db, "pedidos", pedidoId);
+  const motoboyRef = doc(db, "motoboys", uidMotoboy);
+
+  await runTransaction(db, async (transaction) => {
+    const pedidoSnap = await transaction.get(pedidoRef);
+    const motoboySnap = await transaction.get(motoboyRef);
+
+    if (!pedidoSnap.exists()) {
+      throw new Error("Pedido não encontrado.");
+    }
+
+    if (!motoboySnap.exists()) {
+      throw new Error("Motoboy não encontrado.");
+    }
+
+    const pedido = pedidoSnap.data();
+    const motoboy = motoboySnap.data();
+
+    if (pedido.status !== "pendente") {
+      throw new Error("Essa corrida já foi aceita por outro motoboy.");
+    }
+
+    if (Array.isArray(pedido.recusadoPor) && pedido.recusadoPor.includes(uidMotoboy)) {
+      throw new Error("Você já recusou essa corrida.");
+    }
+
+    if (
+      motoboy.aprovado !== true ||
+      motoboy.ativo === false ||
+      motoboy.bloqueado === true ||
+      motoboy.online !== true
+    ) {
+      throw new Error("Seu cadastro não está liberado para aceitar corrida.");
+    }
+
+    transaction.update(pedidoRef, {
+      status: "aceito",
+      motoboyId: uidMotoboy,
+      motoboyNome: motoboy.nome || "",
+      aceitoAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+  });
+}
+
+async function recusarPedido(pedidoId) {
+  if (!uidMotoboy) return;
+
+  const pedidoRef = doc(db, "pedidos", pedidoId);
+
+  await updateDoc(pedidoRef, {
+    recusadoPor: arrayUnion(uidMotoboy),
+    updatedAt: serverTimestamp()
+  });
+}
+
+async function finalizarEntrega(pedidoId) {
+  if (!uidMotoboy || !motoboyAtual) {
+    throw new Error("Motoboy não carregado.");
+  }
+
+  const pedidoRef = doc(db, "pedidos", pedidoId);
+  const motoboyRef = doc(db, "motoboys", uidMotoboy);
+  const ledgerRef = doc(collection(db, "ledger_motoboy"));
+
+  await runTransaction(db, async (transaction) => {
+    const pedidoSnap = await transaction.get(pedidoRef);
+    const motoboySnap = await transaction.get(motoboyRef);
+
+    if (!pedidoSnap.exists()) {
+      throw new Error("Pedido não encontrado.");
+    }
+
+    if (!motoboySnap.exists()) {
+      throw new Error("Motoboy não encontrado.");
+    }
+
+    const pedido = pedidoSnap.data();
+    const motoboy = motoboySnap.data();
+
+    if (pedido.status !== "aceito") {
+      throw new Error("Este pedido não está em andamento.");
+    }
+
+    if (pedido.motoboyId !== uidMotoboy) {
+      throw new Error("Este pedido pertence a outro motoboy.");
+    }
+
+    const valorMotoboy = Number(pedido.valorMotoboy || 0);
+
+    if (!valorMotoboy || valorMotoboy <= 0) {
+      throw new Error("Valor do motoboy inválido.");
+    }
+
+    const saldoAntes = Number(motoboy.saldo || 0);
+    const saldoDepois = saldoAntes + valorMotoboy;
+    const totalEntregasAtual = Number(motoboy.totalEntregas || 0);
+
+    transaction.update(pedidoRef, {
+      status: "entregue",
+      entregueAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+
+    transaction.update(motoboyRef, {
+      saldo: saldoDepois,
+      totalEntregas: totalEntregasAtual + 1,
+      updatedAt: serverTimestamp()
+    });
+
+    transaction.set(ledgerRef, {
+      motoboyId: uidMotoboy,
+      motoboyNome: motoboy.nome || "",
+      pedidoId,
+      restauranteId: pedido.restauranteId || "",
+      restauranteNome: pedido.restauranteNome || "",
+      tipo: "entrega",
+      valor: valorMotoboy,
+      saldoAntes,
+      saldoDepois,
+      pago: false,
+      semanaPagaId: null,
+      descricao: "Entrega finalizada",
+      createdAt: serverTimestamp()
+    });
+  });
+}
+
+function iniciarPedidosMotoboy() {
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      return;
+    }
+
+    uidMotoboy = user.uid;
+
+    const motoboyRef = doc(db, "motoboys", uidMotoboy);
+
+    onSnapshot(
+      motoboyRef,
+      (snap) => {
+        if (!snap.exists()) return;
+
+        motoboyAtual = snap.data();
+
+        escutarPedidosPendentes();
+        escutarMinhasCorridas();
+      },
+      (erro) => {
+        console.error(erro);
+      }
+    );
+  });
+}
+
+iniciarPedidosMotoboy();
