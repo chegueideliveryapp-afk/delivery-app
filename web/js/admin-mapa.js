@@ -6,10 +6,12 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 let mapa = null;
+
 let camadas = {
-  motoboys: [],
-  pedidos: [],
-  corridas: [],
+  motoboysOnline: [],
+  motoboysOffline: [],
+  pedidosPendentes: [],
+  corridasAndamento: [],
   restaurantes: []
 };
 
@@ -18,6 +20,14 @@ const estado = {
   pedidos: [],
   rastreamentos: [],
   restaurantes: []
+};
+
+const filtros = {
+  motoboysOnline: true,
+  motoboysOffline: true,
+  pedidosPendentes: true,
+  corridasAndamento: true,
+  restaurantes: true
 };
 
 function setText(id, texto) {
@@ -77,7 +87,8 @@ function criarIcone(cor, texto) {
 }
 
 const icones = {
-  motoboy: criarIcone("#16a34a", "M"),
+  motoboyOnline: criarIcone("#16a34a", "M"),
+  motoboyOffline: criarIcone("#6b7280", "M"),
   pedido: criarIcone("#f59e0b", "P"),
   corrida: criarIcone("#2563eb", "R"),
   restaurante: criarIcone("#ea1d2c", "L")
@@ -91,9 +102,10 @@ function limparCamadas() {
   });
 
   camadas = {
-    motoboys: [],
-    pedidos: [],
-    corridas: [],
+    motoboysOnline: [],
+    motoboysOffline: [],
+    pedidosPendentes: [],
+    corridasAndamento: [],
     restaurantes: []
   };
 }
@@ -102,41 +114,76 @@ function popup(html) {
   return `<div class="popup-map">${html}</div>`;
 }
 
+function obterPedidoAceitoPorId(pedidoId) {
+  return estado.pedidos.find((pedido) => {
+    return pedido.id === pedidoId && pedido.status === "aceito";
+  });
+}
+
 function renderizarMotoboys(bounds) {
-  const online = estado.motoboys.filter((m) => {
+  const motoboysComLocation = estado.motoboys.filter((m) => {
     const lat = Number(m.location?.lat);
     const lng = Number(m.location?.lng);
 
-    return m.online === true && lat && lng;
+    return lat && lng;
   });
+
+  const online = motoboysComLocation.filter((m) => m.online === true);
+  const offline = motoboysComLocation.filter((m) => m.online !== true);
 
   setText("totalMotoboysOnlineMapa", online.length);
 
-  online.forEach((m) => {
-    const lat = Number(m.location.lat);
-    const lng = Number(m.location.lng);
+  if (filtros.motoboysOnline) {
+    online.forEach((m) => {
+      const lat = Number(m.location.lat);
+      const lng = Number(m.location.lng);
 
-    const marker = L.marker([lat, lng], { icon: icones.motoboy })
-      .addTo(mapa)
-      .bindPopup(
-        popup(`
-          <strong>${m.nome || "Motoboy"}</strong>
-          <p>Status: Online</p>
-          <p>Telefone: ${m.telefone || "Não informado"}</p>
-          <p>Saldo: ${dinheiro(m.saldo)}</p>
-          <p>Última localização: ${dataTexto(m.ultimaLocalizacaoAt)}</p>
-        `)
-      );
+      const marker = L.marker([lat, lng], { icon: icones.motoboyOnline })
+        .addTo(mapa)
+        .bindPopup(
+          popup(`
+            <strong>${m.nome || "Motoboy"}</strong>
+            <p>Status: Online</p>
+            <p>Telefone: ${m.telefone || "Não informado"}</p>
+            <p>Saldo: ${dinheiro(m.saldo)}</p>
+            <p>Última localização: ${dataTexto(m.ultimaLocalizacaoAt)}</p>
+          `)
+        );
 
-    camadas.motoboys.push(marker);
-    bounds.push([lat, lng]);
-  });
+      camadas.motoboysOnline.push(marker);
+      bounds.push([lat, lng]);
+    });
+  }
+
+  if (filtros.motoboysOffline) {
+    offline.forEach((m) => {
+      const lat = Number(m.location.lat);
+      const lng = Number(m.location.lng);
+
+      const marker = L.marker([lat, lng], { icon: icones.motoboyOffline })
+        .addTo(mapa)
+        .bindPopup(
+          popup(`
+            <strong>${m.nome || "Motoboy"}</strong>
+            <p>Status: Offline</p>
+            <p>Telefone: ${m.telefone || "Não informado"}</p>
+            <p>Saldo: ${dinheiro(m.saldo)}</p>
+            <p>Última localização: ${dataTexto(m.ultimaLocalizacaoAt)}</p>
+          `)
+        );
+
+      camadas.motoboysOffline.push(marker);
+      bounds.push([lat, lng]);
+    });
+  }
 }
 
 function renderizarPedidosPendentes(bounds) {
   const pendentes = estado.pedidos.filter((p) => p.status === "pendente");
 
   setText("totalPedidosPendentesMapa", pendentes.length);
+
+  if (!filtros.pedidosPendentes) return;
 
   pendentes.forEach((p) => {
     const lat = Number(p.restauranteLocation?.lat);
@@ -157,19 +204,25 @@ function renderizarPedidosPendentes(bounds) {
         `)
       );
 
-    camadas.pedidos.push(marker);
+    camadas.pedidosPendentes.push(marker);
     bounds.push([lat, lng]);
   });
 }
 
 function renderizarCorridas(bounds) {
-  const corridas = estado.rastreamentos.filter((r) => r.status === "aceito");
+  const pedidosAceitos = estado.pedidos.filter((p) => p.status === "aceito");
 
-  setText("totalCorridasMapa", corridas.length);
+  setText("totalCorridasMapa", pedidosAceitos.length);
 
-  corridas.forEach((r) => {
-    const lat = Number(r.location?.lat);
-    const lng = Number(r.location?.lng);
+  if (!filtros.corridasAndamento) return;
+
+  pedidosAceitos.forEach((pedido) => {
+    const rastreamento = estado.rastreamentos.find((r) => {
+      return r.pedidoId === pedido.id;
+    });
+
+    const lat = Number(rastreamento?.location?.lat);
+    const lng = Number(rastreamento?.location?.lng);
 
     if (!lat || !lng) return;
 
@@ -177,15 +230,17 @@ function renderizarCorridas(bounds) {
       .addTo(mapa)
       .bindPopup(
         popup(`
-          <strong>${r.motoboyNome || "Motoboy em rota"}</strong>
+          <strong>${pedido.motoboyNome || rastreamento.motoboyNome || "Motoboy em rota"}</strong>
           <p>Status: Corrida em andamento</p>
-          <p>Restaurante: ${r.restauranteNome || "Não informado"}</p>
-          <p>Entrega: ${r.enderecoEntrega || "Não informado"}</p>
-          <p>Atualizado em: ${dataTexto(r.ultimaAtualizacaoAt)}</p>
+          <p>Restaurante: ${pedido.restauranteNome || rastreamento.restauranteNome || "Não informado"}</p>
+          <p>Entrega: ${pedido.enderecoEntrega || rastreamento.enderecoEntrega || "Não informado"}</p>
+          <p>Valor motoboy: ${dinheiro(pedido.valorMotoboy)}</p>
+          <p>Aceito em: ${dataTexto(pedido.aceitoAt)}</p>
+          <p>Localização atualizada: ${dataTexto(rastreamento.ultimaAtualizacaoAt)}</p>
         `)
       );
 
-    camadas.corridas.push(marker);
+    camadas.corridasAndamento.push(marker);
     bounds.push([lat, lng]);
   });
 }
@@ -199,6 +254,8 @@ function renderizarRestaurantes(bounds) {
   });
 
   setText("totalRestaurantesMapa", restaurantesValidos.length);
+
+  if (!filtros.restaurantes) return;
 
   restaurantesValidos.forEach((r) => {
     const lat = Number(r.location.lat);
@@ -241,6 +298,21 @@ function renderizarMapa() {
   }
 }
 
+function configurarFiltros() {
+  document.querySelectorAll("[data-map-filter]").forEach((input) => {
+    const filtro = input.dataset.mapFilter;
+
+    if (!(filtro in filtros)) return;
+
+    input.checked = filtros[filtro];
+
+    input.addEventListener("change", () => {
+      filtros[filtro] = input.checked;
+      renderizarMapa();
+    });
+  });
+}
+
 function escutarColecao(nomeColecao, chaveEstado) {
   onSnapshot(
     collection(db, nomeColecao),
@@ -264,6 +336,7 @@ function escutarColecao(nomeColecao, chaveEstado) {
 
 export function carregarMapaAdmin() {
   iniciarMapa();
+  configurarFiltros();
 
   escutarColecao("motoboys", "motoboys");
   escutarColecao("pedidos", "pedidos");
