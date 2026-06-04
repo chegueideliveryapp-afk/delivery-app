@@ -25,6 +25,8 @@ let restauranteLogado = null;
 let configApp = null;
 let pedidoCalculado = null;
 let googleMapsPromise = null;
+let placesService = null;
+let placesContainer = null;
 
 function dinheiro(valor) {
   return Number(valor || 0).toLocaleString("pt-BR", {
@@ -134,15 +136,15 @@ function calcularDistanciaKm(lat1, lng1, lat2, lng2) {
   return raioTerraKm * c;
 }
 
-function carregarGoogleMaps() {
-  if (window.google?.maps?.Geocoder) {
+function carregarGoogleMapsPlaces() {
+  if (window.google?.maps?.places?.PlacesService) {
     return Promise.resolve(window.google.maps);
   }
 
   if (googleMapsPromise) return googleMapsPromise;
 
   googleMapsPromise = new Promise((resolve, reject) => {
-    const callbackName = `initGoogleMapsCheguei_${Date.now()}`;
+    const callbackName = `initGoogleMapsPlacesCheguei_${Date.now()}`;
 
     window[callbackName] = () => {
       delete window[callbackName];
@@ -153,12 +155,28 @@ function carregarGoogleMaps() {
     script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=${callbackName}`;
     script.async = true;
     script.defer = true;
-    script.onerror = () => reject(new Error("Erro ao carregar Google Maps."));
+    script.onerror = () => reject(new Error("Erro ao carregar Google Maps Places."));
 
     document.head.appendChild(script);
   });
 
   return googleMapsPromise;
+}
+
+async function obterPlacesService() {
+  const maps = await carregarGoogleMapsPlaces();
+
+  if (!placesContainer) {
+    placesContainer = document.createElement("div");
+    placesContainer.style.display = "none";
+    document.body.appendChild(placesContainer);
+  }
+
+  if (!placesService) {
+    placesService = new maps.places.PlacesService(placesContainer);
+  }
+
+  return placesService;
 }
 
 async function buscarEnderecoNoCache(cacheId) {
@@ -191,36 +209,50 @@ async function salvarEnderecoNoCache(cacheId, dados) {
   );
 }
 
-async function geocodificarEndereco(enderecoCompleto) {
-  const maps = await carregarGoogleMaps();
+async function buscarEnderecoNoPlaces(enderecoCompleto) {
+  const service = await obterPlacesService();
 
   return new Promise((resolve, reject) => {
-    const geocoder = new maps.Geocoder();
-
-    geocoder.geocode(
+    service.findPlaceFromQuery(
       {
-        address: enderecoCompleto,
-        region: "BR",
-        componentRestrictions: {
-          country: "BR"
-        }
+        query: enderecoCompleto,
+        fields: [
+          "name",
+          "formatted_address",
+          "geometry"
+        ],
+        locationBias: restauranteLogado?.location
+          ? {
+              center: {
+                lat: Number(restauranteLogado.location.lat),
+                lng: Number(restauranteLogado.location.lng)
+              },
+              radius: 50000
+            }
+          : undefined
       },
       (results, status) => {
-        if (status !== "OK" || !results?.length) {
-          reject(new Error("Endereço não encontrado."));
+        const placesStatus = window.google.maps.places.PlacesServiceStatus;
+
+        if (status !== placesStatus.OK || !results?.length) {
+          reject(new Error(`Places não encontrou endereço. Status: ${status}`));
           return;
         }
 
         const resultado = results[0];
-        const location = resultado.geometry.location;
+
+        if (!resultado.geometry?.location) {
+          reject(new Error("Endereço encontrado sem localização."));
+          return;
+        }
 
         resolve({
-          enderecoFormatado: resultado.formatted_address,
+          enderecoFormatado: resultado.formatted_address || resultado.name || enderecoCompleto,
           location: {
-            lat: location.lat(),
-            lng: location.lng()
+            lat: resultado.geometry.location.lat(),
+            lng: resultado.geometry.location.lng()
           },
-          provider: "google_geocoder"
+          provider: "google_places"
         });
       }
     );
@@ -623,11 +655,11 @@ export function carregarNovoPedidoRestaurante() {
 }
 
 export async function buscarEnderecoEntrega() {
-  const msg = document.getElementById("mensagem");
   const resultado = document.getElementById("resultadoEndereco");
   const btn = document.getElementById("btnBuscarEndereco");
 
-  if (msg) msg.innerText = "";
+  mostrarMensagem("");
+
   if (resultado) resultado.innerHTML = "";
 
   if (!restauranteLogado) {
@@ -658,7 +690,7 @@ export async function buscarEnderecoEntrega() {
     let dadosEndereco = await buscarEnderecoNoCache(cacheId);
 
     if (!dadosEndereco) {
-      dadosEndereco = await geocodificarEndereco(endereco.enderecoCompleto);
+      dadosEndereco = await buscarEnderecoNoPlaces(endereco.enderecoCompleto);
 
       await salvarEnderecoNoCache(cacheId, {
         cacheId,
@@ -700,7 +732,7 @@ export async function buscarEnderecoEntrega() {
     mostrarMensagem("Endereço encontrado e distância calculada.", true);
   } catch (erro) {
     console.error(erro);
-    mostrarMensagem("Erro ao buscar endereço. Confira as restrições da API Key.");
+    mostrarMensagem(erro.message || "Erro ao buscar endereço.");
   }
 
   if (btn) {
@@ -733,7 +765,6 @@ export function calcularPedido() {
 }
 
 export async function criarPedido() {
-  const msg = document.getElementById("mensagem");
   const btn = document.getElementById("btnCriarPedido");
 
   const pedidoCopiado = document.getElementById("pedidoCopiado")?.value.trim() || "";
@@ -743,7 +774,7 @@ export async function criarPedido() {
   const precisaRetorno = document.getElementById("precisaRetorno")?.checked === true;
   const valorTroco = numero(document.getElementById("valorTroco")?.value, 0);
 
-  if (msg) msg.innerText = "";
+  mostrarMensagem("");
 
   if (!restauranteLogado) {
     mostrarMensagem("Restaurante não carregado.");
