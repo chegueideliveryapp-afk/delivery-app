@@ -17,6 +17,11 @@ import {
 let mapa = null;
 let markers = {};
 
+const estado = {
+  pedidos: [],
+  rastreamentos: []
+};
+
 function setText(id, texto) {
   const el = document.getElementById(id);
   if (el) el.innerText = texto;
@@ -38,7 +43,6 @@ function dataTexto(timestamp) {
 
 function statusTexto(status) {
   if (status === "aceito") return "Em andamento";
-  if (status === "entregue") return "Entregue";
   return status || "Não informado";
 }
 
@@ -85,27 +89,54 @@ function limparMarkers() {
   markers = {};
 }
 
-function renderizarLista(rastreamentos) {
-  if (!rastreamentos.length) {
+function obterCorridasEmAndamento() {
+  const pedidosAceitos = estado.pedidos.filter((pedido) => {
+    return pedido.status === "aceito";
+  });
+
+  return pedidosAceitos
+    .map((pedido) => {
+      const rastreamento = estado.rastreamentos.find((r) => {
+        return r.pedidoId === pedido.id;
+      });
+
+      if (!rastreamento) return null;
+
+      return {
+        ...rastreamento,
+        pedidoStatusReal: pedido.status,
+        pedidoId: pedido.id,
+        motoboyNome: pedido.motoboyNome || rastreamento.motoboyNome || "Motoboy",
+        restauranteNome: pedido.restauranteNome || rastreamento.restauranteNome || "",
+        enderecoEntrega: pedido.enderecoEntrega || rastreamento.enderecoEntrega || "",
+        aceitoAt: pedido.aceitoAt || null
+      };
+    })
+    .filter(Boolean);
+}
+
+function renderizarLista(corridas) {
+  if (!corridas.length) {
     setHtml(
       "listaRastreamento",
-      `<div class="empty-mini">Nenhuma corrida com rastreamento no momento.</div>`
+      `<div class="empty-mini">Nenhuma corrida em andamento no momento.</div>`
     );
     return;
   }
 
   setHtml(
     "listaRastreamento",
-    rastreamentos.map((r) => {
+    corridas.map((r) => {
       return `
         <div class="tracking-item">
           <strong>${r.motoboyNome || "Motoboy"}</strong>
           <p>Pedido: ${r.pedidoId}</p>
           <p>Entrega: ${r.enderecoEntrega || "Endereço não informado"}</p>
+          <p>Aceito em: ${dataTexto(r.aceitoAt)}</p>
           <p>Última atualização: ${dataTexto(r.ultimaAtualizacaoAt)}</p>
 
-          <span class="tracking-status ${r.status || "aceito"}">
-            ${statusTexto(r.status)}
+          <span class="tracking-status aceito">
+            ${statusTexto(r.pedidoStatusReal)}
           </span>
         </div>
       `;
@@ -113,12 +144,12 @@ function renderizarLista(rastreamentos) {
   );
 }
 
-function atualizarMapa(rastreamentos) {
+function atualizarMapa(corridas) {
   limparMarkers();
 
   const bounds = [];
 
-  rastreamentos.forEach((r) => {
+  corridas.forEach((r) => {
     const lat = Number(r.location?.lat);
     const lng = Number(r.location?.lng);
 
@@ -128,7 +159,8 @@ function atualizarMapa(rastreamentos) {
       .addTo(mapa)
       .bindPopup(`
         <strong>${r.motoboyNome || "Motoboy"}</strong><br>
-        Status: ${statusTexto(r.status)}<br>
+        Status: Em andamento<br>
+        Pedido: ${r.pedidoId}<br>
         Atualizado: ${dataTexto(r.ultimaAtualizacaoAt)}
       `);
 
@@ -144,6 +176,15 @@ function atualizarMapa(rastreamentos) {
   }
 }
 
+function renderizarTela() {
+  const corridas = obterCorridasEmAndamento();
+
+  setText("totalRastreamento", `${corridas.length} corrida(s)`);
+
+  renderizarLista(corridas);
+  atualizarMapa(corridas);
+}
+
 export function carregarRastreamentoRestaurante() {
   onAuthStateChanged(auth, async (user) => {
     if (!user) {
@@ -157,33 +198,55 @@ export function carregarRastreamentoRestaurante() {
 
     iniciarMapa();
 
-    const q = query(
+    const pedidosQuery = query(
+      collection(db, "pedidos"),
+      where("restauranteId", "==", user.uid)
+    );
+
+    const rastreamentoQuery = query(
       collection(db, "rastreamento_pedidos"),
       where("restauranteId", "==", user.uid)
     );
 
     onSnapshot(
-      q,
+      pedidosQuery,
       (snapshot) => {
-        const rastreamentos = [];
+        estado.pedidos = [];
 
         snapshot.forEach((docSnap) => {
-          rastreamentos.push({
+          estado.pedidos.push({
             id: docSnap.id,
             ...docSnap.data()
           });
         });
 
-        rastreamentos.sort((a, b) => {
-          const dataA = a.ultimaAtualizacaoAt?.toMillis?.() || 0;
-          const dataB = b.ultimaAtualizacaoAt?.toMillis?.() || 0;
-          return dataB - dataA;
+        renderizarTela();
+      },
+      (erro) => {
+        console.error(erro);
+
+        setText("totalRastreamento", "Erro");
+
+        setHtml(
+          "listaRastreamento",
+          `<div class="empty-mini">Erro ao carregar pedidos da corrida.</div>`
+        );
+      }
+    );
+
+    onSnapshot(
+      rastreamentoQuery,
+      (snapshot) => {
+        estado.rastreamentos = [];
+
+        snapshot.forEach((docSnap) => {
+          estado.rastreamentos.push({
+            id: docSnap.id,
+            ...docSnap.data()
+          });
         });
 
-        setText("totalRastreamento", `${rastreamentos.length} corrida(s)`);
-
-        renderizarLista(rastreamentos);
-        atualizarMapa(rastreamentos);
+        renderizarTela();
       },
       (erro) => {
         console.error(erro);
