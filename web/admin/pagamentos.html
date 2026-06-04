@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>Pagamentos Motoboy - Admin</title>
+  <title>Pagamentos 2 - Admin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <link rel="stylesheet" href="../css/base.css">
@@ -11,54 +11,46 @@
 
 <body>
   <header class="topbar">
-    <h1>Pagamentos Motoboy</h1>
+    <h1>Pagamentos Motoboys</h1>
     <a class="topbar-link" href="./dashboard.html">Voltar</a>
   </header>
 
   <main class="page">
     <section class="panel">
-      <h2>Fechamento por período</h2>
+      <h2>Pagamentos da semana</h2>
       <p class="hint">
-        Agrupe as entregas por motoboy para fazer apenas um Pix por pessoa.
+        Aqui os valores são agrupados por motoboy para evitar vários Pix para a mesma pessoa.
       </p>
 
       <div class="form-grid">
-        <input id="inicioPagamento" type="date">
-        <input id="fimPagamento" type="date">
-        <input id="buscaMotoboyPagamento" placeholder="Pesquisar motoboy por nome, CPF ou telefone">
+        <input id="dataInicio" type="date">
+        <input id="dataFim" type="date">
 
-        <button id="btnAplicarPagamento" class="primary-btn" type="button">
-          Aplicar filtros
+        <select id="filtroMotoboy">
+          <option value="">Todos os motoboys</option>
+        </select>
+
+        <button id="btnFiltrar" class="primary-btn" type="button">
+          Filtrar pagamentos
         </button>
       </div>
     </section>
 
     <section class="panel">
       <h2>Resumo a pagar</h2>
-      <p class="hint">
-        Valores ainda não pagos dentro do período selecionado.
-      </p>
-
-      <div id="resumoPagamentosMotoboy">
-        <div class="empty">Carregando resumo financeiro...</div>
-      </div>
-    </section>
-
-    <section class="panel">
-      <h2>Pagamentos agrupados por motoboy</h2>
-      <p class="hint">
-        Cada card abaixo representa um único Pix a ser feito para o motoboy.
+      <p class="hint" id="resumoPagamentos">
+        Carregando pagamentos...
       </p>
 
       <div id="listaPagamentosMotoboy">
-        <div class="empty">Carregando pagamentos...</div>
+        <div class="empty">Carregando entregas pendentes de pagamento...</div>
       </div>
     </section>
 
     <section class="panel">
       <h2>Histórico de pagamentos</h2>
       <p class="hint">
-        Pagamentos já registrados pela administração.
+        Pagamentos já marcados como realizados pela administração.
       </p>
 
       <div id="historicoPagamentosMotoboy">
@@ -69,10 +61,18 @@
 
   <script type="module">
     import { protegerPagina } from "../js/auth.js";
-    import { carregarPagamentosMotoboyAdmin } from "../js/pagamentos-motoboy.js?v=240";
+    import {
+      iniciarPagamentosMotoboyAdmin,
+      filtrarPagamentosMotoboyAdmin
+    } from "../js/pagamentos.js";
 
     protegerPagina("admin");
-    carregarPagamentosMotoboyAdmin();
+
+    iniciarPagamentosMotoboyAdmin();
+
+    document.getElementById("btnFiltrar").addEventListener("click", () => {
+      filtrarPagamentosMotoboyAdmin();
+    });
   </script>
 </body>
 </html>
