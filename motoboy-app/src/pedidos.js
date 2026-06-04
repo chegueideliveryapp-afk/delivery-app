@@ -12,12 +12,14 @@ import {
   where,
   runTransaction,
   updateDoc,
+  setDoc,
   arrayUnion,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 let uidMotoboy = null;
 let motoboyAtual = null;
+let corridasAceitas = [];
 let unsubscribePedidosPendentes = null;
 let unsubscribeMinhasCorridas = null;
 
@@ -344,6 +346,10 @@ function escutarMinhasCorridas() {
         }
       });
 
+      corridasAceitas = corridas;
+
+      atualizarRastreamentoCorridasAceitas();
+
       if (!corridas.length) {
         setHtml(
           listaId,
@@ -369,6 +375,47 @@ function escutarMinhasCorridas() {
       );
     }
   );
+}
+
+async function atualizarRastreamentoCorridasAceitas() {
+  if (!uidMotoboy || !motoboyAtual?.location) return;
+  if (!corridasAceitas.length) return;
+
+  const lat = Number(motoboyAtual.location.lat);
+  const lng = Number(motoboyAtual.location.lng);
+
+  if (!lat || !lng) return;
+
+  for (const item of corridasAceitas) {
+    const pedidoId = item.id;
+    const pedido = item.pedido;
+
+    const rastreamentoRef = doc(db, "rastreamento_pedidos", pedidoId);
+
+    try {
+      await setDoc(
+        rastreamentoRef,
+        {
+          pedidoId,
+          restauranteId: pedido.restauranteId || "",
+          restauranteNome: pedido.restauranteNome || "",
+          motoboyId: uidMotoboy,
+          motoboyNome: motoboyAtual.nome || pedido.motoboyNome || "",
+          status: pedido.status || "aceito",
+          enderecoEntrega: pedido.enderecoEntrega || "",
+          location: {
+            lat,
+            lng
+          },
+          ultimaAtualizacaoAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        },
+        { merge: true }
+      );
+    } catch (erro) {
+      console.error("Erro ao atualizar rastreamento:", erro);
+    }
+  }
 }
 
 async function aceitarPedido(pedidoId) {
@@ -506,6 +553,18 @@ async function finalizarEntrega(pedidoId) {
       createdAt: serverTimestamp()
     });
   });
+
+  const rastreamentoRef = doc(db, "rastreamento_pedidos", pedidoId);
+
+  await setDoc(
+    rastreamentoRef,
+    {
+      status: "entregue",
+      ultimaAtualizacaoAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    },
+    { merge: true }
+  );
 }
 
 function iniciarPedidosMotoboy() {
@@ -527,6 +586,7 @@ function iniciarPedidosMotoboy() {
 
         escutarPedidosPendentes();
         escutarMinhasCorridas();
+        atualizarRastreamentoCorridasAceitas();
       },
       (erro) => {
         console.error(erro);
