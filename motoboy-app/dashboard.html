@@ -4,8 +4,9 @@
   <meta charset="UTF-8">
   <title>Cheguei Motoboy</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="./css/app.css">
+  <link rel="stylesheet" href="./css/app.css?v=70">
 </head>
+
 <body>
   <main class="driver-app">
     <header class="driver-header">
@@ -14,7 +15,7 @@
         <h1 id="nomeMotoboy">Carregando...</h1>
       </div>
 
-      <button id="btnSair" class="icon-btn">Sair</button>
+      <button id="btnSair" class="icon-btn" type="button">Sair</button>
     </header>
 
     <section class="balance-card">
@@ -42,7 +43,7 @@
         <p id="gpsTexto">GPS ainda não iniciado.</p>
       </div>
 
-      <button id="btnOnline" class="online-btn">
+      <button id="btnOnline" class="online-btn offline-mode" type="button">
         Ficar online
       </button>
     </section>
@@ -60,13 +61,27 @@
     </section>
 
     <section class="feed-card">
-      <h2>Corridas</h2>
-      <div id="corridasBox" class="empty-state">
-        Quando você estiver online e aprovado, novas corridas aparecerão aqui. Seus ganhos ficam acumulados para pagamento semanal.
+      <h2>Corrida atual</h2>
+
+      <div id="corridaAtualMotoboy">
+        <div class="empty-state">
+          Nenhuma corrida em andamento.
+        </div>
+      </div>
+    </section>
+
+    <section class="feed-card">
+      <h2>Pedidos próximos</h2>
+
+      <div id="listaPedidosMotoboy">
+        <div class="empty-state">
+          Fique online e aguarde corridas próximas.
+        </div>
       </div>
     </section>
   </main>
 
-  <script type="module" src="./src/motoboy.js"></script>
+  <script type="module" src="./src/motoboy.js?v=70"></script>
+  <script type="module" src="./src/pedidos.js?v=70"></script>
 </body>
 </html>
