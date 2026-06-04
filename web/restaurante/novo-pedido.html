@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <link rel="stylesheet" href="../css/base.css">
-  <link rel="stylesheet" href="../css/restaurante.css?v=430">
+  <link rel="stylesheet" href="../css/restaurante.css?v=500">
 </head>
 
 <body>
@@ -186,7 +186,7 @@
       buscarEnderecoEntrega,
       calcularPedido,
       criarPedido
-    } from "../js/restaurante.js?v=430";
+    } from "../js/restaurante.js?v=500";
 
     protegerRestaurante();
     carregarNovoPedidoRestaurante();
@@ -219,17 +219,7 @@
       btnCriarPedido.addEventListener("click", criarPedido);
     }
 
-    import("../js/fluxo-pedidos-restaurante.js?v=430")
-      .then((modulo) => {
-        if (typeof modulo.iniciarFluxoPedidosRestaurante === "function") {
-          modulo.iniciarFluxoPedidosRestaurante();
-        }
-      })
-      .catch((erro) => {
-        console.warn("Fluxo de pedidos não carregado:", erro);
-      });
-
-    import("../js/restaurante-pendentes.js?v=430")
+    import("../js/restaurante-pendentes.js?v=500")
       .then((modulo) => {
         if (typeof modulo.carregarPedidosPendentesRestaurante === "function") {
           modulo.carregarPedidosPendentesRestaurante();
@@ -242,7 +232,7 @@
         if (lista) {
           lista.innerHTML = `
             <div class="empty-mini">
-              Lista de pedidos pendentes indisponível no momento.
+              Nenhum pedido pendente no momento.
             </div>
           `;
         }
