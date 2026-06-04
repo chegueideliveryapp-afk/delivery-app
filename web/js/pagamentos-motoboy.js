@@ -3,16 +3,17 @@ import { auth, db } from "./firebase.js";
 import {
   collection,
   doc,
+  getDoc,
+  getDocs,
   onSnapshot,
+  query,
   runTransaction,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-const estado = {
-  motoboys: [],
-  ledgers: [],
-  pagamentos: []
-};
+let motoboysCache = {};
+let ledgerCache = [];
+let pagamentosCache = [];
 
 function dinheiro(valor) {
   return Number(valor || 0).toLocaleString("pt-BR", {
@@ -21,48 +22,29 @@ function dinheiro(valor) {
   });
 }
 
-function setHtml(id, html) {
-  const el = document.getElementById(id);
-  if (el) el.innerHTML = html;
+function dataTexto(timestamp) {
+  if (!timestamp?.toDate) return "Data não informada";
+
+  return timestamp.toDate().toLocaleString("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short"
+  });
 }
 
-function normalizarTexto(texto) {
-  return String(texto || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim();
-}
-
-function dataTexto(timestampOuDate) {
-  if (timestampOuDate?.toDate) {
-    return timestampOuDate.toDate().toLocaleString("pt-BR", {
-      dateStyle: "short",
-      timeStyle: "short"
-    });
-  }
-
-  if (timestampOuDate instanceof Date) {
-    return timestampOuDate.toLocaleDateString("pt-BR");
-  }
-
-  return "Data não informada";
-}
-
-function inicioSemanaAtual() {
+function inicioDaSemana() {
   const hoje = new Date();
   const dia = hoje.getDay();
-  const distanciaSegunda = dia === 0 ? -6 : 1 - dia;
+  const diferenca = dia === 0 ? -6 : 1 - dia;
 
   const segunda = new Date(hoje);
-  segunda.setDate(hoje.getDate() + distanciaSegunda);
+  segunda.setDate(hoje.getDate() + diferenca);
   segunda.setHours(0, 0, 0, 0);
 
   return segunda;
 }
 
-function fimSemanaAtual() {
-  const inicio = inicioSemanaAtual();
+function fimDaSemana() {
+  const inicio = inicioDaSemana();
   const fim = new Date(inicio);
   fim.setDate(inicio.getDate() + 6);
   fim.setHours(23, 59, 59, 999);
@@ -70,290 +52,278 @@ function fimSemanaAtual() {
   return fim;
 }
 
-function preencherDatasPadrao() {
-  const inicioInput = document.getElementById("inicioPagamento");
-  const fimInput = document.getElementById("fimPagamento");
-
-  if (!inicioInput || !fimInput) return;
-
-  if (!inicioInput.value) {
-    inicioInput.value = inicioSemanaAtual().toISOString().slice(0, 10);
-  }
-
-  if (!fimInput.value) {
-    fimInput.value = fimSemanaAtual().toISOString().slice(0, 10);
-  }
+function formatarDataInput(data) {
+  return data.toISOString().slice(0, 10);
 }
 
-function obterPeriodo() {
-  const inicioInput = document.getElementById("inicioPagamento")?.value;
-  const fimInput = document.getElementById("fimPagamento")?.value;
+function parseDataInicio(valor) {
+  if (!valor) return null;
 
-  const inicio = inicioInput
-    ? new Date(`${inicioInput}T00:00:00`)
-    : inicioSemanaAtual();
-
-  const fim = fimInput
-    ? new Date(`${fimInput}T23:59:59`)
-    : fimSemanaAtual();
-
-  return { inicio, fim };
+  const data = new Date(`${valor}T00:00:00`);
+  return Number.isNaN(data.getTime()) ? null : data;
 }
 
-function dentroDoPeriodo(timestamp, inicio, fim) {
-  if (!timestamp?.toDate) return false;
+function parseDataFim(valor) {
+  if (!valor) return null;
 
-  const data = timestamp.toDate();
-
-  return data >= inicio && data <= fim;
+  const data = new Date(`${valor}T23:59:59`);
+  return Number.isNaN(data.getTime()) ? null : data;
 }
 
-function obterGruposPorMotoboy() {
-  const { inicio, fim } = obterPeriodo();
-  const busca = normalizarTexto(
-    document.getElementById("buscaMotoboyPagamento")?.value
+function dentroDoPeriodo(item, inicio, fim) {
+  const data = item.createdAt?.toDate?.();
+
+  if (!data) return false;
+  if (inicio && data < inicio) return false;
+  if (fim && data > fim) return false;
+
+  return true;
+}
+
+function ehPendentePagamento(item) {
+  return item.statusPagamento !== "pago";
+}
+
+function nomeMotoboy(motoboyId, fallback = "") {
+  return (
+    motoboysCache[motoboyId]?.nome ||
+    fallback ||
+    "Motoboy não informado"
   );
+}
 
-  const ledgersAbertosPeriodo = estado.ledgers.filter((ledger) => {
-    return ledger.pago !== true
-      && ledger.tipo === "entrega"
-      && dentroDoPeriodo(ledger.createdAt, inicio, fim);
-  });
+function telefoneMotoboy(motoboyId) {
+  return motoboysCache[motoboyId]?.telefone || "Telefone não informado";
+}
+
+function preencherDatasPadrao() {
+  const dataInicio = document.getElementById("dataInicio");
+  const dataFim = document.getElementById("dataFim");
+
+  if (dataInicio && !dataInicio.value) {
+    dataInicio.value = formatarDataInput(inicioDaSemana());
+  }
+
+  if (dataFim && !dataFim.value) {
+    dataFim.value = formatarDataInput(fimDaSemana());
+  }
+}
+
+function atualizarSelectMotoboys() {
+  const select = document.getElementById("filtroMotoboy");
+  if (!select) return;
+
+  const valorAtual = select.value;
+
+  select.innerHTML = `<option value="">Todos os motoboys</option>`;
+
+  Object.entries(motoboysCache)
+    .sort((a, b) => {
+      const nomeA = a[1]?.nome || "";
+      const nomeB = b[1]?.nome || "";
+      return nomeA.localeCompare(nomeB);
+    })
+    .forEach(([id, motoboy]) => {
+      const option = document.createElement("option");
+      option.value = id;
+      option.textContent = motoboy.nome || id;
+      select.appendChild(option);
+    });
+
+  select.value = valorAtual;
+}
+
+function agruparPendentes() {
+  const dataInicio = parseDataInicio(document.getElementById("dataInicio")?.value);
+  const dataFim = parseDataFim(document.getElementById("dataFim")?.value);
+  const filtroMotoboy = document.getElementById("filtroMotoboy")?.value || "";
 
   const grupos = {};
 
-  ledgersAbertosPeriodo.forEach((ledger) => {
-    const motoboyId = ledger.motoboyId;
+  ledgerCache
+    .filter((item) => item.motoboyId)
+    .filter((item) => item.tipo === "credito_entrega" || item.tipo === "entrega")
+    .filter((item) => ehPendentePagamento(item))
+    .filter((item) => dentroDoPeriodo(item, dataInicio, dataFim))
+    .filter((item) => !filtroMotoboy || item.motoboyId === filtroMotoboy)
+    .forEach((item) => {
+      if (!grupos[item.motoboyId]) {
+        grupos[item.motoboyId] = {
+          motoboyId: item.motoboyId,
+          motoboyNome: nomeMotoboy(item.motoboyId, item.motoboyNome),
+          telefone: telefoneMotoboy(item.motoboyId),
+          total: 0,
+          entregas: 0,
+          itens: [],
+          primeiraData: null,
+          ultimaData: null
+        };
+      }
 
-    if (!motoboyId) return;
+      const valor = Number(item.valor || 0);
+      const data = item.createdAt?.toDate?.() || null;
 
-    const motoboyCadastro = estado.motoboys.find((m) => m.id === motoboyId);
+      grupos[item.motoboyId].total += valor;
+      grupos[item.motoboyId].entregas += 1;
+      grupos[item.motoboyId].itens.push(item);
 
-    const nome = ledger.motoboyNome || motoboyCadastro?.nome || "Motoboy não informado";
-    const cpf = motoboyCadastro?.cpf || "";
-    const telefone = motoboyCadastro?.telefone || "";
+      if (data) {
+        if (!grupos[item.motoboyId].primeiraData || data < grupos[item.motoboyId].primeiraData) {
+          grupos[item.motoboyId].primeiraData = data;
+        }
 
-    const textoBusca = normalizarTexto(`${nome} ${cpf} ${telefone}`);
-
-    if (busca && !textoBusca.includes(busca)) return;
-
-    if (!grupos[motoboyId]) {
-      grupos[motoboyId] = {
-        motoboyId,
-        motoboyNome: nome,
-        cpf,
-        telefone,
-        saldoAtual: Number(motoboyCadastro?.saldo || 0),
-        total: 0,
-        entregas: [],
-        ledgerIds: []
-      };
-    }
-
-    grupos[motoboyId].total += Number(ledger.valor || 0);
-    grupos[motoboyId].entregas.push(ledger);
-    grupos[motoboyId].ledgerIds.push(ledger.id);
-  });
+        if (!grupos[item.motoboyId].ultimaData || data > grupos[item.motoboyId].ultimaData) {
+          grupos[item.motoboyId].ultimaData = data;
+        }
+      }
+    });
 
   return Object.values(grupos).sort((a, b) => b.total - a.total);
 }
 
-function renderizarResumo() {
-  const grupos = obterGruposPorMotoboy();
+function renderizarPagamentosPendentes() {
+  const lista = document.getElementById("listaPagamentosMotoboy");
+  const resumo = document.getElementById("resumoPagamentos");
 
-  const totalPagar = grupos.reduce((total, grupo) => {
-    return total + Number(grupo.total || 0);
-  }, 0);
+  if (!lista) return;
 
-  const totalEntregas = grupos.reduce((total, grupo) => {
-    return total + grupo.entregas.length;
-  }, 0);
+  const grupos = agruparPendentes();
 
-  const totalPix = grupos.length;
+  const totalGeral = grupos.reduce((acc, grupo) => acc + grupo.total, 0);
+  const totalEntregas = grupos.reduce((acc, grupo) => acc + grupo.entregas, 0);
 
-  const { inicio, fim } = obterPeriodo();
+  if (resumo) {
+    resumo.innerText =
+      `${dinheiro(totalGeral)} a pagar em ${totalEntregas} entrega(s), agrupado em ${grupos.length} motoboy(s).`;
+  }
 
-  setHtml(
-    "resumoPagamentosMotoboy",
-    `
-      <div class="list-card">
-        <div>
-          <strong>Total a pagar: ${dinheiro(totalPagar)}</strong>
-          <p>Período: ${dataTexto(inicio)} até ${dataTexto(fim)}</p>
-          <p>Total de motoboys a pagar: ${totalPix}</p>
-          <p>Total de Pix necessários: ${totalPix}</p>
-          <p>Total de entregas no fechamento: ${totalEntregas}</p>
+  lista.innerHTML = "";
 
-          <div class="status-row">
-            <span class="badge yellow">Fechamento agrupado</span>
-            <span class="badge gray">1 Pix por motoboy</span>
-          </div>
-        </div>
-      </div>
-    `
-  );
-}
-
-function renderizarListaPagamentos() {
-  const grupos = obterGruposPorMotoboy();
-  const { inicio, fim } = obterPeriodo();
-
-  if (!grupos.length) {
-    setHtml(
-      "listaPagamentosMotoboy",
-      `<div class="empty">Nenhum pagamento em aberto para o período selecionado.</div>`
-    );
+  if (grupos.length === 0) {
+    lista.innerHTML = `<div class="empty">Nenhum pagamento pendente neste período.</div>`;
     return;
   }
 
-  const html = grupos.map((grupo) => {
-    const entregasOrdenadas = [...grupo.entregas].sort((a, b) => {
-      const dataA = a.createdAt?.toMillis?.() || 0;
-      const dataB = b.createdAt?.toMillis?.() || 0;
-      return dataA - dataB;
-    });
+  grupos.forEach((grupo) => {
+    const inicio = grupo.primeiraData
+      ? grupo.primeiraData.toLocaleDateString("pt-BR")
+      : "Data não informada";
 
-    const detalhesEntregas = entregasOrdenadas.map((entrega, index) => {
-      return `
-        <p>
-          ${index + 1}. ${dataTexto(entrega.createdAt)}
-          - ${entrega.restauranteNome || "Restaurante"}
-          - ${dinheiro(entrega.valor)}
-        </p>
-      `;
-    }).join("");
+    const fim = grupo.ultimaData
+      ? grupo.ultimaData.toLocaleDateString("pt-BR")
+      : "Data não informada";
 
-    return `
-      <div class="list-card">
-        <div>
-          <strong>${grupo.motoboyNome}</strong>
+    const card = document.createElement("div");
+    card.className = "list-card";
 
-          <p>Período: ${dataTexto(inicio)} até ${dataTexto(fim)}</p>
-          <p>Total a pagar neste Pix: ${dinheiro(grupo.total)}</p>
-          <p>Quantidade de entregas: ${grupo.entregas.length}</p>
-          <p>Saldo atual no cadastro: ${dinheiro(grupo.saldoAtual)}</p>
-          <p>CPF: ${grupo.cpf || "Não informado"}</p>
-          <p>Telefone: ${grupo.telefone || "Não informado"}</p>
+    card.innerHTML = `
+      <div>
+        <strong>${grupo.motoboyNome}</strong>
 
-          <div class="status-row">
-            <span class="badge yellow">Aguardando pagamento</span>
-            <span class="badge gray">Pix único</span>
-          </div>
+        <p>Telefone: ${grupo.telefone}</p>
+        <p>Total a pagar: <b>${dinheiro(grupo.total)}</b></p>
+        <p>Entregas no período: ${grupo.entregas}</p>
+        <p>Período: ${inicio} até ${fim}</p>
 
-          <div style="margin-top: 12px;">
-            <strong style="font-size: 15px;">Entregas incluídas:</strong>
-            ${detalhesEntregas}
-          </div>
-        </div>
-
-        <div class="actions">
-          <button
-            data-action="marcarPagoMotoboy"
-            data-motoboy-id="${grupo.motoboyId}"
-            data-ledgers="${grupo.ledgerIds.join(",")}"
-          >
-            Marcar Pix como pago
-          </button>
+        <div class="status-row">
+          <span class="badge yellow">Pagamento pendente</span>
+          <span class="badge gray">${grupo.entregas} entrega(s)</span>
         </div>
       </div>
+
+      <div class="actions">
+        <button
+          type="button"
+          data-action="marcarPago"
+          data-motoboy-id="${grupo.motoboyId}"
+        >
+          Marcar como pago
+        </button>
+      </div>
     `;
-  }).join("");
 
-  setHtml("listaPagamentosMotoboy", html);
+    lista.appendChild(card);
+  });
 
-  document.querySelectorAll("button[data-action='marcarPagoMotoboy']").forEach((button) => {
+  lista.querySelectorAll("button[data-action='marcarPago']").forEach((button) => {
     button.addEventListener("click", async () => {
       const motoboyId = button.dataset.motoboyId;
-      const ledgerIds = button.dataset.ledgers
-        .split(",")
-        .map((id) => id.trim())
-        .filter(Boolean);
+      const grupo = grupos.find((item) => item.motoboyId === motoboyId);
+
+      if (!grupo) return;
 
       const confirmar = confirm(
-        "Confirmar pagamento agrupado deste motoboy?\n\nSerá registrado 1 pagamento/Pix para todas as entregas listadas."
+        `Confirmar pagamento para ${grupo.motoboyNome}?\n\nValor: ${dinheiro(grupo.total)}\nEntregas: ${grupo.entregas}`
       );
 
       if (!confirmar) return;
 
       button.disabled = true;
-      button.innerText = "Registrando Pix...";
+      button.innerText = "Pagando...";
 
       try {
-        await marcarMotoboyComoPago(motoboyId, ledgerIds);
-        alert("Pagamento agrupado registrado com sucesso.");
+        await marcarGrupoComoPago(grupo);
+        alert("Pagamento marcado como realizado.");
       } catch (erro) {
         console.error(erro);
-        alert(erro.message || "Erro ao registrar pagamento.");
+        alert("Erro ao marcar pagamento.");
         button.disabled = false;
-        button.innerText = "Marcar Pix como pago";
+        button.innerText = "Marcar como pago";
       }
     });
   });
 }
 
-function renderizarHistorico() {
-  if (!estado.pagamentos.length) {
-    setHtml(
-      "historicoPagamentosMotoboy",
-      `<div class="empty">Nenhum pagamento registrado ainda.</div>`
-    );
+function renderizarHistoricoPagamentos() {
+  const lista = document.getElementById("historicoPagamentosMotoboy");
+  if (!lista) return;
+
+  lista.innerHTML = "";
+
+  if (pagamentosCache.length === 0) {
+    lista.innerHTML = `<div class="empty">Nenhum pagamento registrado ainda.</div>`;
     return;
   }
 
-  const pagamentos = [...estado.pagamentos].sort((a, b) => {
-    const dataA = a.pagoAt?.toMillis?.() || a.createdAt?.toMillis?.() || 0;
-    const dataB = b.pagoAt?.toMillis?.() || b.createdAt?.toMillis?.() || 0;
-    return dataB - dataA;
-  });
+  pagamentosCache
+    .slice()
+    .sort((a, b) => {
+      const dataA = a.pagoAt?.toMillis?.() || 0;
+      const dataB = b.pagoAt?.toMillis?.() || 0;
+      return dataB - dataA;
+    })
+    .forEach((pagamento) => {
+      const card = document.createElement("div");
+      card.className = "list-card";
 
-  const html = pagamentos.map((pagamento) => {
-    return `
-      <div class="list-card">
+      card.innerHTML = `
         <div>
-          <strong>${pagamento.motoboyNome || "Motoboy não informado"}</strong>
+          <strong>${pagamento.motoboyNome || nomeMotoboy(pagamento.motoboyId)}</strong>
 
-          <p>Valor pago: ${dinheiro(pagamento.valorTotalSemana)}</p>
+          <p>Valor pago: <b>${dinheiro(pagamento.valorTotal)}</b></p>
           <p>Entregas pagas: ${pagamento.totalEntregas || 0}</p>
-          <p>Período: ${dataTexto(pagamento.inicioSemana)} até ${dataTexto(pagamento.fimSemana)}</p>
           <p>Pago em: ${dataTexto(pagamento.pagoAt)}</p>
+          <p>Período: ${pagamento.periodoInicio || "Não informado"} até ${pagamento.periodoFim || "Não informado"}</p>
 
           <div class="status-row">
             <span class="badge green">Pago</span>
-            <span class="badge gray">Pix agrupado</span>
           </div>
         </div>
-      </div>
-    `;
-  }).join("");
+      `;
 
-  setHtml("historicoPagamentosMotoboy", html);
+      lista.appendChild(card);
+    });
 }
 
-function renderizarTudo() {
-  renderizarResumo();
-  renderizarListaPagamentos();
-  renderizarHistorico();
-}
-
-async function marcarMotoboyComoPago(motoboyId, ledgerIds) {
+async function marcarGrupoComoPago(grupo) {
   const uidAdmin = auth.currentUser?.uid;
 
   if (!uidAdmin) {
     throw new Error("Admin não autenticado.");
   }
 
-  if (!motoboyId) {
-    throw new Error("Motoboy inválido.");
-  }
-
-  if (!ledgerIds.length) {
-    throw new Error("Nenhuma entrega em aberto para pagar.");
-  }
-
-  const { inicio, fim } = obterPeriodo();
-
-  const motoboyRef = doc(db, "motoboys", motoboyId);
   const pagamentoRef = doc(collection(db, "pagamentos_motoboy"));
+  const motoboyRef = doc(db, "motoboys", grupo.motoboyId);
 
   await runTransaction(db, async (transaction) => {
     const motoboySnap = await transaction.get(motoboyRef);
@@ -363,125 +333,97 @@ async function marcarMotoboyComoPago(motoboyId, ledgerIds) {
     }
 
     const motoboy = motoboySnap.data();
-
-    const ledgers = [];
-
-    for (const ledgerId of ledgerIds) {
-      const ledgerRef = doc(db, "ledger_motoboy", ledgerId);
-      const ledgerSnap = await transaction.get(ledgerRef);
-
-      if (!ledgerSnap.exists()) continue;
-
-      const ledger = ledgerSnap.data();
-
-      if (ledger.motoboyId !== motoboyId) continue;
-      if (ledger.pago === true) continue;
-      if (ledger.tipo !== "entrega") continue;
-      if (!dentroDoPeriodo(ledger.createdAt, inicio, fim)) continue;
-
-      ledgers.push({
-        id: ledgerId,
-        ref: ledgerRef,
-        data: ledger
-      });
-    }
-
-    if (!ledgers.length) {
-      throw new Error("Não existem entregas pendentes para este motoboy neste período.");
-    }
-
-    const valorTotal = ledgers.reduce((total, item) => {
-      return total + Number(item.data.valor || 0);
-    }, 0);
-
-    if (!valorTotal || valorTotal <= 0) {
-      throw new Error("Valor total inválido.");
-    }
-
     const saldoAtual = Number(motoboy.saldo || 0);
-    const saldoDepois = Math.max(0, saldoAtual - valorTotal);
+    const valorPago = Number(grupo.total || 0);
+    const novoSaldo = Math.max(0, saldoAtual - valorPago);
 
     transaction.set(pagamentoRef, {
-      motoboyId,
-      motoboyNome: motoboy.nome || ledgers[0].data.motoboyNome || "",
-      valorTotalSemana: valorTotal,
-      totalEntregas: ledgers.length,
-      ledgerIds: ledgers.map((item) => item.id),
+      motoboyId: grupo.motoboyId,
+      motoboyNome: grupo.motoboyNome,
+      telefone: grupo.telefone,
+
+      valorTotal: valorPago,
+      totalEntregas: grupo.entregas,
+
+      periodoInicio: grupo.primeiraData
+        ? grupo.primeiraData.toLocaleDateString("pt-BR")
+        : "",
+      periodoFim: grupo.ultimaData
+        ? grupo.ultimaData.toLocaleDateString("pt-BR")
+        : "",
+
+      ledgerIds: grupo.itens.map((item) => item.id),
+
+      status: "pago",
       pago: true,
-      formaPagamento: "pix",
-      agrupado: true,
-      inicioSemana: inicio,
-      fimSemana: fim,
       pagoAt: serverTimestamp(),
-      createdAt: serverTimestamp(),
-      pagoPor: uidAdmin
+      pagoPor: uidAdmin,
+
+      createdAt: serverTimestamp()
     });
 
-    ledgers.forEach((item) => {
-      transaction.update(item.ref, {
-        pago: true,
-        semanaPagaId: pagamentoRef.id,
+    grupo.itens.forEach((item) => {
+      const ledgerRef = doc(db, "ledger_motoboy", item.id);
+
+      transaction.update(ledgerRef, {
+        statusPagamento: "pago",
+        pagamentoId: pagamentoRef.id,
         pagoAt: serverTimestamp(),
         pagoPor: uidAdmin
       });
     });
 
     transaction.update(motoboyRef, {
-      saldo: saldoDepois,
+      saldo: novoSaldo,
+      ultimoPagamentoAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     });
   });
 }
 
-function configurarFiltros() {
+export async function iniciarPagamentosMotoboyAdmin() {
   preencherDatasPadrao();
 
-  const btn = document.getElementById("btnAplicarPagamento");
-  const busca = document.getElementById("buscaMotoboyPagamento");
-  const inicio = document.getElementById("inicioPagamento");
-  const fim = document.getElementById("fimPagamento");
+  const motoboysSnap = await getDocs(collection(db, "motoboys"));
 
-  if (btn) {
-    btn.addEventListener("click", renderizarTudo);
-  }
+  motoboysCache = {};
 
-  [busca, inicio, fim].forEach((el) => {
-    if (!el) return;
+  motoboysSnap.forEach((docSnap) => {
+    motoboysCache[docSnap.id] = {
+      id: docSnap.id,
+      ...docSnap.data()
+    };
+  });
 
-    el.addEventListener("input", renderizarTudo);
-    el.addEventListener("change", renderizarTudo);
+  atualizarSelectMotoboys();
+
+  onSnapshot(query(collection(db, "ledger_motoboy")), (snapshot) => {
+    ledgerCache = [];
+
+    snapshot.forEach((docSnap) => {
+      ledgerCache.push({
+        id: docSnap.id,
+        ...docSnap.data()
+      });
+    });
+
+    renderizarPagamentosPendentes();
+  });
+
+  onSnapshot(query(collection(db, "pagamentos_motoboy")), (snapshot) => {
+    pagamentosCache = [];
+
+    snapshot.forEach((docSnap) => {
+      pagamentosCache.push({
+        id: docSnap.id,
+        ...docSnap.data()
+      });
+    });
+
+    renderizarHistoricoPagamentos();
   });
 }
 
-function escutarColecao(nomeColecao, chaveEstado) {
-  onSnapshot(
-    collection(db, nomeColecao),
-    (snapshot) => {
-      estado[chaveEstado] = [];
-
-      snapshot.forEach((docSnap) => {
-        estado[chaveEstado].push({
-          id: docSnap.id,
-          ...docSnap.data()
-        });
-      });
-
-      renderizarTudo();
-    },
-    (erro) => {
-      console.error(`Erro ao carregar ${nomeColecao}:`, erro);
-    }
-  );
-}
-
-export function carregarPagamentosMotoboyAdmin() {
-  setHtml("resumoPagamentosMotoboy", `<div class="empty">Carregando resumo financeiro...</div>`);
-  setHtml("listaPagamentosMotoboy", `<div class="empty">Carregando pagamentos...</div>`);
-  setHtml("historicoPagamentosMotoboy", `<div class="empty">Carregando histórico...</div>`);
-
-  configurarFiltros();
-
-  escutarColecao("motoboys", "motoboys");
-  escutarColecao("ledger_motoboy", "ledgers");
-  escutarColecao("pagamentos_motoboy", "pagamentos");
+export function filtrarPagamentosMotoboyAdmin() {
+  renderizarPagamentosPendentes();
 }
