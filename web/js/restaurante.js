@@ -26,6 +26,7 @@ let configApp = null;
 let pedidoCalculado = null;
 let googleMapsPromise = null;
 let placesService = null;
+let autocompleteService = null;
 let placesContainer = null;
 
 function dinheiro(valor) {
@@ -57,6 +58,10 @@ function mostrarMensagem(texto, sucesso = false) {
 function numero(valor, padrao = 0) {
   const n = Number(valor || padrao);
   return Number.isFinite(n) ? n : padrao;
+}
+
+function arredondar2(valor) {
+  return Math.round((Number(valor || 0) + Number.EPSILON) * 100) / 100;
 }
 
 function limparTelefone(telefone) {
@@ -163,7 +168,7 @@ function carregarGoogleMapsPlaces() {
   return googleMapsPromise;
 }
 
-async function obterPlacesService() {
+async function obterPlacesServices() {
   const maps = await carregarGoogleMapsPlaces();
 
   if (!placesContainer) {
@@ -176,7 +181,15 @@ async function obterPlacesService() {
     placesService = new maps.places.PlacesService(placesContainer);
   }
 
-  return placesService;
+  if (!autocompleteService) {
+    autocompleteService = new maps.places.AutocompleteService();
+  }
+
+  return {
+    maps,
+    placesService,
+    autocompleteService
+  };
 }
 
 async function buscarEnderecoNoCache(cacheId) {
@@ -209,53 +222,200 @@ async function salvarEnderecoNoCache(cacheId, dados) {
   );
 }
 
-async function buscarEnderecoNoPlaces(enderecoCompleto) {
-  const service = await obterPlacesService();
+function pontuarPredicao(prediction, endereco) {
+  const descricao = normalizarTexto(prediction.description || "");
+  const rua = normalizarTexto(endereco.rua);
+  const numeroEndereco = normalizarTexto(endereco.numeroEndereco);
+  const bairro = normalizarTexto(endereco.bairro);
+  const cidade = normalizarTexto(endereco.cidade);
+
+  let pontos = 0;
+
+  if (cidade && descricao.includes(cidade)) pontos += 40;
+  if (bairro && descricao.includes(bairro)) pontos += 30;
+  if (rua && descricao.includes(rua)) pontos += 30;
+  if (numeroEndereco && descricao.includes(numeroEndereco)) pontos += 15;
+
+  if (descricao.includes("brasil")) pontos += 5;
+  if (descricao.includes("sp")) pontos += 5;
+
+  return pontos;
+}
+
+async function buscarPredicoesEndereco(endereco) {
+  const { maps, autocompleteService } = await obterPlacesServices();
+
+  const input = [
+    endereco.rua,
+    endereco.numeroEndereco,
+    endereco.bairro,
+    endereco.cidade,
+    "SP",
+    "Brasil"
+  ].filter(Boolean).join(", ");
 
   return new Promise((resolve, reject) => {
-    service.findPlaceFromQuery(
+    autocompleteService.getPlacePredictions(
       {
-        query: enderecoCompleto,
-        fields: [
-          "name",
-          "formatted_address",
-          "geometry"
-        ],
-        locationBias: restauranteLogado?.location
-          ? {
-              center: {
-                lat: Number(restauranteLogado.location.lat),
-                lng: Number(restauranteLogado.location.lng)
-              },
-              radius: 50000
-            }
-          : undefined
+        input,
+        componentRestrictions: {
+          country: "br"
+        },
+        location: restauranteLogado?.location
+          ? new maps.LatLng(
+              Number(restauranteLogado.location.lat),
+              Number(restauranteLogado.location.lng)
+            )
+          : undefined,
+        radius: 50000,
+        types: ["address"]
       },
-      (results, status) => {
-        const placesStatus = window.google.maps.places.PlacesServiceStatus;
+      (predictions, status) => {
+        const statusOk = window.google.maps.places.PlacesServiceStatus.OK;
 
-        if (status !== placesStatus.OK || !results?.length) {
-          reject(new Error(`Places não encontrou endereço. Status: ${status}`));
+        if (status !== statusOk || !predictions?.length) {
+          reject(new Error(`Nenhum endereço encontrado. Status: ${status}`));
           return;
         }
 
-        const resultado = results[0];
+        const ordenadas = predictions
+          .map((prediction) => ({
+            ...prediction,
+            pontos: pontuarPredicao(prediction, endereco)
+          }))
+          .sort((a, b) => b.pontos - a.pontos);
 
-        if (!resultado.geometry?.location) {
+        resolve(ordenadas);
+      }
+    );
+  });
+}
+
+async function buscarDetalhesPlace(placeId) {
+  const { placesService } = await obterPlacesServices();
+
+  return new Promise((resolve, reject) => {
+    placesService.getDetails(
+      {
+        placeId,
+        fields: [
+          "place_id",
+          "name",
+          "formatted_address",
+          "geometry"
+        ]
+      },
+      (place, status) => {
+        const statusOk = window.google.maps.places.PlacesServiceStatus.OK;
+
+        if (status !== statusOk || !place) {
+          reject(new Error(`Erro ao carregar detalhes do endereço. Status: ${status}`));
+          return;
+        }
+
+        if (!place.geometry?.location) {
           reject(new Error("Endereço encontrado sem localização."));
           return;
         }
 
         resolve({
-          enderecoFormatado: resultado.formatted_address || resultado.name || enderecoCompleto,
+          placeId: place.place_id || placeId,
+          enderecoFormatado: place.formatted_address || place.name || "",
           location: {
-            lat: resultado.geometry.location.lat(),
-            lng: resultado.geometry.location.lng()
+            lat: place.geometry.location.lat(),
+            lng: place.geometry.location.lng()
           },
-          provider: "google_places"
+          provider: "google_places_autocomplete"
         });
       }
     );
+  });
+}
+
+async function aplicarEnderecoEncontrado(cacheId, endereco, dadosEndereco) {
+  const origemLat = Number(restauranteLogado.location.lat);
+  const origemLng = Number(restauranteLogado.location.lng);
+  const destinoLat = Number(dadosEndereco.location.lat);
+  const destinoLng = Number(dadosEndereco.location.lng);
+
+  const distanciaKm = calcularDistanciaKm(
+    origemLat,
+    origemLng,
+    destinoLat,
+    destinoLng
+  );
+
+  const distanciaComMargem = arredondar2(distanciaKm * 1.25);
+
+  document.getElementById("distanciaEntregaKm").value = distanciaComMargem;
+
+  await salvarEnderecoNoCache(cacheId, {
+    cacheId,
+    enderecoDigitado: endereco.enderecoCompleto,
+    enderecoFormatado: dadosEndereco.enderecoFormatado,
+    placeId: dadosEndereco.placeId || "",
+    location: dadosEndereco.location,
+    provider: dadosEndereco.provider,
+    createdAt: serverTimestamp()
+  });
+
+  setHtml(
+    "resultadoEndereco",
+    `
+      <div class="address-suggestion muted">
+        Endereço selecionado:<br>
+        <strong>${dadosEndereco.enderecoFormatado || endereco.enderecoCompleto}</strong><br>
+        Distância estimada para cobrança: ${distanciaComMargem.toFixed(2)} km
+      </div>
+    `
+  );
+
+  calcularPedido();
+
+  mostrarMensagem("Endereço selecionado e distância calculada.", true);
+}
+
+function renderizarOpcoesEndereco(cacheId, endereco, predicoes) {
+  const lista = predicoes.slice(0, 5);
+
+  const html = lista.map((prediction, index) => {
+    return `
+      <button
+        type="button"
+        class="address-suggestion"
+        data-place-id="${prediction.place_id}"
+        data-cache-id="${cacheId}"
+      >
+        ${index === 0 ? "Melhor opção: " : ""}
+        ${prediction.description}
+      </button>
+    `;
+  }).join("");
+
+  setHtml(
+    "resultadoEndereco",
+    `
+      <div class="address-suggestion muted">
+        Confira o endereço antes de criar o pedido. Clique na opção correta:
+      </div>
+      ${html}
+    `
+  );
+
+  document.querySelectorAll("button[data-place-id]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      button.innerText = "Selecionando endereço...";
+
+      try {
+        const detalhes = await buscarDetalhesPlace(button.dataset.placeId);
+        await aplicarEnderecoEncontrado(button.dataset.cacheId, endereco, detalhes);
+      } catch (erro) {
+        console.error(erro);
+        mostrarMensagem(erro.message || "Erro ao selecionar endereço.");
+        button.disabled = false;
+      }
+    });
   });
 }
 
@@ -296,18 +456,19 @@ function calcularValoresPedido() {
   const valorPorDistancia = distanciaKm * valorKmMotoboy * multiplicadorDemanda;
   const valorCalculadoMotoboy = taxaBaseMotoboy + valorPorDistancia;
 
-  const valorMotoboy = Math.max(
-    valorMinimoMotoboy,
-    valorCalculadoMotoboy
-  ) + taxaRetornoMotoboy;
+  const valorMotoboy = arredondar2(
+    Math.max(valorMinimoMotoboy, valorCalculadoMotoboy) + taxaRetornoMotoboy
+  );
 
-  const valorTotal = valorMotoboy + taxaSistema;
+  const taxaSistemaFinal = arredondar2(taxaSistema);
+  const taxaRetornoFinal = arredondar2(taxaRetornoMotoboy);
+  const valorTotal = arredondar2(valorMotoboy + taxaSistemaFinal);
 
   return {
-    distanciaKm,
+    distanciaKm: arredondar2(distanciaKm),
     valorMotoboy,
-    taxaSistema,
-    taxaRetornoMotoboy,
+    taxaSistema: taxaSistemaFinal,
+    taxaRetornoMotoboy: taxaRetornoFinal,
     valorTotal
   };
 }
@@ -545,7 +706,7 @@ export function carregarRecargaRestaurante() {
 }
 
 export async function solicitarRecarga() {
-  const valor = Number(document.getElementById("valorRecarga").value || 0);
+  const valor = arredondar2(document.getElementById("valorRecarga").value || 0);
   const observacao = document.getElementById("observacaoRecarga").value.trim();
   const msg = document.getElementById("mensagem");
   const btn = document.getElementById("btnSolicitarRecarga");
@@ -679,7 +840,7 @@ export async function buscarEnderecoEntrega() {
     return;
   }
 
-  const cacheId = normalizarTexto(endereco.enderecoCompleto);
+  const cacheId = normalizarTexto(`places-v2-${endereco.enderecoCompleto}`);
 
   if (btn) {
     btn.disabled = true;
@@ -687,49 +848,35 @@ export async function buscarEnderecoEntrega() {
   }
 
   try {
-    let dadosEndereco = await buscarEnderecoNoCache(cacheId);
+    const cache = await buscarEnderecoNoCache(cacheId);
 
-    if (!dadosEndereco) {
-      dadosEndereco = await buscarEnderecoNoPlaces(endereco.enderecoCompleto);
+    if (cache?.location?.lat && cache?.location?.lng) {
+      await aplicarEnderecoEncontrado(cacheId, endereco, cache);
 
-      await salvarEnderecoNoCache(cacheId, {
-        cacheId,
-        enderecoDigitado: endereco.enderecoCompleto,
-        enderecoFormatado: dadosEndereco.enderecoFormatado,
-        location: dadosEndereco.location,
-        provider: dadosEndereco.provider,
-        createdAt: serverTimestamp()
-      });
+      if (btn) {
+        btn.disabled = false;
+        btn.innerText = "Buscar endereço";
+      }
+
+      return;
     }
 
-    const origemLat = Number(restauranteLogado.location.lat);
-    const origemLng = Number(restauranteLogado.location.lng);
-    const destinoLat = Number(dadosEndereco.location.lat);
-    const destinoLng = Number(dadosEndereco.location.lng);
+    const predicoes = await buscarPredicoesEndereco(endereco);
 
-    const distanciaKm = calcularDistanciaKm(
-      origemLat,
-      origemLng,
-      destinoLat,
-      destinoLng
-    );
-
-    const distanciaComMargem = Number((distanciaKm * 1.25).toFixed(2));
-
-    document.getElementById("distanciaEntregaKm").value = distanciaComMargem;
-
-    if (resultado) {
-      resultado.innerHTML = `
-        <div class="address-suggestion muted">
-          Endereço encontrado: ${dadosEndereco.enderecoFormatado || endereco.enderecoCompleto}<br>
-          Distância estimada para cobrança: ${distanciaComMargem.toFixed(2)} km
-        </div>
-      `;
+    if (!predicoes.length) {
+      throw new Error("Nenhum endereço encontrado.");
     }
 
-    calcularPedido();
+    renderizarOpcoesEndereco(cacheId, endereco, predicoes);
 
-    mostrarMensagem("Endereço encontrado e distância calculada.", true);
+    const melhor = predicoes[0];
+
+    if (melhor.pontos >= 70) {
+      const detalhes = await buscarDetalhesPlace(melhor.place_id);
+      await aplicarEnderecoEncontrado(cacheId, endereco, detalhes);
+    } else {
+      mostrarMensagem("Confira e selecione o endereço correto na lista.", true);
+    }
   } catch (erro) {
     console.error(erro);
     mostrarMensagem(erro.message || "Erro ao buscar endereço.");
@@ -772,7 +919,7 @@ export async function criarPedido() {
   const observacao = document.getElementById("observacaoPedido")?.value.trim() || "";
   const formaPagamento = document.getElementById("formaPagamento")?.value || "pix";
   const precisaRetorno = document.getElementById("precisaRetorno")?.checked === true;
-  const valorTroco = numero(document.getElementById("valorTroco")?.value, 0);
+  const valorTroco = arredondar2(document.getElementById("valorTroco")?.value || 0);
 
   mostrarMensagem("");
 
@@ -823,14 +970,17 @@ export async function criarPedido() {
         throw new Error("Restaurante bloqueado.");
       }
 
-      const saldoAntes = numero(restaurante.saldoPrePago, 0);
-      const taxaSistema = numero(pedidoCalculado.taxaSistema, 0);
+      const saldoAntes = arredondar2(restaurante.saldoPrePago || 0);
+      const valorTotalPedido = arredondar2(pedidoCalculado.valorTotal);
+      const taxaSistema = arredondar2(pedidoCalculado.taxaSistema);
+      const valorMotoboy = arredondar2(pedidoCalculado.valorMotoboy);
+      const taxaRetornoMotoboy = arredondar2(pedidoCalculado.taxaRetornoMotoboy);
 
-      if (saldoAntes < taxaSistema) {
-        throw new Error("Saldo insuficiente para a taxa Cheguei.");
+      if (saldoAntes < valorTotalPedido) {
+        throw new Error(`Saldo insuficiente. Este pedido custa ${dinheiro(valorTotalPedido)} e seu saldo é ${dinheiro(saldoAntes)}.`);
       }
 
-      const saldoDepois = saldoAntes - taxaSistema;
+      const saldoDepois = arredondar2(saldoAntes - valorTotalPedido);
       const raiosBuscaKm = configApp?.raiosBuscaKm || [3, 5, 10, 15];
 
       transaction.set(pedidoRef, {
@@ -858,14 +1008,14 @@ export async function criarPedido() {
         valorTroco,
         observacao,
 
-        valorMotoboy: pedidoCalculado.valorMotoboy,
-        taxaSistema: pedidoCalculado.taxaSistema,
-        taxaRetornoMotoboy: pedidoCalculado.taxaRetornoMotoboy,
-        valorTotal: pedidoCalculado.valorTotal,
+        valorMotoboy,
+        taxaSistema,
+        taxaRetornoMotoboy,
+        valorTotal: valorTotalPedido,
 
-        taxaBaseMotoboyUsada: numero(configApp?.taxaBaseMotoboy, 0),
-        valorKmMotoboyUsado: numero(configApp?.valorKmMotoboy, 0),
-        valorMinimoMotoboyUsado: numero(configApp?.valorMinimoMotoboy, 0),
+        taxaBaseMotoboyUsada: arredondar2(configApp?.taxaBaseMotoboy || 0),
+        valorKmMotoboyUsado: arredondar2(configApp?.valorKmMotoboy || 0),
+        valorMinimoMotoboyUsado: arredondar2(configApp?.valorMinimoMotoboy || 0),
         multiplicadorDemandaUsado: numero(configApp?.multiplicadorDemanda, 1),
         motivoMultiplicador: configApp?.motivoMultiplicador || "",
 
@@ -887,8 +1037,8 @@ export async function criarPedido() {
 
       transaction.update(restauranteRef, {
         saldoPrePago: saldoDepois,
-        totalPedidos: numero(restaurante.totalPedidos, 0) + 1,
-        totalGasto: numero(restaurante.totalGasto, 0) + taxaSistema,
+        totalPedidos: Number(restaurante.totalPedidos || 0) + 1,
+        totalGasto: arredondar2(Number(restaurante.totalGasto || 0) + valorTotalPedido),
         updatedAt: serverTimestamp()
       });
 
@@ -896,12 +1046,15 @@ export async function criarPedido() {
         restauranteId: restauranteLogado.id,
         restauranteNome: restaurante.nome || restauranteLogado.nome || "",
         tipo: "debito_pedido",
-        valor: -taxaSistema,
+        valor: -valorTotalPedido,
+        valorMotoboy,
+        taxaSistema,
+        taxaRetornoMotoboy,
         saldoAntes,
         saldoDepois,
         pedidoId: pedidoRef.id,
         recargaId: null,
-        descricao: "Taxa Cheguei debitada na criação do pedido",
+        descricao: "Valor total do pedido debitado do saldo pré-pago",
         createdAt: serverTimestamp()
       });
     });
