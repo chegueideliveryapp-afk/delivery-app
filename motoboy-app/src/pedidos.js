@@ -174,9 +174,9 @@ function renderizarCorridaAtual(id, pedido) {
           : ""
       }
 
-      <p class="delivery-note">
-        A finalização da entrega será adicionada na próxima etapa.
-      </p>
+      <button class="finish-btn" data-action="finalizarPedido" data-id="${id}">
+        Finalizar entrega
+      </button>
     </div>
   `;
 }
@@ -214,6 +214,29 @@ function configurarBotoesPedidos() {
         alert("Erro ao recusar pedido.");
         button.disabled = false;
         button.innerText = "Recusar";
+      }
+    });
+  });
+
+  document.querySelectorAll("button[data-action='finalizarPedido']").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const pedidoId = button.dataset.id;
+
+      const confirmar = confirm("Confirmar finalização desta entrega?");
+
+      if (!confirmar) return;
+
+      button.disabled = true;
+      button.innerText = "Finalizando...";
+
+      try {
+        await finalizarEntrega(pedidoId);
+        alert("Entrega finalizada. Saldo atualizado.");
+      } catch (erro) {
+        console.error(erro);
+        alert(erro.message || "Erro ao finalizar entrega.");
+        button.disabled = false;
+        button.innerText = "Finalizar entrega";
       }
     });
   });
@@ -335,6 +358,8 @@ function escutarMinhasCorridas() {
           .map((item) => renderizarCorridaAtual(item.id, item.pedido))
           .join("")
       );
+
+      configurarBotoesPedidos();
     },
     (erro) => {
       console.error(erro);
@@ -408,6 +433,78 @@ async function recusarPedido(pedidoId) {
   await updateDoc(pedidoRef, {
     recusadoPor: arrayUnion(uidMotoboy),
     updatedAt: serverTimestamp()
+  });
+}
+
+async function finalizarEntrega(pedidoId) {
+  if (!uidMotoboy || !motoboyAtual) {
+    throw new Error("Motoboy não carregado.");
+  }
+
+  const pedidoRef = doc(db, "pedidos", pedidoId);
+  const motoboyRef = doc(db, "motoboys", uidMotoboy);
+  const ledgerRef = doc(collection(db, "ledger_motoboy"));
+
+  await runTransaction(db, async (transaction) => {
+    const pedidoSnap = await transaction.get(pedidoRef);
+    const motoboySnap = await transaction.get(motoboyRef);
+
+    if (!pedidoSnap.exists()) {
+      throw new Error("Pedido não encontrado.");
+    }
+
+    if (!motoboySnap.exists()) {
+      throw new Error("Motoboy não encontrado.");
+    }
+
+    const pedido = pedidoSnap.data();
+    const motoboy = motoboySnap.data();
+
+    if (pedido.status !== "aceito") {
+      throw new Error("Este pedido não está em andamento.");
+    }
+
+    if (pedido.motoboyId !== uidMotoboy) {
+      throw new Error("Este pedido pertence a outro motoboy.");
+    }
+
+    const valorMotoboy = Number(pedido.valorMotoboy || 0);
+
+    if (!valorMotoboy || valorMotoboy <= 0) {
+      throw new Error("Valor do motoboy inválido.");
+    }
+
+    const saldoAntes = Number(motoboy.saldo || 0);
+    const saldoDepois = saldoAntes + valorMotoboy;
+    const totalEntregasAtual = Number(motoboy.totalEntregas || 0);
+
+    transaction.update(pedidoRef, {
+      status: "entregue",
+      entregueAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+
+    transaction.update(motoboyRef, {
+      saldo: saldoDepois,
+      totalEntregas: totalEntregasAtual + 1,
+      updatedAt: serverTimestamp()
+    });
+
+    transaction.set(ledgerRef, {
+      motoboyId: uidMotoboy,
+      motoboyNome: motoboy.nome || "",
+      pedidoId,
+      restauranteId: pedido.restauranteId || "",
+      restauranteNome: pedido.restauranteNome || "",
+      tipo: "entrega",
+      valor: valorMotoboy,
+      saldoAntes,
+      saldoDepois,
+      pago: false,
+      semanaPagaId: null,
+      descricao: "Entrega finalizada",
+      createdAt: serverTimestamp()
+    });
   });
 }
 
