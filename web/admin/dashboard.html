@@ -28,6 +28,45 @@
     </section>
 
     <section class="panel">
+      <h2>Relatório por período</h2>
+      <p class="hint">
+        Consulte uso de crédito dos restaurantes, valores gerados pelos motoboys e pagamentos realizados.
+      </p>
+
+      <div class="form-grid">
+        <input id="dataInicioRelatorio" type="date">
+        <input id="dataFimRelatorio" type="date">
+        <input id="buscaRestauranteRelatorio" placeholder="Pesquisar restaurante">
+        <input id="buscaMotoboyRelatorio" placeholder="Pesquisar motoboy">
+        <button id="btnAplicarRelatorio" class="primary-btn" type="button">
+          Aplicar filtros
+        </button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Restaurantes no período</h2>
+      <p class="hint">
+        Veja quanto cada restaurante usou de crédito, quanto recarregou e o saldo atual.
+      </p>
+
+      <div id="relatorioRestaurantes">
+        <div class="empty">Carregando restaurantes...</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Motoboys no período</h2>
+      <p class="hint">
+        Veja quanto cada motoboy gerou em entregas, quanto já foi pago e quanto ainda está em aberto.
+      </p>
+
+      <div id="relatorioMotoboys">
+        <div class="empty">Carregando motoboys...</div>
+      </div>
+    </section>
+
+    <section class="panel">
       <h2>Atalhos</h2>
       <p class="hint">
         Acesse rapidamente as áreas principais da administração.
@@ -57,7 +96,7 @@
 
   <script type="module">
     import { protegerPagina, logout } from "../js/auth.js";
-    import { carregarDashboardAdmin } from "../js/admin-dashboard.js?v=200";
+    import { carregarDashboardAdmin } from "../js/admin-dashboard.js?v=230";
 
     protegerPagina("admin");
     carregarDashboardAdmin();
