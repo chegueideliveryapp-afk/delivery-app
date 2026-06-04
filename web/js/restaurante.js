@@ -41,11 +41,6 @@ function setText(id, texto) {
   if (el) el.innerText = texto;
 }
 
-function setHtml(id, html) {
-  const el = document.getElementById(id);
-  if (el) el.innerHTML = html;
-}
-
 function mostrarMensagem(texto, sucesso = false) {
   const msg = document.getElementById("mensagem");
 
@@ -134,7 +129,8 @@ function calcularDistanciaKm(lat1, lng1, lat2, lng2) {
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(lat1 * Math.PI / 180) *
     Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    Math.sin(dLng / 2) *
+    Math.sin(dLng / 2);
 
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
@@ -347,7 +343,10 @@ async function aplicarEnderecoEncontrado(cacheId, endereco, dadosEndereco) {
 
   const distanciaComMargem = arredondar2(distanciaKm * 1.25);
 
-  document.getElementById("distanciaEntregaKm").value = distanciaComMargem;
+  const distanciaInput = document.getElementById("distanciaEntregaKm");
+  if (distanciaInput) {
+    distanciaInput.value = distanciaComMargem;
+  }
 
   await salvarEnderecoNoCache(cacheId, {
     cacheId,
@@ -359,16 +358,36 @@ async function aplicarEnderecoEncontrado(cacheId, endereco, dadosEndereco) {
     createdAt: serverTimestamp()
   });
 
-  setHtml(
-    "resultadoEndereco",
-    `
+  const enderecoFinal = dadosEndereco.enderecoFormatado || endereco.enderecoCompleto;
+
+  const resultadoEndereco = document.getElementById("resultadoEndereco");
+  if (resultadoEndereco) {
+    resultadoEndereco.classList.remove("hidden");
+    resultadoEndereco.innerHTML = `
       <div class="address-suggestion muted">
         Endereço selecionado:<br>
-        <strong>${dadosEndereco.enderecoFormatado || endereco.enderecoCompleto}</strong><br>
+        <strong>${enderecoFinal}</strong><br>
         Distância estimada para cobrança: ${distanciaComMargem.toFixed(2)} km
       </div>
-    `
-  );
+    `;
+  }
+
+  const enderecoConfirmadoBox = document.getElementById("enderecoConfirmadoBox");
+  const enderecoConfirmadoTexto = document.getElementById("enderecoConfirmadoTexto");
+  const enderecoConfirmadoDetalhe = document.getElementById("enderecoConfirmadoDetalhe");
+
+  if (enderecoConfirmadoBox) {
+    enderecoConfirmadoBox.classList.remove("hidden");
+  }
+
+  if (enderecoConfirmadoTexto) {
+    enderecoConfirmadoTexto.innerText = enderecoFinal;
+  }
+
+  if (enderecoConfirmadoDetalhe) {
+    enderecoConfirmadoDetalhe.innerText =
+      `Distância calculada: ${distanciaComMargem.toFixed(2)} km. Confira se o endereço está correto antes de criar o pedido.`;
+  }
 
   calcularPedido();
 
@@ -392,15 +411,17 @@ function renderizarOpcoesEndereco(cacheId, endereco, predicoes) {
     `;
   }).join("");
 
-  setHtml(
-    "resultadoEndereco",
-    `
+  const resultadoEndereco = document.getElementById("resultadoEndereco");
+
+  if (resultadoEndereco) {
+    resultadoEndereco.classList.remove("hidden");
+    resultadoEndereco.innerHTML = `
       <div class="address-suggestion muted">
         Confira o endereço antes de criar o pedido. Clique na opção correta:
       </div>
       ${html}
-    `
-  );
+    `;
+  }
 
   document.querySelectorAll("button[data-place-id]").forEach((button) => {
     button.addEventListener("click", async () => {
@@ -821,7 +842,10 @@ export async function buscarEnderecoEntrega() {
 
   mostrarMensagem("");
 
-  if (resultado) resultado.innerHTML = "";
+  if (resultado) {
+    resultado.innerHTML = "";
+    resultado.classList.add("hidden");
+  }
 
   if (!restauranteLogado) {
     mostrarMensagem("Restaurante ainda não carregado.");
@@ -1001,6 +1025,14 @@ export async function criarPedido() {
           lng: Number(restaurante.location.lng)
         },
 
+        location: {
+          lat: Number(restaurante.location.lat),
+          lng: Number(restaurante.location.lng)
+        },
+
+        lat: Number(restaurante.location.lat),
+        lng: Number(restaurante.location.lng),
+
         distanciaKm: pedidoCalculado.distanciaKm,
 
         formaPagamento,
@@ -1071,7 +1103,19 @@ export async function criarPedido() {
     document.getElementById("valorTroco").value = "";
     document.getElementById("valorTroco").classList.add("hidden");
 
-    setHtml("resultadoEndereco", "");
+    const resultadoEndereco = document.getElementById("resultadoEndereco");
+    if (resultadoEndereco) {
+      resultadoEndereco.innerHTML = "";
+      resultadoEndereco.classList.add("hidden");
+    }
+
+    const enderecoConfirmadoBox = document.getElementById("enderecoConfirmadoBox");
+    if (enderecoConfirmadoBox) {
+      enderecoConfirmadoBox.classList.add("hidden");
+    }
+
+    setText("enderecoConfirmadoTexto", "---");
+    setText("enderecoConfirmadoDetalhe", "Confira se o endereço está correto antes de criar o pedido.");
 
     pedidoCalculado = null;
 
