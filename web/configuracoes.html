@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Configurações - Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/admin.css">
+</head>
+
+<body>
+  <header class="topbar">
+    <h1>Configurações</h1>
+    <a class="topbar-link" href="./dashboard.html">Voltar</a>
+  </header>
+
+  <main class="page">
+    <section class="panel">
+      <h2>Taxas da operação</h2>
+      <p class="hint">
+        Esses valores controlam quanto o restaurante paga, quanto o motoboy recebe e como a busca por motoboys funciona.
+      </p>
+
+      <div class="form-grid">
+        <input id="taxaSistemaPadrao" type="number" step="0.01" placeholder="Taxa Cheguei padrão. Ex: 5">
+
+        <input id="taxaBaseMotoboy" type="number" step="0.01" placeholder="Taxa base motoboy. Ex: 5">
+
+        <input id="valorKmMotoboy" type="number" step="0.01" placeholder="Valor por km do motoboy. Ex: 1.5">
+
+        <input id="valorMinimoMotoboy" type="number" step="0.01" placeholder="Valor mínimo motoboy. Ex: 10">
+
+        <input id="taxaRetornoMotoboy" type="number" step="0.01" placeholder="Taxa retorno motoboy. Ex: 5">
+
+        <input id="multiplicadorDemanda" type="number" step="0.01" placeholder="Multiplicador demanda. Ex: 1">
+      </div>
+
+      <p class="hint">
+        Use o multiplicador para chuva, eventos ou fim de ano. Exemplo: 1 normal, 1.2 aumenta 20%, 1.5 aumenta 50%.
+      </p>
+    </section>
+
+    <section class="panel">
+      <h2>Busca de motoboys</h2>
+      <p class="hint">
+        Configure os raios progressivos e o tempo de expansão da busca.
+      </p>
+
+      <div class="form-grid">
+        <input id="raiosBuscaKm" placeholder="Raios separados por vírgula. Ex: 3,5,10,15">
+
+        <input id="tempoPorRaioSegundos" type="number" step="1" placeholder="Tempo por raio em segundos. Ex: 15">
+
+        <input id="timeoutAceiteSegundos" type="number" step="1" placeholder="Timeout aceite em segundos. Ex: 15">
+
+        <input id="raioKm" type="number" step="0.01" placeholder="Raio padrão antigo. Ex: 10">
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Pix e suporte</h2>
+      <p class="hint">
+        Dados usados na tela de recarga Pix dos restaurantes.
+      </p>
+
+      <div class="form-grid">
+        <input id="chavePix" placeholder="Chave Pix da empresa">
+
+        <input id="suporteWhatsapp" placeholder="WhatsApp suporte. Ex: 5519999999999">
+
+        <input id="appMotoboyMinVersion" placeholder="Versão mínima do app motoboy. Ex: 1.0.0">
+
+        <input id="motivoMultiplicador" placeholder="Motivo do multiplicador. Ex: Chuva forte">
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Salvar</h2>
+      <p class="hint">
+        Após salvar, novos pedidos já passam a usar essas taxas.
+      </p>
+
+      <button id="btnSalvarConfig" class="primary-btn" type="button">
+        Salvar configurações
+      </button>
+
+      <div id="mensagem" class="hint"></div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { protegerPagina } from "../js/auth.js";
+    import {
+      carregarConfiguracoesAdmin,
+      salvarConfiguracoesAdmin
+    } from "../js/admin-configuracoes.js?v=280";
+
+    protegerPagina("admin");
+    carregarConfiguracoesAdmin();
+
+    document.getElementById("btnSalvarConfig").addEventListener("click", salvarConfiguracoesAdmin);
+  </script>
+</body>
+</html>
