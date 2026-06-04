@@ -1,1 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Pagamentos Motoboy - Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/admin.css">
+</head>
+
+<body>
+  <header class="topbar">
+    <h1>Pagamentos Motoboy</h1>
+    <a class="topbar-link" href="./dashboard.html">Voltar</a>
+  </header>
+
+  <main class="page">
+    <section class="panel">
+      <h2>Fechamento semanal</h2>
+      <p class="hint">
+        Aqui você vê os valores acumulados dos motoboys. O pagamento oficial acontece toda segunda-feira.
+      </p>
+
+      <div id="resumoPagamentosMotoboy">
+        <div class="empty">Carregando resumo financeiro...</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Motoboys com saldo a pagar</h2>
+      <p class="hint">
+        Ao marcar como pago, o sistema zera o saldo do motoboy, marca as entregas como pagas e cria o histórico em pagamentos_motoboy.
+      </p>
+
+      <div id="listaPagamentosMotoboy">
+        <div class="empty">Carregando pagamentos...</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Histórico de pagamentos</h2>
+      <p class="hint">
+        Pagamentos já registrados pela administração.
+      </p>
+
+      <div id="historicoPagamentosMotoboy">
+        <div class="empty">Carregando histórico...</div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { protegerPagina } from "../js/auth.js";
+    import { carregarPagamentosMotoboyAdmin } from "../js/financeiro.js?v=130";
+
+    protegerPagina("admin");
+    carregarPagamentosMotoboyAdmin();
+  </script>
+</body>
+</html>
