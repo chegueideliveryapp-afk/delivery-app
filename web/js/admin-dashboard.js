@@ -168,21 +168,79 @@ function renderizarResumo() {
   });
 }
 
+function calcularDadosRestaurante(restaurante, inicio, fim) {
+  const restauranteId = restaurante.id;
+
+  const debitosPedido = estado.ledgerRestaurante.filter((l) => {
+    return l.restauranteId === restauranteId
+      && l.tipo === "debito_pedido"
+      && timestampDentroPeriodo(l.createdAt, inicio, fim);
+  });
+
+  const recargasAprovadas = estado.recargas.filter((r) => {
+    return r.restauranteId === restauranteId
+      && r.status === "aprovada"
+      && timestampDentroPeriodo(r.aprovadoAt || r.solicitadoAt, inicio, fim);
+  });
+
+  const pedidosPeriodo = estado.pedidos.filter((p) => {
+    return p.restauranteId === restauranteId
+      && timestampDentroPeriodo(p.createdAt, inicio, fim);
+  });
+
+  return {
+    creditoUsado: Math.abs(soma(debitosPedido, (l) => l.valor || 0)),
+    totalRecargas: soma(recargasAprovadas, (r) => r.valor || 0),
+    totalPedidos: pedidosPeriodo.length,
+    saldoAtual: Number(restaurante.saldoPrePago || 0)
+  };
+}
+
+function passaFiltroStatusRestaurante(restaurante, status) {
+  if (status === "todos") return true;
+  if (status === "ativo") return restaurante.ativo !== false;
+  if (status === "inativo") return restaurante.ativo === false;
+  if (status === "bloqueado") return restaurante.bloqueado === true;
+  if (status === "liberado") return restaurante.bloqueado !== true;
+  return true;
+}
+
+function ordenarRestaurantes(lista, ordenacao) {
+  return lista.sort((a, b) => {
+    if (ordenacao === "creditoUsado") return b.metricas.creditoUsado - a.metricas.creditoUsado;
+    if (ordenacao === "recargas") return b.metricas.totalRecargas - a.metricas.totalRecargas;
+    if (ordenacao === "saldoAtual") return b.metricas.saldoAtual - a.metricas.saldoAtual;
+    if (ordenacao === "pedidos") return b.metricas.totalPedidos - a.metricas.totalPedidos;
+
+    return normalizarTexto(a.nome).localeCompare(normalizarTexto(b.nome));
+  });
+}
+
 function renderizarRelatorioRestaurantes() {
   const { inicio, fim } = obterPeriodoSelecionado();
+
   const busca = normalizarTexto(
     document.getElementById("buscaRestauranteRelatorio")?.value
   );
 
-  let restaurantes = [...estado.restaurantes];
+  const statusFiltro = document.getElementById("statusRestauranteRelatorio")?.value || "todos";
+  const ordenacao = document.getElementById("ordenacaoRestauranteRelatorio")?.value || "nome";
 
-  if (busca) {
-    restaurantes = restaurantes.filter((r) => {
+  let restaurantes = estado.restaurantes
+    .filter((r) => passaFiltroStatusRestaurante(r, statusFiltro))
+    .filter((r) => {
+      if (!busca) return true;
+
       return normalizarTexto(r.nome).includes(busca)
         || normalizarTexto(r.email).includes(busca)
         || normalizarTexto(r.telefone).includes(busca);
-    });
-  }
+    })
+    .map((r) => ({
+      ...r,
+      metricas: calcularDadosRestaurante(r, inicio, fim)
+    }));
+
+  restaurantes = ordenarRestaurantes(restaurantes, ordenacao);
 
   if (!restaurantes.length) {
     setHtml(
@@ -192,30 +250,24 @@ function renderizarRelatorioRestaurantes() {
     return;
   }
 
+  const totalCreditoUsado = soma(restaurantes, (r) => r.metricas.creditoUsado);
+  const totalRecargas = soma(restaurantes, (r) => r.metricas.totalRecargas);
+  const totalPedidos = soma(restaurantes, (r) => r.metricas.totalPedidos);
+
+  const resumo = `
+    <div class="list-card">
+      <div>
+        <strong>Resumo dos restaurantes filtrados</strong>
+        <p>Restaurantes encontrados: ${restaurantes.length}</p>
+        <p>Crédito usado no período: ${dinheiro(totalCreditoUsado)}</p>
+        <p>Recargas aprovadas no período: ${dinheiro(totalRecargas)}</p>
+        <p>Pedidos no período: ${totalPedidos}</p>
+      </div>
+    </div>
+  `;
+
   const cards = restaurantes.map((restaurante) => {
-    const restauranteId = restaurante.id;
-
-    const debitosPedido = estado.ledgerRestaurante.filter((l) => {
-      return l.restauranteId === restauranteId
-        && l.tipo === "debito_pedido"
-        && timestampDentroPeriodo(l.createdAt, inicio, fim);
-    });
-
-    const recargasAprovadas = estado.recargas.filter((r) => {
-      return r.restauranteId === restauranteId
-        && r.status === "aprovada"
-        && timestampDentroPeriodo(r.aprovadoAt || r.solicitadoAt, inicio, fim);
-    });
-
-    const pedidosPeriodo = estado.pedidos.filter((p) => {
-      return p.restauranteId === restauranteId
-        && timestampDentroPeriodo(p.createdAt, inicio, fim);
-    });
-
-    const creditoUsado = Math.abs(soma(debitosPedido, (l) => l.valor || 0));
-    const totalRecargas = soma(recargasAprovadas, (r) => r.valor || 0);
-    const totalPedidos = pedidosPeriodo.length;
-    const saldoAtual = Number(restaurante.saldoPrePago || 0);
+    const m = restaurante.metricas;
 
     return `
       <div class="list-card">
@@ -223,10 +275,10 @@ function renderizarRelatorioRestaurantes() {
           <strong>${restaurante.nome || "Restaurante sem nome"}</strong>
 
           <p>Período: ${inicio.toLocaleDateString("pt-BR")} até ${fim.toLocaleDateString("pt-BR")}</p>
-          <p>Crédito usado no período: ${dinheiro(creditoUsado)}</p>
-          <p>Recargas aprovadas no período: ${dinheiro(totalRecargas)}</p>
-          <p>Saldo atual: ${dinheiro(saldoAtual)}</p>
-          <p>Pedidos criados no período: ${totalPedidos}</p>
+          <p>Crédito usado no período: ${dinheiro(m.creditoUsado)}</p>
+          <p>Recargas aprovadas no período: ${dinheiro(m.totalRecargas)}</p>
+          <p>Saldo atual: ${dinheiro(m.saldoAtual)}</p>
+          <p>Pedidos criados no período: ${m.totalPedidos}</p>
           <p>E-mail: ${restaurante.email || "Não informado"}</p>
           <p>Telefone: ${restaurante.telefone || "Não informado"}</p>
 
@@ -244,24 +296,90 @@ function renderizarRelatorioRestaurantes() {
     `;
   }).join("");
 
-  setHtml("relatorioRestaurantes", cards);
+  setHtml("relatorioRestaurantes", resumo + cards);
+}
+
+function calcularDadosMotoboy(motoboy, inicio, fim) {
+  const motoboyId = motoboy.id;
+
+  const entregasPeriodo = estado.ledgerMotoboy.filter((l) => {
+    return l.motoboyId === motoboyId
+      && l.tipo === "entrega"
+      && timestampDentroPeriodo(l.createdAt, inicio, fim);
+  });
+
+  const pagamentosPeriodo = estado.pagamentosMotoboy.filter((p) => {
+    return p.motoboyId === motoboyId
+      && timestampDentroPeriodo(p.pagoAt || p.createdAt, inicio, fim);
+  });
+
+  const valorGerado = soma(entregasPeriodo, (l) => l.valor || 0);
+  const valorPago = soma(pagamentosPeriodo, (p) => p.valorTotalSemana || 0);
+  const valorAberto = soma(
+    entregasPeriodo.filter((l) => l.pago !== true),
+    (l) => l.valor || 0
+  );
+
+  const entregasPagas = entregasPeriodo.filter((l) => l.pago === true).length;
+  const entregasAbertas = entregasPeriodo.filter((l) => l.pago !== true).length;
+
+  return {
+    valorGerado,
+    valorPago,
+    valorAberto,
+    totalEntregas: entregasPeriodo.length,
+    entregasPagas,
+    entregasAbertas
+  };
+}
+
+function passaFiltroStatusMotoboy(motoboy, status) {
+  if (status === "todos") return true;
+  if (status === "online") return motoboy.online === true;
+  if (status === "offline") return motoboy.online !== true;
+  if (status === "aprovado") return motoboy.aprovado === true;
+  if (status === "pendente") return motoboy.aprovado !== true || motoboy.statusCadastro === "pendente";
+  if (status === "bloqueado") return motoboy.bloqueado === true;
+  if (status === "liberado") return motoboy.bloqueado !== true;
+  return true;
+}
+
+function ordenarMotoboys(lista, ordenacao) {
+  return lista.sort((a, b) => {
+    if (ordenacao === "valorGerado") return b.metricas.valorGerado - a.metricas.valorGerado;
+    if (ordenacao === "valorPago") return b.metricas.valorPago - a.metricas.valorPago;
+    if (ordenacao === "valorAberto") return b.metricas.valorAberto - a.metricas.valorAberto;
+    if (ordenacao === "entregas") return b.metricas.totalEntregas - a.metricas.totalEntregas;
+
+    return normalizarTexto(a.nome).localeCompare(normalizarTexto(b.nome));
+  });
 }
 
 function renderizarRelatorioMotoboys() {
   const { inicio, fim } = obterPeriodoSelecionado();
+
   const busca = normalizarTexto(
     document.getElementById("buscaMotoboyRelatorio")?.value
   );
 
-  let motoboys = [...estado.motoboys];
+  const statusFiltro = document.getElementById("statusMotoboyRelatorio")?.value || "todos";
+  const ordenacao = document.getElementById("ordenacaoMotoboyRelatorio")?.value || "nome";
 
-  if (busca) {
-    motoboys = motoboys.filter((m) => {
+  let motoboys = estado.motoboys
+    .filter((m) => passaFiltroStatusMotoboy(m, statusFiltro))
+    .filter((m) => {
+      if (!busca) return true;
+
       return normalizarTexto(m.nome).includes(busca)
         || normalizarTexto(m.cpf).includes(busca)
         || normalizarTexto(m.telefone).includes(busca);
-    });
-  }
+    })
+    .map((m) => ({
+      ...m,
+      metricas: calcularDadosMotoboy(m, inicio, fim)
+    }));
+
+  motoboys = ordenarMotoboys(motoboys, ordenacao);
 
   if (!motoboys.length) {
     setHtml(
@@ -271,29 +389,26 @@ function renderizarRelatorioMotoboys() {
     return;
   }
 
+  const totalGerado = soma(motoboys, (m) => m.metricas.valorGerado);
+  const totalPago = soma(motoboys, (m) => m.metricas.valorPago);
+  const totalAberto = soma(motoboys, (m) => m.metricas.valorAberto);
+  const totalEntregas = soma(motoboys, (m) => m.metricas.totalEntregas);
+
+  const resumo = `
+    <div class="list-card">
+      <div>
+        <strong>Resumo dos motoboys filtrados</strong>
+        <p>Motoboys encontrados: ${motoboys.length}</p>
+        <p>Valor gerado no período: ${dinheiro(totalGerado)}</p>
+        <p>Valor pago no período: ${dinheiro(totalPago)}</p>
+        <p>Valor em aberto no período: ${dinheiro(totalAberto)}</p>
+        <p>Entregas no período: ${totalEntregas}</p>
+      </div>
+    </div>
+  `;
+
   const cards = motoboys.map((motoboy) => {
-    const motoboyId = motoboy.id;
-
-    const entregasPeriodo = estado.ledgerMotoboy.filter((l) => {
-      return l.motoboyId === motoboyId
-        && l.tipo === "entrega"
-        && timestampDentroPeriodo(l.createdAt, inicio, fim);
-    });
-
-    const pagamentosPeriodo = estado.pagamentosMotoboy.filter((p) => {
-      return p.motoboyId === motoboyId
-        && timestampDentroPeriodo(p.pagoAt || p.createdAt, inicio, fim);
-    });
-
-    const valorGerado = soma(entregasPeriodo, (l) => l.valor || 0);
-    const valorPago = soma(pagamentosPeriodo, (p) => p.valorTotalSemana || 0);
-    const valorAberto = soma(
-      entregasPeriodo.filter((l) => l.pago !== true),
-      (l) => l.valor || 0
-    );
-
-    const entregasPagas = entregasPeriodo.filter((l) => l.pago === true).length;
-    const entregasAbertas = entregasPeriodo.filter((l) => l.pago !== true).length;
+    const m = motoboy.metricas;
 
     return `
       <div class="list-card">
@@ -301,13 +416,14 @@ function renderizarRelatorioMotoboys() {
           <strong>${motoboy.nome || "Motoboy sem nome"}</strong>
 
           <p>Período: ${inicio.toLocaleDateString("pt-BR")} até ${fim.toLocaleDateString("pt-BR")}</p>
-          <p>Valor gerado em entregas: ${dinheiro(valorGerado)}</p>
-          <p>Valor pago no período: ${dinheiro(valorPago)}</p>
-          <p>Valor em aberto no período: ${dinheiro(valorAberto)}</p>
+          <p>Valor gerado em entregas: ${dinheiro(m.valorGerado)}</p>
+          <p>Valor pago no período: ${dinheiro(m.valorPago)}</p>
+          <p>Valor em aberto no período: ${dinheiro(m.valorAberto)}</p>
           <p>Saldo atual no cadastro: ${dinheiro(motoboy.saldo)}</p>
-          <p>Entregas no período: ${entregasPeriodo.length}</p>
-          <p>Entregas pagas: ${entregasPagas}</p>
-          <p>Entregas em aberto: ${entregasAbertas}</p>
+          <p>Entregas no período: ${m.totalEntregas}</p>
+          <p>Entregas pagas: ${m.entregasPagas}</p>
+          <p>Entregas em aberto: ${m.entregasAbertas}</p>
+          <p>CPF: ${motoboy.cpf || "Não informado"}</p>
           <p>Telefone: ${motoboy.telefone || "Não informado"}</p>
 
           <div class="status-row">
@@ -328,7 +444,7 @@ function renderizarRelatorioMotoboys() {
     `;
   }).join("");
 
-  setHtml("relatorioMotoboys", cards);
+  setHtml("relatorioMotoboys", resumo + cards);
 }
 
 function renderizarRelatorios() {
@@ -469,21 +585,30 @@ function escutarColecao(nomeColecao, chaveEstado) {
 function configurarFiltros() {
   preencherDatasPadrao();
 
-  const btn = document.getElementById("btnAplicarRelatorio");
-  const buscaRestaurante = document.getElementById("buscaRestauranteRelatorio");
-  const buscaMotoboy = document.getElementById("buscaMotoboyRelatorio");
-  const dataInicio = document.getElementById("dataInicioRelatorio");
-  const dataFim = document.getElementById("dataFimRelatorio");
+  const ids = [
+    "btnAplicarRelatorio",
+    "buscaRestauranteRelatorio",
+    "statusRestauranteRelatorio",
+    "ordenacaoRestauranteRelatorio",
+    "buscaMotoboyRelatorio",
+    "statusMotoboyRelatorio",
+    "ordenacaoMotoboyRelatorio",
+    "dataInicioRelatorio",
+    "dataFimRelatorio"
+  ];
 
-  if (btn) {
-    btn.addEventListener("click", renderizarRelatorios);
-  }
+  ids.forEach((id) => {
+    const el = document.getElementById(id);
 
-  [buscaRestaurante, buscaMotoboy, dataInicio, dataFim].forEach((el) => {
     if (!el) return;
 
     el.addEventListener("input", renderizarRelatorios);
     el.addEventListener("change", renderizarRelatorios);
+    el.addEventListener("click", () => {
+      if (id === "btnAplicarRelatorio") {
+        renderizarRelatorios();
+      }
+    });
   });
 }
 
