@@ -11,7 +11,9 @@ import {
   getDoc,
   onSnapshot,
   query,
-  where
+  where,
+  updateDoc,
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 function dinheiro(valor) {
@@ -66,13 +68,15 @@ async function validarRestaurante(user) {
   return true;
 }
 
-function renderizarPedidoPendente(pedido) {
+function renderizarPedido(pedido) {
+  const semMotoboy = pedido.status === "sem_motoboy";
+
   return `
     <div class="recharge-item order-history-item">
       <div>
         <strong>${pedido.enderecoEntrega || "Endereço não informado"}</strong>
 
-        <p>Status: aguardando motoboy</p>
+        <p>Status: ${semMotoboy ? "sem motoboy encontrado" : "aguardando motoboy"}</p>
         <p>Pagamento: ${pagamentoTexto(pedido.formaPagamento)}</p>
         <p>Retorno: ${pedido.precisaRetorno ? "Sim" : "Não"}</p>
         <p>Distância: ${Number(pedido.distanciaKm || 0).toFixed(2)} km</p>
@@ -84,7 +88,7 @@ function renderizarPedidoPendente(pedido) {
 
         ${
           pedido.raioAtualKm
-            ? `<p>Raio atual de busca: ${pedido.raioAtualKm} km</p>`
+            ? `<p>Raio inicial: ${pedido.raioAtualKm} km</p>`
             : ""
         }
 
@@ -95,13 +99,73 @@ function renderizarPedidoPendente(pedido) {
         }
 
         <p>Criado em: ${dataTexto(pedido.createdAt)}</p>
+
+        ${
+          semMotoboy
+            ? `<p>Encerrado em: ${dataTexto(pedido.semMotoboyAt)}</p>
+               <p>Motivo: ${pedido.motivoSemMotoboy || "Nenhum motoboy aceitou dentro dos raios configurados."}</p>`
+            : ""
+        }
+
+        ${
+          semMotoboy
+            ? `<button class="support-link" data-action="tentarNovamente" data-id="${pedido.id}">
+                Tentar novamente
+              </button>`
+            : ""
+        }
       </div>
 
-      <span class="status-pill pendente">
-        Pendente
+      <span class="status-pill ${semMotoboy ? "recusada" : "pendente"}">
+        ${semMotoboy ? "Sem motoboy" : "Pendente"}
       </span>
     </div>
   `;
+}
+
+async function tentarNovamentePedido(pedidoId) {
+  const pedidoRef = doc(db, "pedidos", pedidoId);
+
+  await updateDoc(pedidoRef, {
+    status: "pendente",
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    recusadoPor: [],
+    raioAtualKm: 3,
+    tentativaBusca: 0,
+    motoboyId: "",
+    motoboyNome: "",
+    aceitoAt: null,
+    entregueAt: null,
+    semMotoboyAt: null,
+    motivoSemMotoboy: ""
+  });
+}
+
+function configurarBotoes() {
+  document.querySelectorAll("button[data-action='tentarNovamente']").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const pedidoId = button.dataset.id;
+
+      const confirmar = confirm(
+        "Tentar buscar motoboy novamente para este pedido?"
+      );
+
+      if (!confirmar) return;
+
+      button.disabled = true;
+      button.innerText = "Tentando...";
+
+      try {
+        await tentarNovamentePedido(pedidoId);
+      } catch (erro) {
+        console.error(erro);
+        alert("Erro ao tentar novamente.");
+        button.disabled = false;
+        button.innerText = "Tentar novamente";
+      }
+    });
+  });
 }
 
 export function carregarPedidosPendentesNovoPedido() {
@@ -117,8 +181,7 @@ export function carregarPedidosPendentesNovoPedido() {
 
     const q = query(
       collection(db, "pedidos"),
-      where("restauranteId", "==", user.uid),
-      where("status", "==", "pendente")
+      where("restauranteId", "==", user.uid)
     );
 
     onSnapshot(
@@ -127,10 +190,17 @@ export function carregarPedidosPendentesNovoPedido() {
         const pedidos = [];
 
         snapshot.forEach((docSnap) => {
-          pedidos.push({
+          const pedido = {
             id: docSnap.id,
             ...docSnap.data()
-          });
+          };
+
+          if (
+            pedido.status === "pendente" ||
+            pedido.status === "sem_motoboy"
+          ) {
+            pedidos.push(pedido);
+          }
         });
 
         pedidos.sort((a, b) => {
@@ -149,8 +219,10 @@ export function carregarPedidosPendentesNovoPedido() {
 
         setHtml(
           "listaPedidosPendentesNovoPedido",
-          pedidos.map(renderizarPedidoPendente).join("")
+          pedidos.map(renderizarPedido).join("")
         );
+
+        configurarBotoes();
       },
       (erro) => {
         console.error(erro);
