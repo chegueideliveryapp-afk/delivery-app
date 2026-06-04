@@ -286,6 +286,54 @@ function renderCorridaAtual(id, pedido) {
   `;
 }
 
+function configurarBotoesPedidos() {
+  document.querySelectorAll("[data-action]").forEach((button) => {
+    if (button.dataset.configurado === "true") return;
+
+    button.dataset.configurado = "true";
+
+    button.addEventListener("click", async () => {
+      const action = button.dataset.action;
+      const pedidoId = button.dataset.id;
+
+      button.disabled = true;
+
+      const textoOriginal = button.innerText;
+
+      if (action === "aceitar") {
+        button.innerText = "Aceitando...";
+      }
+
+      if (action === "recusar") {
+        button.innerText = "Recusando...";
+      }
+
+      if (action === "finalizar") {
+        button.innerText = "Finalizando...";
+      }
+
+      try {
+        if (action === "aceitar") {
+          await aceitarPedido(pedidoId);
+        }
+
+        if (action === "recusar") {
+          await recusarPedido(pedidoId);
+        }
+
+        if (action === "finalizar") {
+          await finalizarEntrega(pedidoId);
+        }
+      } catch (erro) {
+        console.error(erro);
+        alert(erro.message || "Erro ao processar ação.");
+        button.disabled = false;
+        button.innerText = textoOriginal;
+      }
+    });
+  });
+}
+
 function renderizarPedidos() {
   if (!uid || !motoboyAtual) return;
 
@@ -312,6 +360,8 @@ function renderizarPedidos() {
         Fique online, com GPS ativo e conta aprovada para receber corridas.
       </div>
     `);
+
+    configurarBotoesPedidos();
     return;
   }
 
@@ -321,6 +371,8 @@ function renderizarPedidos() {
         Você já possui uma corrida em andamento.
       </div>
     `);
+
+    configurarBotoesPedidos();
     return;
   }
 
@@ -346,6 +398,8 @@ function renderizarPedidos() {
         ${totalPendentes ? `${totalPendentes} pedido(s) pendente(s), mas fora do raio máximo permitido.` : ""}
       </div>
     `);
+
+    configurarBotoesPedidos();
     return;
   }
 
@@ -354,37 +408,8 @@ function renderizarPedidos() {
     .join("");
 
   setHtml("listaPedidosMotoboy", html);
+
   configurarBotoesPedidos();
-}
-
-function configurarBotoesPedidos() {
-  document.querySelectorAll("[data-action]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      const action = button.dataset.action;
-      const pedidoId = button.dataset.id;
-
-      button.disabled = true;
-
-      try {
-        if (action === "aceitar") {
-          await aceitarPedido(pedidoId);
-        }
-
-        if (action === "recusar") {
-          await recusarPedido(pedidoId);
-        }
-
-        if (action === "finalizar") {
-          await finalizarEntrega(pedidoId);
-        }
-      } catch (erro) {
-        console.error(erro);
-        alert(erro.message || "Erro ao processar ação.");
-      }
-
-      button.disabled = false;
-    });
-  });
 }
 
 async function aceitarPedido(pedidoId) {
