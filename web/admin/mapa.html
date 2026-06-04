@@ -1,1 +1,186 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Mapa Operacional - Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/admin.css">
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  >
+
+  <style>
+    #mapaAdminOperacional {
+      width: 100%;
+      height: 560px;
+      border: 1px solid #e4e7ec;
+      border-radius: 22px;
+      overflow: hidden;
+      margin-top: 16px;
+    }
+
+    .map-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: #f5f6f8;
+      color: #15171c;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .legend-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: #9ca3af;
+    }
+
+    .legend-dot.green {
+      background: #16a34a;
+    }
+
+    .legend-dot.blue {
+      background: #2563eb;
+    }
+
+    .legend-dot.yellow {
+      background: #f59e0b;
+    }
+
+    .legend-dot.red {
+      background: #ea1d2c;
+    }
+
+    .map-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .map-stat {
+      padding: 16px;
+      border: 1px solid #e4e7ec;
+      border-radius: 18px;
+      background: #fbfcfd;
+    }
+
+    .map-stat span {
+      display: block;
+      color: #6f7682;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .map-stat strong {
+      display: block;
+      margin-top: 6px;
+      font-size: 26px;
+      color: #15171c;
+    }
+
+    .popup-map strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 15px;
+    }
+
+    .popup-map p {
+      margin: 4px 0;
+      color: #4b5563;
+    }
+
+    @media (max-width: 760px) {
+      #mapaAdminOperacional {
+        height: 430px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="topbar">
+    <h1>Mapa Operacional</h1>
+    <a class="topbar-link" href="./dashboard.html">Voltar</a>
+  </header>
+
+  <main class="page">
+    <section class="panel">
+      <h2>Operação em tempo real</h2>
+      <p class="hint">
+        Acompanhe motoboys online, pedidos pendentes, corridas aceitas e restaurantes cadastrados.
+      </p>
+
+      <div class="map-grid">
+        <div class="map-stat">
+          <span>Motoboys online</span>
+          <strong id="totalMotoboysOnlineMapa">0</strong>
+        </div>
+
+        <div class="map-stat">
+          <span>Pedidos pendentes</span>
+          <strong id="totalPedidosPendentesMapa">0</strong>
+        </div>
+
+        <div class="map-stat">
+          <span>Corridas em andamento</span>
+          <strong id="totalCorridasMapa">0</strong>
+        </div>
+
+        <div class="map-stat">
+          <span>Restaurantes</span>
+          <strong id="totalRestaurantesMapa">0</strong>
+        </div>
+      </div>
+
+      <div class="map-legend">
+        <div class="legend-item">
+          <span class="legend-dot green"></span>
+          Motoboy online
+        </div>
+
+        <div class="legend-item">
+          <span class="legend-dot blue"></span>
+          Corrida em andamento
+        </div>
+
+        <div class="legend-item">
+          <span class="legend-dot yellow"></span>
+          Pedido pendente
+        </div>
+
+        <div class="legend-item">
+          <span class="legend-dot red"></span>
+          Restaurante
+        </div>
+      </div>
+
+      <div id="mapaAdminOperacional"></div>
+    </section>
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script type="module">
+    import { protegerPagina } from "../js/auth.js";
+    import { carregarMapaAdmin } from "../js/admin-mapa.js?v=250";
+
+    protegerPagina("admin");
+    carregarMapaAdmin();
+  </script>
+</body>
+</html>
