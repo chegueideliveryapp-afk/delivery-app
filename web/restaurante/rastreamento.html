@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Rastreamento - Cheguei Delivery</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/restaurante.css">
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  >
+
+  <style>
+    #mapaRastreamento {
+      width: 100%;
+      height: 520px;
+      margin-top: 16px;
+      border-radius: 22px;
+      border: 1px solid #e6e8ee;
+      overflow: hidden;
+    }
+
+    .tracking-list {
+      margin-top: 16px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .tracking-item {
+      padding: 15px;
+      border-radius: 16px;
+      border: 1px solid #e6e8ee;
+      background: #fbfcfd;
+    }
+
+    .tracking-item strong {
+      display: block;
+      font-size: 18px;
+      color: #16181d;
+    }
+
+    .tracking-item p {
+      margin: 6px 0 0;
+      color: #747985;
+      line-height: 1.35;
+    }
+
+    .tracking-status {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 900;
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .tracking-status.entregue {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .tracking-status.aceito {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    @media (max-width: 760px) {
+      #mapaRastreamento {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="restaurant-app">
+    <header class="restaurant-header">
+      <div>
+        <span>Cheguei Restaurantes</span>
+        <h1>Rastreamento</h1>
+      </div>
+
+      <a class="back-link" href="./pedidos.html">Voltar</a>
+    </header>
+
+    <section class="wallet-card">
+      <span>Entregas em tempo real</span>
+      <strong id="totalRastreamento">Carregando...</strong>
+      <p>Acompanhe no mapa as corridas aceitas pelos motoboys.</p>
+    </section>
+
+    <section class="history-card info-card">
+      <span>Mapa</span>
+      <strong>Localização dos motoboys</strong>
+
+      <div id="mapaRastreamento"></div>
+
+      <div id="listaRastreamento" class="tracking-list">
+        <div class="empty-mini">
+          Carregando rastreamento...
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script type="module">
+    import {
+      protegerRestaurante
+    } from "../js/restaurante.js?v=160";
+
+    import {
+      carregarRastreamentoRestaurante
+    } from "../js/restaurante-rastreamento.js?v=160";
+
+    protegerRestaurante();
+    carregarRastreamentoRestaurante();
+  </script>
+</body>
+</html>
