@@ -15,9 +15,30 @@ service cloud.firestore {
       return signedIn() && userData().role == "admin";
     }
 
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isRestaurante() {
+      return signedIn() && userData().role == "restaurante";
+    }
+
+    function isMotoboy() {
+      return signedIn() && userData().role == "motoboy";
+    }
+
     match /users/{uid} {
-      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
-      allow write: if isAdmin();
+      allow read: if isOwner(uid) || isAdmin();
+
+      allow create: if isAdmin()
+        || (
+          isOwner(uid)
+          && request.resource.data.role == "motoboy"
+          && request.resource.data.ativo == true
+          && request.resource.data.bloqueado == false
+        );
+
+      allow update, delete: if isAdmin();
     }
 
     match /admins/{uid} {
@@ -30,32 +51,237 @@ service cloud.firestore {
     }
 
     match /restaurantes/{uid} {
-      allow read, write: if isAdmin();
+      allow read: if isOwner(uid) || isAdmin();
+
+      allow create, delete: if isAdmin();
+
+      allow update: if isAdmin()
+        || (
+          isOwner(uid)
+          && isRestaurante()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "saldoPrePago",
+            "totalPedidos",
+            "totalGasto",
+            "ultimoPedidoAt",
+            "updatedAt"
+          ])
+        );
     }
 
     match /motoboys/{uid} {
-      allow read, write: if isAdmin();
+      allow read: if isOwner(uid) || isAdmin();
+
+      allow create: if isOwner(uid)
+        && request.resource.data.aprovado == false
+        && request.resource.data.statusCadastro == "pendente"
+        && request.resource.data.saldo == 0
+        && request.resource.data.online == false;
+
+      allow update: if isAdmin()
+        || (
+          isOwner(uid)
+          && resource.data.aprovado == true
+          && resource.data.ativo != false
+          && resource.data.bloqueado != true
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "online",
+            "location",
+            "accuracy",
+            "ultimaLocalizacaoAt",
+            "updatedAt",
+            "appVersion",
+            "saldo",
+            "totalEntregas",
+            "totalRecusas"
+          ])
+        );
+
+      allow delete: if isAdmin();
     }
 
     match /pedidos/{pedidoId} {
-      allow read, write: if isAdmin();
+      allow read: if isAdmin()
+        || (
+          isRestaurante()
+          && resource.data.restauranteId == request.auth.uid
+        )
+        || (
+          isMotoboy()
+          && (
+            resource.data.status == "pendente"
+            || resource.data.motoboyId == request.auth.uid
+          )
+        );
+
+      allow create: if isRestaurante()
+        && request.resource.data.restauranteId == request.auth.uid
+        && request.resource.data.status == "pendente"
+        && request.resource.data.valorTotal > 0
+        && request.resource.data.valorMotoboy > 0
+        && request.resource.data.taxaSistema > 0;
+
+      allow update: if isAdmin()
+
+        || (
+          isMotoboy()
+          && resource.data.status == "pendente"
+          && resource.data.motoboyId == ""
+          && request.resource.data.status == "aceito"
+          && request.resource.data.motoboyId == request.auth.uid
+        )
+
+        || (
+          isMotoboy()
+          && resource.data.status == "pendente"
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "recusadoPor",
+            "updatedAt"
+          ])
+        )
+
+        || (
+          isMotoboy()
+          && resource.data.status == "aceito"
+          && resource.data.motoboyId == request.auth.uid
+          && request.resource.data.status == "entregue"
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "status",
+            "entregueAt",
+            "pagamentoMotoboyCreditado",
+            "pagamentoMotoboyEstornado",
+            "updatedAt"
+          ])
+        )
+
+        || (
+          isRestaurante()
+          && resource.data.restauranteId == request.auth.uid
+          && resource.data.status == "pendente"
+          && resource.data.motoboyId == ""
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "status",
+            "raioAtualKm",
+            "tentativaBusca",
+            "ultimaExpansaoAt",
+            "semMotoboyAt",
+            "updatedAt"
+          ])
+        )
+
+        || (
+          isRestaurante()
+          && resource.data.restauranteId == request.auth.uid
+          && resource.data.status == "sem_motoboy"
+          && request.resource.data.status == "pendente"
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "status",
+            "motoboyId",
+            "motoboyNome",
+            "recusadoPor",
+            "raioAtualKm",
+            "tentativaBusca",
+            "ultimaExpansaoAt",
+            "semMotoboyAt",
+            "updatedAt"
+          ])
+        );
+
+      allow delete: if isAdmin();
+    }
+
+    match /rastreamento_pedidos/{pedidoId} {
+      allow read: if isAdmin()
+        || (
+          isRestaurante()
+          && resource.data.restauranteId == request.auth.uid
+        )
+        || (
+          isMotoboy()
+          && resource.data.motoboyId == request.auth.uid
+        );
+
+      allow create, update: if isAdmin()
+        || (
+          isMotoboy()
+          && get(/databases/$(database)/documents/pedidos/$(pedidoId)).data.motoboyId == request.auth.uid
+          && get(/databases/$(database)/documents/pedidos/$(pedidoId)).data.status in ["aceito", "entregue"]
+        );
+
+      allow delete: if isAdmin();
     }
 
     match /recargas_restaurante/{recargaId} {
-      allow read, write: if isAdmin();
+      allow read: if isAdmin()
+        || (
+          signedIn()
+          && resource.data.restauranteId == request.auth.uid
+        );
+
+      allow create: if signedIn()
+        && request.resource.data.restauranteId == request.auth.uid
+        && request.resource.data.status == "pendente"
+        && request.resource.data.valor > 0;
+
+      allow update, delete: if isAdmin();
     }
 
     match /ledger_restaurante/{movimentoId} {
-      allow read, write: if isAdmin();
+      allow read: if isAdmin()
+        || (
+          signedIn()
+          && resource.data.restauranteId == request.auth.uid
+        );
+
+      allow create: if isAdmin()
+        || (
+          isRestaurante()
+          && request.resource.data.restauranteId == request.auth.uid
+          && request.resource.data.tipo == "debito_pedido"
+          && request.resource.data.valor < 0
+        );
+
+      allow update, delete: if isAdmin();
     }
 
     match /ledger_motoboy/{movimentoId} {
-      allow read, write: if isAdmin();
+      allow read: if isAdmin()
+        || (
+          isMotoboy()
+          && resource.data.motoboyId == request.auth.uid
+        );
+
+      allow create: if isAdmin()
+        || (
+          isMotoboy()
+          && request.resource.data.motoboyId == request.auth.uid
+          && request.resource.data.valor > 0
+          && request.resource.data.tipo in ["entrega", "credito_entrega"]
+        );
+
+      allow update, delete: if isAdmin();
     }
 
     match /pagamentos_motoboy/{pagamentoId} {
       allow read, write: if isAdmin();
     }
+
+    match /geocoding_cache/{docId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn();
+      allow delete: if isAdmin();
+    }
+
+    match /enderecos_cache/{docId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn();
+      allow delete: if isAdmin();
+    }
+
+    match /cache_enderecos/{docId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn();
+      allow delete: if isAdmin();
+    }
   }
 }
-
