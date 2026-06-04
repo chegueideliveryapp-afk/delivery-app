@@ -19,9 +19,15 @@ import {
 
 let uidMotoboy = null;
 let motoboyAtual = null;
+let configApp = {
+  raiosBuscaKm: [3, 5, 10, 15],
+  tempoPorRaioSegundos: 15
+};
+
 let corridasAceitas = [];
 let unsubscribePedidosPendentes = null;
 let unsubscribeMinhasCorridas = null;
+let intervaloAtualizacaoRaio = null;
 
 function dinheiro(valor) {
   return Number(valor || 0).toLocaleString("pt-BR", {
@@ -96,7 +102,72 @@ function distanciaAteRestaurante(pedido) {
   );
 }
 
-function renderizarPedidoPendente(id, pedido, distanciaKm) {
+function segundosDesdeCriacao(pedido) {
+  if (!pedido.createdAt?.toDate) return 0;
+
+  const criadoEm = pedido.createdAt.toDate().getTime();
+  const agora = Date.now();
+
+  return Math.max(0, Math.floor((agora - criadoEm) / 1000));
+}
+
+function calcularRaioEfetivo(pedido) {
+  const raiosDoPedido = Array.isArray(pedido.raiosBuscaKm) && pedido.raiosBuscaKm.length
+    ? pedido.raiosBuscaKm
+    : null;
+
+  const raiosDaConfig = Array.isArray(configApp?.raiosBuscaKm) && configApp.raiosBuscaKm.length
+    ? configApp.raiosBuscaKm
+    : [3, 5, 10, 15];
+
+  const raios = raiosDoPedido || raiosDaConfig;
+
+  const tempoPorRaio = Number(
+    pedido.tempoPorRaioSegundos ||
+    configApp?.tempoPorRaioSegundos ||
+    15
+  );
+
+  const tempoDecorrido = segundosDesdeCriacao(pedido);
+  const indice = Math.min(
+    raios.length - 1,
+    Math.floor(tempoDecorrido / tempoPorRaio)
+  );
+
+  const raioCalculado = Number(raios[indice] || raios[0] || 3);
+  const raioSalvoNoPedido = Number(pedido.raioAtualKm || 0);
+
+  return Math.max(raioCalculado, raioSalvoNoPedido);
+}
+
+function proximoRaioTexto(pedido) {
+  const raios = Array.isArray(pedido.raiosBuscaKm) && pedido.raiosBuscaKm.length
+    ? pedido.raiosBuscaKm
+    : (configApp?.raiosBuscaKm || [3, 5, 10, 15]);
+
+  const tempoPorRaio = Number(
+    pedido.tempoPorRaioSegundos ||
+    configApp?.tempoPorRaioSegundos ||
+    15
+  );
+
+  const tempoDecorrido = segundosDesdeCriacao(pedido);
+  const indice = Math.min(
+    raios.length - 1,
+    Math.floor(tempoDecorrido / tempoPorRaio)
+  );
+
+  if (indice >= raios.length - 1) {
+    return "Raio máximo atingido";
+  }
+
+  const segundosParaProximo = tempoPorRaio - (tempoDecorrido % tempoPorRaio);
+  const proximoRaio = raios[indice + 1];
+
+  return `Próximo raio: ${proximoRaio} km em ${segundosParaProximo}s`;
+}
+
+function renderizarPedidoPendente(id, pedido, distanciaKm, raioEfetivoKm) {
   const pagamentoTexto = {
     pix: "Pix",
     cartao: "Cartão",
@@ -114,6 +185,8 @@ function renderizarPedidoPendente(id, pedido, distanciaKm) {
 
       <p><b>Entrega:</b> ${pedido.enderecoEntrega || "Endereço não informado"}</p>
       <p><b>Distância até restaurante:</b> ${distanciaKm.toFixed(2)} km</p>
+      <p><b>Raio liberado agora:</b> ${raioEfetivoKm} km</p>
+      <p><b>Busca:</b> ${proximoRaioTexto(pedido)}</p>
       <p><b>Distância da entrega:</b> ${Number(pedido.distanciaKm || 0).toFixed(2)} km</p>
       <p><b>Pagamento:</b> ${pagamentoTexto[pedido.formaPagamento] || "Não informado"}</p>
       <p><b>Retorno:</b> ${pedido.precisaRetorno ? "Sim" : "Não"}</p>
@@ -278,14 +351,15 @@ function escutarPedidosPendentes() {
 
         if (distanciaKm === null) return;
 
-        const raioAtualKm = Number(pedido.raioAtualKm || 3);
+        const raioEfetivoKm = calcularRaioEfetivo(pedido);
 
-        if (distanciaKm > raioAtualKm) return;
+        if (distanciaKm > raioEfetivoKm) return;
 
         pedidosDisponiveis.push({
           id: docSnap.id,
           pedido,
-          distanciaKm
+          distanciaKm,
+          raioEfetivoKm
         });
       });
 
@@ -294,7 +368,7 @@ function escutarPedidosPendentes() {
       if (!pedidosDisponiveis.length) {
         setHtml(
           listaId,
-          `<div class="empty-state">Nenhuma corrida próxima no momento.</div>`
+          `<div class="empty-state">Nenhuma corrida próxima no momento. A busca aumenta automaticamente com o tempo.</div>`
         );
         return;
       }
@@ -302,7 +376,12 @@ function escutarPedidosPendentes() {
       setHtml(
         listaId,
         pedidosDisponiveis
-          .map((item) => renderizarPedidoPendente(item.id, item.pedido, item.distanciaKm))
+          .map((item) => renderizarPedidoPendente(
+            item.id,
+            item.pedido,
+            item.distanciaKm,
+            item.raioEfetivoKm
+          ))
           .join("")
       );
 
@@ -567,6 +646,37 @@ async function finalizarEntrega(pedidoId) {
   );
 }
 
+function escutarConfigApp() {
+  const configRef = doc(db, "config", "app");
+
+  onSnapshot(
+    configRef,
+    (snap) => {
+      if (!snap.exists()) return;
+
+      configApp = {
+        ...configApp,
+        ...snap.data()
+      };
+
+      escutarPedidosPendentes();
+    },
+    (erro) => {
+      console.error("Erro ao carregar config:", erro);
+    }
+  );
+}
+
+function iniciarAtualizacaoAutomaticaDaBusca() {
+  if (intervaloAtualizacaoRaio) return;
+
+  intervaloAtualizacaoRaio = setInterval(() => {
+    if (uidMotoboy && motoboyAtual?.online) {
+      escutarPedidosPendentes();
+    }
+  }, 5000);
+}
+
 function iniciarPedidosMotoboy() {
   onAuthStateChanged(auth, async (user) => {
     if (!user) {
@@ -574,6 +684,9 @@ function iniciarPedidosMotoboy() {
     }
 
     uidMotoboy = user.uid;
+
+    escutarConfigApp();
+    iniciarAtualizacaoAutomaticaDaBusca();
 
     const motoboyRef = doc(db, "motoboys", uidMotoboy);
 
