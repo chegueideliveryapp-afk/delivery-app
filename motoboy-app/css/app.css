@@ -361,7 +361,7 @@ input:focus {
 .payday-row {
   margin-top: 18px;
   padding-top: 16px;
-  border-top: 1px solid rgba(255,255,255,.25);
+  border-top: 1px solid rgba(255, 255, 255, .25);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -480,46 +480,6 @@ input:focus {
   text-align: center;
 }
 
-@media (min-width: 760px) {
-  body {
-    background: #17191f;
-  }
-
-  .app-screen,
-  .driver-app {
-    min-height: auto;
-    margin-top: 28px;
-    margin-bottom: 28px;
-    border-radius: 30px;
-    overflow: hidden;
-    box-shadow: 0 26px 80px rgba(0, 0, 0, .42);
-  }
-}
-
-@media (max-width: 360px) {
-  .hero {
-    padding-left: 18px;
-    padding-right: 18px;
-  }
-
-  .auth-panel {
-    padding-left: 18px;
-    padding-right: 18px;
-  }
-
-  .route-card {
-    grid-template-columns: 12px 20px 12px 1fr;
-  }
-
-  .online-card {
-    grid-template-columns: 1fr;
-  }
-
-  .online-btn {
-    width: 100%;
-  }
-}
-
 .delivery-card {
   margin-top: 14px;
   padding: 18px;
@@ -609,7 +569,45 @@ input:focus {
   font-size: 13px;
 }
 
+@media (min-width: 760px) {
+  body {
+    background: #17191f;
+  }
+
+  .app-screen,
+  .driver-app {
+    min-height: auto;
+    margin-top: 28px;
+    margin-bottom: 28px;
+    border-radius: 30px;
+    overflow: hidden;
+    box-shadow: 0 26px 80px rgba(0, 0, 0, .42);
+  }
+}
+
 @media (max-width: 360px) {
+  .hero {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .auth-panel {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .route-card {
+    grid-template-columns: 12px 20px 12px 1fr;
+  }
+
+  .online-card {
+    grid-template-columns: 1fr;
+  }
+
+  .online-btn {
+    width: 100%;
+  }
+
   .delivery-actions {
     grid-template-columns: 1fr;
   }
