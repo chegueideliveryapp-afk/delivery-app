@@ -9,23 +9,22 @@ import {
 import {
   doc,
   getDoc,
-  setDoc,
   onSnapshot,
   collection,
   addDoc,
+  setDoc,
   serverTimestamp,
   query,
   where,
   runTransaction
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+const GOOGLE_MAPS_API_KEY = "AIzaSyApRas85TE6FYQRzKMxjY2mTPs-XplM0u4";
+
 let restauranteLogado = null;
 let configApp = null;
 let pedidoCalculado = null;
-let entregaSelecionada = null;
-let googlePlacesCarregado = false;
-let autocompleteService = null;
-let placesService = null;
+let googleMapsPromise = null;
 
 function dinheiro(valor) {
   return Number(valor || 0).toLocaleString("pt-BR", {
@@ -39,9 +38,18 @@ function setText(id, texto) {
   if (el) el.innerText = texto;
 }
 
-function mostrarMensagem(texto) {
+function setHtml(id, html) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = html;
+}
+
+function mostrarMensagem(texto, sucesso = false) {
   const msg = document.getElementById("mensagem");
-  if (msg) msg.innerText = texto;
+
+  if (!msg) return;
+
+  msg.innerText = texto || "";
+  msg.style.color = sucesso ? "#166534" : "#c02626";
 }
 
 function numero(valor, padrao = 0) {
@@ -53,22 +61,13 @@ function limparTelefone(telefone) {
   return String(telefone || "").replace(/\D/g, "");
 }
 
-function removerAcentos(texto) {
-  return String(texto || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-}
-
 function normalizarTexto(texto) {
-  return removerAcentos(texto)
+  return String(texto || "")
     .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
-}
-
-function criarCacheId(enderecoCompleto) {
-  const chave = normalizarTexto(enderecoCompleto);
-  return chave.slice(0, 260) || `endereco-${Date.now()}`;
 }
 
 function montarWhatsappSuporte(numero, restauranteNome) {
@@ -93,31 +92,19 @@ function statusRecargaTexto(status) {
   return "Pendente";
 }
 
-function mostrarErroDashboard(texto) {
-  setText("nomeRestaurante", "Erro ao carregar");
-  setText("statusConta", "Atenção");
-  setText("statusDescricao", texto);
-}
-
 function montarEnderecoEntrega() {
   const rua = document.getElementById("enderecoRua")?.value.trim() || "";
   const numeroEndereco = document.getElementById("enderecoNumero")?.value.trim() || "";
   const bairro = document.getElementById("enderecoBairro")?.value.trim() || "";
-  const cidadeDigitada = document.getElementById("enderecoCidade")?.value.trim() || "";
+  const cidade = document.getElementById("enderecoCidade")?.value.trim() || "";
   const complemento = document.getElementById("enderecoComplemento")?.value.trim() || "";
-
-  const cidadeRestaurante =
-    restauranteLogado?.cidade ||
-    restauranteLogado?.municipio ||
-    "";
-
-  const cidade = cidadeDigitada || cidadeRestaurante;
 
   const enderecoCompleto = [
     rua,
     numeroEndereco,
     bairro,
     cidade,
+    "SP",
     "Brasil"
   ].filter(Boolean).join(", ");
 
@@ -147,37 +134,97 @@ function calcularDistanciaKm(lat1, lng1, lat2, lng2) {
   return raioTerraKm * c;
 }
 
-function calcularDistanciaEstimativa(entregaLocation) {
-  const origem = restauranteLogado?.location;
-
-  if (!origem?.lat || !origem?.lng || !entregaLocation?.lat || !entregaLocation?.lng) {
-    return {
-      distanciaLinhaRetaKm: 0,
-      distanciaKm: 0,
-      multiplicadorDistancia: numero(configApp?.multiplicadorDistancia, 1.35)
-    };
+function carregarGoogleMaps() {
+  if (window.google?.maps?.Geocoder) {
+    return Promise.resolve(window.google.maps);
   }
 
-  const distanciaLinhaRetaKm = calcularDistanciaKm(
-    Number(origem.lat),
-    Number(origem.lng),
-    Number(entregaLocation.lat),
-    Number(entregaLocation.lng)
+  if (googleMapsPromise) return googleMapsPromise;
+
+  googleMapsPromise = new Promise((resolve, reject) => {
+    const callbackName = `initGoogleMapsCheguei_${Date.now()}`;
+
+    window[callbackName] = () => {
+      delete window[callbackName];
+      resolve(window.google.maps);
+    };
+
+    const script = document.createElement("script");
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=${callbackName}`;
+    script.async = true;
+    script.defer = true;
+    script.onerror = () => reject(new Error("Erro ao carregar Google Maps."));
+
+    document.head.appendChild(script);
+  });
+
+  return googleMapsPromise;
+}
+
+async function buscarEnderecoNoCache(cacheId) {
+  const opcoesColecao = [
+    "geocoding_cache",
+    "enderecos_cache",
+    "cache_enderecos"
+  ];
+
+  for (const nomeColecao of opcoesColecao) {
+    const ref = doc(db, nomeColecao, cacheId);
+    const snap = await getDoc(ref);
+
+    if (snap.exists()) {
+      return snap.data();
+    }
+  }
+
+  return null;
+}
+
+async function salvarEnderecoNoCache(cacheId, dados) {
+  await setDoc(
+    doc(db, "geocoding_cache", cacheId),
+    {
+      ...dados,
+      updatedAt: serverTimestamp()
+    },
+    { merge: true }
   );
+}
 
-  const multiplicadorDistancia = numero(configApp?.multiplicadorDistancia, 1.35);
-  const distanciaMinimaKm = numero(configApp?.distanciaMinimaKm, 1);
+async function geocodificarEndereco(enderecoCompleto) {
+  const maps = await carregarGoogleMaps();
 
-  const distanciaKm = Math.max(
-    distanciaLinhaRetaKm * multiplicadorDistancia,
-    distanciaMinimaKm
-  );
+  return new Promise((resolve, reject) => {
+    const geocoder = new maps.Geocoder();
 
-  return {
-    distanciaLinhaRetaKm: Number(distanciaLinhaRetaKm.toFixed(2)),
-    distanciaKm: Number(distanciaKm.toFixed(2)),
-    multiplicadorDistancia
-  };
+    geocoder.geocode(
+      {
+        address: enderecoCompleto,
+        region: "BR",
+        componentRestrictions: {
+          country: "BR"
+        }
+      },
+      (results, status) => {
+        if (status !== "OK" || !results?.length) {
+          reject(new Error("Endereço não encontrado."));
+          return;
+        }
+
+        const resultado = results[0];
+        const location = resultado.geometry.location;
+
+        resolve({
+          enderecoFormatado: resultado.formatted_address,
+          location: {
+            lat: location.lat(),
+            lng: location.lng()
+          },
+          provider: "google_geocoder"
+        });
+      }
+    );
+  });
 }
 
 function atualizarResumoPagamento() {
@@ -192,33 +239,36 @@ function atualizarResumoPagamento() {
 
   setText("pagamentoResumo", pagamentoTexto[forma] || "Pix");
 
-  setText(
-    "retornoResumo",
-    precisaRetorno
-      ? "Com retorno ao restaurante."
-      : "Sem retorno ao restaurante."
-  );
+  if (precisaRetorno) {
+    setText("retornoResumo", "Com retorno ao restaurante.");
+  } else {
+    setText("retornoResumo", "Sem retorno ao restaurante.");
+  }
 }
 
 function calcularValoresPedido() {
-  const distanciaKm = entregaSelecionada?.distanciaKm || 0;
+  const distanciaKm = numero(document.getElementById("distanciaEntregaKm")?.value, 0);
   const precisaRetorno = document.getElementById("precisaRetorno")?.checked === true;
 
   const taxaBaseMotoboy = numero(configApp?.taxaBaseMotoboy, 0);
   const valorKmMotoboy = numero(configApp?.valorKmMotoboy, 0);
   const valorMinimoMotoboy = numero(configApp?.valorMinimoMotoboy, 0);
+  const multiplicadorDemanda = numero(configApp?.multiplicadorDemanda, 1);
 
   const taxaRetornoMotoboy = precisaRetorno
     ? numero(configApp?.taxaRetornoMotoboy, 0)
     : 0;
 
-  const taxaSistema = numero(
-    restauranteLogado?.taxaSistemaPadrao,
-    numero(configApp?.taxaSistemaPadrao, 5)
-  );
+  const taxaSistema = numero(configApp?.taxaSistemaPadrao, 5);
 
-  const valorCalculadoMotoboy = taxaBaseMotoboy + (distanciaKm * valorKmMotoboy);
-  const valorMotoboy = Math.max(valorMinimoMotoboy, valorCalculadoMotoboy) + taxaRetornoMotoboy;
+  const valorPorDistancia = distanciaKm * valorKmMotoboy * multiplicadorDemanda;
+  const valorCalculadoMotoboy = taxaBaseMotoboy + valorPorDistancia;
+
+  const valorMotoboy = Math.max(
+    valorMinimoMotoboy,
+    valorCalculadoMotoboy
+  ) + taxaRetornoMotoboy;
+
   const valorTotal = valorMotoboy + taxaSistema;
 
   return {
@@ -228,290 +278,6 @@ function calcularValoresPedido() {
     taxaRetornoMotoboy,
     valorTotal
   };
-}
-
-function limparSugestoes() {
-  const lista = document.getElementById("sugestoesEndereco");
-  if (lista) lista.innerHTML = "";
-}
-
-function mostrarSugestaoMensagem(texto) {
-  const lista = document.getElementById("sugestoesEndereco");
-  if (!lista) return;
-
-  lista.innerHTML = `
-    <div class="address-suggestion muted">
-      ${texto}
-    </div>
-  `;
-}
-
-function mostrarEnderecoSelecionado(endereco, origem) {
-  const box = document.getElementById("enderecoSelecionadoBox");
-
-  if (box) box.classList.remove("hidden");
-
-  setText("enderecoSelecionadoResumo", endereco);
-  setText("origemEnderecoResumo", origem);
-}
-
-function resetarCalculoEndereco() {
-  entregaSelecionada = null;
-  pedidoCalculado = null;
-
-  const distanciaInput = document.getElementById("distanciaEntregaKm");
-  if (distanciaInput) distanciaInput.value = "";
-
-  const box = document.getElementById("enderecoSelecionadoBox");
-  if (box) box.classList.add("hidden");
-
-  setText("valorTotalPedido", dinheiro(0));
-  setText("valorMotoboyPedido", dinheiro(0));
-  setText("taxaSistemaPedido", dinheiro(0));
-  setText("taxaRetornoPedido", dinheiro(0));
-  setText("distanciaResumoPedido", "---");
-}
-
-function usarEnderecoEncontrado(dados, origemTexto) {
-  const estimativa = calcularDistanciaEstimativa({
-    lat: Number(dados.lat),
-    lng: Number(dados.lng)
-  });
-
-  entregaSelecionada = {
-    enderecoFormatado: dados.enderecoFormatado,
-    location: {
-      lat: Number(dados.lat),
-      lng: Number(dados.lng)
-    },
-    distanciaKm: estimativa.distanciaKm,
-    distanciaLinhaRetaKm: estimativa.distanciaLinhaRetaKm,
-    multiplicadorDistancia: estimativa.multiplicadorDistancia,
-    placeId: dados.placeId || null,
-    origemEndereco: origemTexto
-  };
-
-  const distanciaInput = document.getElementById("distanciaEntregaKm");
-  if (distanciaInput) {
-    distanciaInput.value = `${estimativa.distanciaKm.toFixed(2)} km`;
-  }
-
-  mostrarEnderecoSelecionado(
-    dados.enderecoFormatado,
-    origemTexto
-  );
-
-  limparSugestoes();
-  calcularPedido();
-  mostrarMensagem("");
-}
-
-function carregarScriptGoogle(apiKey) {
-  return new Promise((resolve, reject) => {
-    if (window.google?.maps?.places) {
-      resolve();
-      return;
-    }
-
-    const existente = document.querySelector("script[data-google-places='true']");
-    if (existente) {
-      existente.addEventListener("load", resolve);
-      existente.addEventListener("error", reject);
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&language=pt-BR&region=BR`;
-    script.async = true;
-    script.defer = true;
-    script.dataset.googlePlaces = "true";
-
-    script.onload = resolve;
-    script.onerror = reject;
-
-    document.head.appendChild(script);
-  });
-}
-
-export async function carregarGooglePlaces(apiKey) {
-  try {
-    await carregarScriptGoogle(apiKey);
-
-    autocompleteService = new google.maps.places.AutocompleteService();
-    placesService = new google.maps.places.PlacesService(document.createElement("div"));
-    googlePlacesCarregado = true;
-  } catch (erro) {
-    console.error(erro);
-    googlePlacesCarregado = false;
-  }
-}
-
-function buscarPredicoesGoogle(enderecoCompleto) {
-  return new Promise((resolve, reject) => {
-    if (!autocompleteService) {
-      reject(new Error("Google Places ainda não carregou."));
-      return;
-    }
-
-    const request = {
-      input: enderecoCompleto,
-      componentRestrictions: {
-        country: "br"
-      },
-      types: ["address"]
-    };
-
-    autocompleteService.getPlacePredictions(request, (predictions, status) => {
-      if (status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
-        resolve([]);
-        return;
-      }
-
-      if (status !== google.maps.places.PlacesServiceStatus.OK) {
-        reject(new Error(`Erro Google Places: ${status}`));
-        return;
-      }
-
-      resolve(predictions || []);
-    });
-  });
-}
-
-function buscarDetalhesGoogle(placeId) {
-  return new Promise((resolve, reject) => {
-    if (!placesService) {
-      reject(new Error("Google Places ainda não carregou."));
-      return;
-    }
-
-    placesService.getDetails(
-      {
-        placeId,
-        fields: ["place_id", "formatted_address", "geometry", "name"]
-      },
-      (place, status) => {
-        if (status !== google.maps.places.PlacesServiceStatus.OK || !place?.geometry?.location) {
-          reject(new Error(`Erro ao buscar detalhes do endereço: ${status}`));
-          return;
-        }
-
-        resolve(place);
-      }
-    );
-  });
-}
-
-async function selecionarPredicaoGoogle(prediction, cacheId, enderecoOriginal) {
-  try {
-    mostrarMensagem("Confirmando endereço...");
-
-    const place = await buscarDetalhesGoogle(prediction.place_id);
-
-    const lat = place.geometry.location.lat();
-    const lng = place.geometry.location.lng();
-
-    const dadosCache = {
-      enderecoOriginal,
-      enderecoFormatado: place.formatted_address || prediction.description,
-      lat,
-      lng,
-      placeId: place.place_id || prediction.place_id,
-      origem: "google_places",
-      createdAt: serverTimestamp()
-    };
-
-    await setDoc(doc(db, "enderecos_cache", cacheId), dadosCache);
-
-    usarEnderecoEncontrado(
-      {
-        ...dadosCache,
-        lat,
-        lng
-      },
-      "Encontrado pelo Google e salvo no cache."
-    );
-  } catch (erro) {
-    console.error(erro);
-    mostrarMensagem(erro.message || "Erro ao confirmar endereço.");
-  }
-}
-
-export async function buscarEnderecoEntrega() {
-  const endereco = montarEnderecoEntrega();
-
-  resetarCalculoEndereco();
-
-  if (!endereco.rua || !endereco.numeroEndereco || !endereco.bairro || !endereco.cidade) {
-    mostrarMensagem("Informe rua, número, bairro e cidade.");
-    return;
-  }
-
-  if (!restauranteLogado) {
-    mostrarMensagem("Restaurante ainda não carregado.");
-    return;
-  }
-
-  if (!restauranteLogado?.location?.lat || !restauranteLogado?.location?.lng) {
-    mostrarMensagem("Restaurante sem localização fixa cadastrada.");
-    return;
-  }
-
-  const cacheId = criarCacheId(endereco.enderecoCompleto);
-  const cacheRef = doc(db, "enderecos_cache", cacheId);
-
-  mostrarMensagem("");
-  mostrarSugestaoMensagem("Verificando cache de endereços...");
-
-  try {
-    const cacheSnap = await getDoc(cacheRef);
-
-    if (cacheSnap.exists()) {
-      usarEnderecoEncontrado(
-        cacheSnap.data(),
-        "Endereço recuperado do cache. Google não foi chamado."
-      );
-      return;
-    }
-
-    if (!googlePlacesCarregado) {
-      mostrarSugestaoMensagem("Google Places ainda está carregando. Tente novamente em alguns segundos.");
-      return;
-    }
-
-    mostrarSugestaoMensagem("Buscando no Google Places...");
-
-    const predictions = await buscarPredicoesGoogle(endereco.enderecoCompleto);
-
-    if (!predictions.length) {
-      mostrarSugestaoMensagem("Nenhum endereço encontrado. Confira rua, número, bairro e cidade.");
-      return;
-    }
-
-    const lista = document.getElementById("sugestoesEndereco");
-    if (!lista) return;
-
-    lista.innerHTML = "";
-
-    predictions.slice(0, 5).forEach((prediction) => {
-      const botao = document.createElement("button");
-      botao.type = "button";
-      botao.className = "address-suggestion";
-      botao.innerText = prediction.description;
-
-      botao.addEventListener("click", () => {
-        selecionarPredicaoGoogle(
-          prediction,
-          cacheId,
-          endereco.enderecoCompleto
-        );
-      });
-
-      lista.appendChild(botao);
-    });
-  } catch (erro) {
-    console.error(erro);
-    mostrarSugestaoMensagem("Erro ao buscar endereço. Confira as restrições da API Key.");
-  }
 }
 
 export async function loginRestaurante() {
@@ -603,7 +369,9 @@ export function carregarDashboardRestaurante() {
       restauranteRef,
       (snap) => {
         if (!snap.exists()) {
-          mostrarErroDashboard("Cadastro do restaurante não encontrado.");
+          setText("nomeRestaurante", "Erro ao carregar");
+          setText("statusConta", "Atenção");
+          setText("statusDescricao", "Cadastro do restaurante não encontrado.");
           return;
         }
 
@@ -633,7 +401,9 @@ export function carregarDashboardRestaurante() {
       },
       (erro) => {
         console.error(erro);
-        mostrarErroDashboard("Sem permissão para carregar o restaurante.");
+        setText("nomeRestaurante", "Erro ao carregar");
+        setText("statusConta", "Atenção");
+        setText("statusDescricao", "Sem permissão para carregar o restaurante.");
       }
     );
   });
@@ -686,49 +456,59 @@ export function carregarRecargaRestaurante() {
       where("restauranteId", "==", user.uid)
     );
 
-    onSnapshot(q, (snapshot) => {
-      const lista = document.getElementById("listaRecargas");
-      if (!lista) return;
+    onSnapshot(
+      q,
+      (snapshot) => {
+        const lista = document.getElementById("listaRecargas");
+        if (!lista) return;
 
-      lista.innerHTML = "";
+        lista.innerHTML = "";
 
-      if (snapshot.empty) {
-        lista.innerHTML = `<div class="empty-mini">Nenhuma recarga solicitada ainda.</div>`;
-        return;
-      }
+        if (snapshot.empty) {
+          lista.innerHTML = `<div class="empty-mini">Nenhuma recarga solicitada ainda.</div>`;
+          return;
+        }
 
-      const recargas = [];
+        const recargas = [];
 
-      snapshot.forEach((docSnap) => {
-        recargas.push({
-          id: docSnap.id,
-          ...docSnap.data()
+        snapshot.forEach((docSnap) => {
+          recargas.push({
+            id: docSnap.id,
+            ...docSnap.data()
+          });
         });
-      });
 
-      recargas.sort((a, b) => {
-        const dataA = a.solicitadoAt?.toMillis?.() || 0;
-        const dataB = b.solicitadoAt?.toMillis?.() || 0;
-        return dataB - dataA;
-      });
+        recargas.sort((a, b) => {
+          const dataA = a.solicitadoAt?.toMillis?.() || 0;
+          const dataB = b.solicitadoAt?.toMillis?.() || 0;
+          return dataB - dataA;
+        });
 
-      recargas.forEach((r) => {
-        const item = document.createElement("div");
-        item.className = "recharge-item";
+        recargas.forEach((r) => {
+          const item = document.createElement("div");
+          item.className = "recharge-item";
 
-        item.innerHTML = `
-          <div>
-            <strong>${dinheiro(r.valor)}</strong>
-            <p>${r.observacao || "Sem observação"}</p>
-          </div>
-          <span class="status-pill ${r.status || "pendente"}">
-            ${statusRecargaTexto(r.status)}
-          </span>
-        `;
+          item.innerHTML = `
+            <div>
+              <strong>${dinheiro(r.valor)}</strong>
+              <p>${r.observacao || "Sem observação"}</p>
+            </div>
+            <span class="status-pill ${r.status || "pendente"}">
+              ${statusRecargaTexto(r.status)}
+            </span>
+          `;
 
-        lista.appendChild(item);
-      });
-    });
+          lista.appendChild(item);
+        });
+      },
+      (erro) => {
+        console.error(erro);
+        const lista = document.getElementById("listaRecargas");
+        if (lista) {
+          lista.innerHTML = `<div class="empty-mini">Erro ao carregar recargas.</div>`;
+        }
+      }
+    );
   });
 }
 
@@ -792,51 +572,149 @@ export function carregarNovoPedidoRestaurante() {
     const restauranteRef = doc(db, "restaurantes", user.uid);
     const configRef = doc(db, "config", "app");
 
-    onSnapshot(restauranteRef, (snap) => {
-      if (!snap.exists()) {
-        setText("saldoPrePago", "Cadastro não encontrado");
-        mostrarMensagem("Restaurante não encontrado no Firestore.");
-        return;
+    onSnapshot(
+      restauranteRef,
+      (snap) => {
+        if (!snap.exists()) {
+          setText("saldoPrePago", "Cadastro não encontrado");
+          mostrarMensagem("Restaurante não encontrado no Firestore.");
+          return;
+        }
+
+        restauranteLogado = {
+          id: user.uid,
+          ...snap.data()
+        };
+
+        setText("saldoPrePago", dinheiro(restauranteLogado.saldoPrePago));
+
+        if (restauranteLogado.location?.lat && restauranteLogado.location?.lng) {
+          calcularPedido();
+        }
+      },
+      (erro) => {
+        console.error(erro);
+        setText("saldoPrePago", "Erro");
+        mostrarMensagem("Erro ao carregar saldo do restaurante.");
       }
+    );
 
-      restauranteLogado = {
-        id: user.uid,
-        ...snap.data()
-      };
+    onSnapshot(
+      configRef,
+      (snap) => {
+        if (!snap.exists()) {
+          mostrarMensagem("Configuração do app não encontrada.");
+          return;
+        }
 
-      setText("saldoPrePago", dinheiro(restauranteLogado.saldoPrePago));
+        configApp = snap.data();
 
-      const cidadeInput = document.getElementById("enderecoCidade");
-      if (cidadeInput && !cidadeInput.value) {
-        cidadeInput.value =
-          restauranteLogado.cidade ||
-          restauranteLogado.municipio ||
-          "";
+        const raios = configApp.raiosBuscaKm || [3, 5, 10, 15];
+        setText("raioInicialPedido", `${raios[0] || 3} km`);
+
+        calcularPedido();
+      },
+      (erro) => {
+        console.error(erro);
+        mostrarMensagem("Erro ao carregar configurações do app.");
       }
-
-      calcularPedido();
-    });
-
-    onSnapshot(configRef, (snap) => {
-      if (!snap.exists()) {
-        mostrarMensagem("Configuração do app não encontrada.");
-        return;
-      }
-
-      configApp = snap.data();
-
-      const raios = configApp.raiosBuscaKm || [3, 5, 10, 15];
-      setText("raioInicialPedido", `${raios[0] || 3} km`);
-
-      calcularPedido();
-    });
+    );
   });
+}
+
+export async function buscarEnderecoEntrega() {
+  const msg = document.getElementById("mensagem");
+  const resultado = document.getElementById("resultadoEndereco");
+  const btn = document.getElementById("btnBuscarEndereco");
+
+  if (msg) msg.innerText = "";
+  if (resultado) resultado.innerHTML = "";
+
+  if (!restauranteLogado) {
+    mostrarMensagem("Restaurante ainda não carregado.");
+    return;
+  }
+
+  if (!restauranteLogado.location?.lat || !restauranteLogado.location?.lng) {
+    mostrarMensagem("Restaurante sem localização fixa cadastrada.");
+    return;
+  }
+
+  const endereco = montarEnderecoEntrega();
+
+  if (!endereco.rua || !endereco.numeroEndereco || !endereco.bairro || !endereco.cidade) {
+    mostrarMensagem("Informe rua, número, bairro e cidade.");
+    return;
+  }
+
+  const cacheId = normalizarTexto(endereco.enderecoCompleto);
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerText = "Buscando...";
+  }
+
+  try {
+    let dadosEndereco = await buscarEnderecoNoCache(cacheId);
+
+    if (!dadosEndereco) {
+      dadosEndereco = await geocodificarEndereco(endereco.enderecoCompleto);
+
+      await salvarEnderecoNoCache(cacheId, {
+        cacheId,
+        enderecoDigitado: endereco.enderecoCompleto,
+        enderecoFormatado: dadosEndereco.enderecoFormatado,
+        location: dadosEndereco.location,
+        provider: dadosEndereco.provider,
+        createdAt: serverTimestamp()
+      });
+    }
+
+    const origemLat = Number(restauranteLogado.location.lat);
+    const origemLng = Number(restauranteLogado.location.lng);
+    const destinoLat = Number(dadosEndereco.location.lat);
+    const destinoLng = Number(dadosEndereco.location.lng);
+
+    const distanciaKm = calcularDistanciaKm(
+      origemLat,
+      origemLng,
+      destinoLat,
+      destinoLng
+    );
+
+    const distanciaComMargem = Number((distanciaKm * 1.25).toFixed(2));
+
+    document.getElementById("distanciaEntregaKm").value = distanciaComMargem;
+
+    if (resultado) {
+      resultado.innerHTML = `
+        <div class="address-suggestion muted">
+          Endereço encontrado: ${dadosEndereco.enderecoFormatado || endereco.enderecoCompleto}<br>
+          Distância estimada para cobrança: ${distanciaComMargem.toFixed(2)} km
+        </div>
+      `;
+    }
+
+    calcularPedido();
+
+    mostrarMensagem("Endereço encontrado e distância calculada.", true);
+  } catch (erro) {
+    console.error(erro);
+    mostrarMensagem("Erro ao buscar endereço. Confira as restrições da API Key.");
+  }
+
+  if (btn) {
+    btn.disabled = false;
+    btn.innerText = "Buscar endereço";
+  }
 }
 
 export function calcularPedido() {
   atualizarResumoPagamento();
 
-  if (!configApp || !restauranteLogado) return;
+  if (!configApp || !restauranteLogado) {
+    return;
+  }
 
   const valores = calcularValoresPedido();
 
@@ -868,17 +746,22 @@ export async function criarPedido() {
   if (msg) msg.innerText = "";
 
   if (!restauranteLogado) {
-    if (msg) msg.innerText = "Restaurante não carregado.";
+    mostrarMensagem("Restaurante não carregado.");
     return;
   }
 
-  if (!entregaSelecionada) {
-    if (msg) msg.innerText = "Busque e selecione o endereço de entrega antes de criar o pedido.";
+  if (!configApp) {
+    mostrarMensagem("Configurações do app não carregadas.");
+    return;
+  }
+
+  if (!endereco.rua || !endereco.numeroEndereco || !endereco.bairro || !endereco.cidade) {
+    mostrarMensagem("Informe rua, número, bairro e cidade.");
     return;
   }
 
   if (!pedidoCalculado || !pedidoCalculado.distanciaKm) {
-    if (msg) msg.innerText = "A distância ainda não foi calculada.";
+    mostrarMensagem("Busque o endereço antes de criar o pedido.");
     return;
   }
 
@@ -925,7 +808,7 @@ export async function criarPedido() {
 
         pedidoCopiado,
 
-        enderecoEntrega: entregaSelecionada.enderecoFormatado || endereco.enderecoCompleto,
+        enderecoEntrega: endereco.enderecoCompleto,
         enderecoRua: endereco.rua,
         enderecoNumero: endereco.numeroEndereco,
         enderecoBairro: endereco.bairro,
@@ -937,15 +820,7 @@ export async function criarPedido() {
           lng: Number(restaurante.location.lng)
         },
 
-        entregaLocation: {
-          lat: entregaSelecionada.location.lat,
-          lng: entregaSelecionada.location.lng
-        },
-
         distanciaKm: pedidoCalculado.distanciaKm,
-        distanciaLinhaRetaKm: entregaSelecionada.distanciaLinhaRetaKm || null,
-        multiplicadorDistancia: entregaSelecionada.multiplicadorDistancia || null,
-        distanciaCalculadaPor: "google_places_cache_haversine",
 
         formaPagamento,
         precisaRetorno,
@@ -957,6 +832,12 @@ export async function criarPedido() {
         taxaRetornoMotoboy: pedidoCalculado.taxaRetornoMotoboy,
         valorTotal: pedidoCalculado.valorTotal,
 
+        taxaBaseMotoboyUsada: numero(configApp?.taxaBaseMotoboy, 0),
+        valorKmMotoboyUsado: numero(configApp?.valorKmMotoboy, 0),
+        valorMinimoMotoboyUsado: numero(configApp?.valorMinimoMotoboy, 0),
+        multiplicadorDemandaUsado: numero(configApp?.multiplicadorDemanda, 1),
+        motivoMultiplicador: configApp?.motivoMultiplicador || "",
+
         status: "pendente",
         motoboyId: "",
         motoboyNome: "",
@@ -964,6 +845,7 @@ export async function criarPedido() {
 
         raioAtualKm: raiosBuscaKm[0] || 3,
         raiosBuscaKm,
+        tempoPorRaioSegundos: numero(configApp?.tempoPorRaioSegundos, 15),
         tentativaBusca: 0,
 
         createdAt: serverTimestamp(),
@@ -997,6 +879,7 @@ export async function criarPedido() {
     document.getElementById("enderecoRua").value = "";
     document.getElementById("enderecoNumero").value = "";
     document.getElementById("enderecoBairro").value = "";
+    document.getElementById("enderecoCidade").value = "";
     document.getElementById("enderecoComplemento").value = "";
     document.getElementById("distanciaEntregaKm").value = "";
     document.getElementById("observacaoPedido").value = "";
@@ -1004,13 +887,20 @@ export async function criarPedido() {
     document.getElementById("valorTroco").value = "";
     document.getElementById("valorTroco").classList.add("hidden");
 
-    resetarCalculoEndereco();
-    limparSugestoes();
+    setHtml("resultadoEndereco", "");
 
-    if (msg) msg.innerText = "Pedido criado com sucesso.";
+    pedidoCalculado = null;
+
+    setText("valorTotalPedido", dinheiro(0));
+    setText("valorMotoboyPedido", dinheiro(0));
+    setText("taxaSistemaPedido", dinheiro(0));
+    setText("taxaRetornoPedido", dinheiro(0));
+    setText("distanciaResumoPedido", "---");
+
+    mostrarMensagem("Pedido criado com sucesso.", true);
   } catch (erro) {
     console.error(erro);
-    if (msg) msg.innerText = erro.message || "Erro ao criar pedido.";
+    mostrarMensagem(erro.message || "Erro ao criar pedido.");
   }
 
   if (btn) {
