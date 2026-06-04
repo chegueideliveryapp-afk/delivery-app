@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Financeiro - Cheguei Motoboy</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="./css/app.css?v=110">
+</head>
+
+<body>
+  <main class="driver-app">
+    <header class="driver-header">
+      <div>
+        <span class="driver-kicker">Cheguei Motoboy</span>
+        <h1>Financeiro</h1>
+      </div>
+
+      <a class="icon-btn link-btn" href="./dashboard.html">Voltar</a>
+    </header>
+
+    <section class="balance-card">
+      <span>Saldo acumulado</span>
+      <strong id="saldoFinanceiro">R$ 0,00</strong>
+
+      <div class="payday-row">
+        <span>Pagamento</span>
+        <b>Toda segunda-feira</b>
+      </div>
+    </section>
+
+    <section class="quick-grid">
+      <div class="quick-card">
+        <span>Entregas feitas</span>
+        <strong id="totalEntregasFinanceiro">0</strong>
+      </div>
+
+      <div class="quick-card">
+        <span>A receber</span>
+        <strong id="totalAbertoFinanceiro">R$ 0,00</strong>
+      </div>
+    </section>
+
+    <section class="feed-card">
+      <h2>Histórico</h2>
+
+      <div id="listaHistoricoFinanceiro">
+        <div class="empty-state">
+          Carregando histórico financeiro...
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="./src/financeiro.js?v=110"></script>
+</body>
+</html>
