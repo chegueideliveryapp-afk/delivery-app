@@ -608,6 +608,43 @@ input:focus {
   border-color: #ea1d2c;
 }
 
+.driver-actions-row {
+  margin-top: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.driver-action-link {
+  min-height: 56px;
+  border-radius: 18px;
+  background: #fff;
+  color: #16181d;
+  text-decoration: none;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  padding: 16px 18px;
+  border: 1px solid #e6e8ee;
+  box-shadow: 0 10px 24px rgba(17, 24, 39, .05);
+}
+
+.driver-action-link span {
+  display: block;
+  color: #747985;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.driver-action-link strong {
+  display: block;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.driver-action-link:hover {
+  border-color: #ea1d2c;
+}
+
 .finance-item {
   display: flex;
   justify-content: space-between;
