@@ -2,52 +2,65 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>Painel Admin - Cheguei Delivery</title>
+  <title>Dashboard Admin - Cheguei Delivery</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <link rel="stylesheet" href="../css/admin.css?v=80">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/admin.css">
 </head>
 
 <body>
   <header class="topbar">
     <h1>Painel Admin</h1>
-
-    <button id="btnSair" type="button">
-      Sair
-    </button>
+    <button id="btnSair" type="button">Sair</button>
   </header>
 
-  <main class="container">
-    <a class="menu-card" href="./motoboys.html">Motoboys</a>
-    <a class="menu-card" href="./restaurantes.html">Restaurantes</a>
-    <a class="menu-card" href="./pedidos.html">Pedidos</a>
-    <a class="menu-card" href="./recargas.html">Recargas</a>
-    <a class="menu-card" href="./pagamentos.html">Pagamentos</a>
-    <a class="menu-card" href="./mapa.html">Mapa</a>
-  </main>
-
-  <section class="page">
-    <div class="panel">
-      <h2>Distribuição automática</h2>
+  <main class="page">
+    <section class="panel">
+      <h2>Resumo da operação</h2>
       <p class="hint">
-        Enquanto este painel estiver aberto, o sistema aumenta automaticamente o raio dos pedidos pendentes.
+        Visão geral em tempo real da Cheguei Delivery.
       </p>
 
-      <div class="status-row">
-        <span class="badge green">Ativo</span>
-        <span class="badge gray">3 km</span>
-        <span class="badge gray">5 km</span>
-        <span class="badge gray">10 km</span>
-        <span class="badge gray">15 km</span>
+      <div id="resumoAdmin" class="container" style="padding: 0; margin: 18px 0 0; max-width: none;">
+        <div class="empty">Carregando resumo...</div>
       </div>
-    </div>
-  </section>
+    </section>
+
+    <section class="panel">
+      <h2>Atalhos</h2>
+      <p class="hint">
+        Acesse rapidamente as áreas principais da administração.
+      </p>
+
+      <div class="container" style="padding: 0; margin: 18px 0 0; max-width: none;">
+        <a class="menu-card" href="./motoboys.html">Motoboys</a>
+        <a class="menu-card" href="./restaurantes.html">Restaurantes</a>
+        <a class="menu-card" href="./pedidos.html">Pedidos</a>
+        <a class="menu-card" href="./recargas.html">Recargas Pix</a>
+        <a class="menu-card" href="./pagamentos.html">Pagamentos</a>
+        <a class="menu-card" href="./mapa.html">Mapa</a>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Atenção</h2>
+      <p class="hint">
+        Itens que normalmente exigem ação da administração.
+      </p>
+
+      <div id="alertasAdmin">
+        <div class="empty">Carregando alertas...</div>
+      </div>
+    </section>
+  </main>
 
   <script type="module">
-    import { protegerAdmin, logout } from "../js/auth.js?v=80";
-    import "../js/distribuicao.js?v=80";
+    import { protegerPagina, logout } from "../js/auth.js";
+    import { carregarDashboardAdmin } from "../js/admin-dashboard.js?v=200";
 
-    protegerAdmin();
+    protegerPagina("admin");
+    carregarDashboardAdmin();
 
     document.getElementById("btnSair").addEventListener("click", async () => {
       await logout();
