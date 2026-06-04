@@ -17,7 +17,10 @@
         <h1>Pedidos</h1>
       </div>
 
-      <a class="back-link" href="./dashboard.html">Voltar</a>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <a class="back-link" href="./rastreamento.html">Mapa</a>
+        <a class="back-link" href="./dashboard.html">Voltar</a>
+      </div>
     </header>
 
     <section class="wallet-card">
@@ -41,11 +44,11 @@
   <script type="module">
     import {
       protegerRestaurante
-    } from "../js/restaurante.js?v=150";
+    } from "../js/restaurante.js?v=160";
 
     import {
       carregarPedidosRestaurante
-    } from "../js/restaurante-pedidos.js?v=150";
+    } from "../js/restaurante-pedidos.js?v=160";
 
     protegerRestaurante();
     carregarPedidosRestaurante();
