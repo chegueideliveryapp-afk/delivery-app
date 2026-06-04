@@ -2,11 +2,11 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>Novo Pedido - Cheguei Delivery</title>
+  <title>Novo Pedido 2 - Cheguei Delivery</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <link rel="stylesheet" href="../css/base.css">
-  <link rel="stylesheet" href="../css/restaurante.css?v=410">
+  <link rel="stylesheet" href="../css/restaurante.css?v=420">
 </head>
 
 <body>
@@ -85,6 +85,12 @@
 
         <div id="resultadoEndereco" class="address-result hidden"></div>
 
+        <div id="enderecoConfirmadoBox" class="confirmed-address hidden">
+          <span>Endereço confirmado</span>
+          <strong id="enderecoConfirmadoTexto">---</strong>
+          <p id="enderecoConfirmadoDetalhe">Confira se o endereço está correto antes de criar o pedido.</p>
+        </div>
+
         <input
           id="distanciaEntregaKm"
           class="single-input"
@@ -162,11 +168,11 @@
       <span>Aguardando motoboy</span>
       <strong>Pedidos pendentes</strong>
       <p class="helper-text">
-        Aqui aparecem os pedidos pendentes e os pedidos que ficaram sem motoboy.
+        Aqui aparecem os pedidos pendentes, em busca de motoboy ou sem motoboy disponível.
       </p>
 
       <div id="listaPedidosPendentesRestaurante">
-        <div class="empty-mini">Nenhum pedido pendente no momento.</div>
+        <div class="empty-mini">Carregando pedidos pendentes...</div>
       </div>
     </section>
   </main>
@@ -178,15 +184,20 @@
       buscarEnderecoEntrega,
       calcularPedido,
       criarPedido
-    } from "../js/restaurante.js?v=410";
+    } from "../js/restaurante.js?v=420";
 
     import {
       iniciarFluxoPedidosRestaurante
-    } from "../js/fluxo-pedidos-restaurante.js?v=410";
+    } from "../js/fluxo-pedidos-restaurante.js?v=420";
+
+    import {
+      carregarPedidosPendentesRestaurante
+    } from "../js/restaurante-pendentes.js?v=420";
 
     protegerRestaurante();
     carregarNovoPedidoRestaurante();
     iniciarFluxoPedidosRestaurante();
+    carregarPedidosPendentesRestaurante();
 
     const btnBuscarEndereco = document.getElementById("btnBuscarEndereco");
     if (btnBuscarEndereco) {
