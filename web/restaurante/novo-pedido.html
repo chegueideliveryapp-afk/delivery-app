@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <link rel="stylesheet" href="../css/base.css">
-  <link rel="stylesheet" href="../css/restaurante.css">
+  <link rel="stylesheet" href="../css/restaurante.css?v=410">
 </head>
 
 <body>
@@ -80,10 +80,10 @@
         </button>
 
         <p class="helper-text">
-          Primeiro o sistema procura no cache. Se não encontrar, usa o Google uma única vez e salva o endereço para os próximos pedidos.
+          Primeiro o sistema procura no cache. Se não encontrar, usa o Google Places uma única vez e salva o endereço para os próximos pedidos.
         </p>
 
-        <div id="resultadoEndereco" class="address-suggestions"></div>
+        <div id="resultadoEndereco" class="address-result hidden"></div>
 
         <input
           id="distanciaEntregaKm"
@@ -91,12 +91,12 @@
           placeholder="Distância calculada automaticamente"
           type="number"
           min="0"
-          step="0.1"
+          step="0.01"
           readonly
         >
 
         <p class="helper-text">
-          A distância é calculada automaticamente para evitar erro manual no valor do motoboy.
+          A distância é calculada automaticamente pela localização do restaurante e pelo endereço encontrado.
         </p>
 
         <label class="field-label">Forma de pagamento do cliente</label>
@@ -161,15 +161,12 @@
     <section class="history-card info-card">
       <span>Aguardando motoboy</span>
       <strong>Pedidos pendentes</strong>
-
       <p class="helper-text">
-        Aqui aparecem somente os pedidos que ainda estão procurando motoboy.
+        Aqui aparecem os pedidos pendentes e os pedidos que ficaram sem motoboy.
       </p>
 
-      <div id="listaPedidosPendentesNovoPedido">
-        <div class="empty-mini">
-          Carregando pedidos pendentes...
-        </div>
+      <div id="listaPedidosPendentesRestaurante">
+        <div class="empty-mini">Nenhum pedido pendente no momento.</div>
       </div>
     </section>
   </main>
@@ -181,26 +178,43 @@
       buscarEnderecoEntrega,
       calcularPedido,
       criarPedido
-    } from "../js/restaurante.js?v=360";
+    } from "../js/restaurante.js?v=410";
 
     import {
-      carregarPedidosPendentesNovoPedido
-    } from "../js/restaurante-pendentes.js?v=360";
+      iniciarFluxoPedidosRestaurante
+    } from "../js/fluxo-pedidos-restaurante.js?v=410";
 
     protegerRestaurante();
     carregarNovoPedidoRestaurante();
-    carregarPedidosPendentesNovoPedido();
+    iniciarFluxoPedidosRestaurante();
 
-    document.getElementById("btnBuscarEndereco").addEventListener("click", buscarEnderecoEntrega);
-    document.getElementById("distanciaEntregaKm").addEventListener("input", calcularPedido);
-    document.getElementById("formaPagamento").addEventListener("change", calcularPedido);
+    const btnBuscarEndereco = document.getElementById("btnBuscarEndereco");
+    if (btnBuscarEndereco) {
+      btnBuscarEndereco.addEventListener("click", buscarEnderecoEntrega);
+    }
 
-    document.getElementById("precisaRetorno").addEventListener("change", (event) => {
-      document.getElementById("valorTroco").classList.toggle("hidden", !event.target.checked);
-      calcularPedido();
-    });
+    const formaPagamento = document.getElementById("formaPagamento");
+    if (formaPagamento) {
+      formaPagamento.addEventListener("change", calcularPedido);
+    }
 
-    document.getElementById("btnCriarPedido").addEventListener("click", criarPedido);
+    const precisaRetorno = document.getElementById("precisaRetorno");
+    if (precisaRetorno) {
+      precisaRetorno.addEventListener("change", (event) => {
+        const valorTroco = document.getElementById("valorTroco");
+
+        if (valorTroco) {
+          valorTroco.classList.toggle("hidden", !event.target.checked);
+        }
+
+        calcularPedido();
+      });
+    }
+
+    const btnCriarPedido = document.getElementById("btnCriarPedido");
+    if (btnCriarPedido) {
+      btnCriarPedido.addEventListener("click", criarPedido);
+    }
   </script>
 </body>
 </html>
