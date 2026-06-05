@@ -51,26 +51,52 @@ function dataCurta(data) {
   return data.toLocaleDateString("pt-BR");
 }
 
-function inicioDaSemanaAtual() {
-  const hoje = new Date();
-  const dia = hoje.getDay();
-  const diferenca = dia === 0 ? -6 : 1 - dia;
+function formatarDataInput(data) {
+  const ano = data.getFullYear();
+  const mes = String(data.getMonth() + 1).padStart(2, "0");
+  const dia = String(data.getDate()).padStart(2, "0");
 
-  const segunda = new Date(hoje);
-  segunda.setDate(hoje.getDate() + diferenca);
-  segunda.setHours(0, 0, 0, 0);
-
-  return segunda;
+  return `${ano}-${mes}-${dia}`;
 }
 
-function fimDaSemanaAtual() {
-  const inicio = inicioDaSemanaAtual();
+function inicioDaSemana(dataReferencia) {
+  const data = new Date(dataReferencia);
+  const dia = data.getDay();
+  const diferenca = dia === 0 ? -6 : 1 - dia;
+
+  data.setDate(data.getDate() + diferenca);
+  data.setHours(0, 0, 0, 0);
+
+  return data;
+}
+
+function fimDaSemana(dataReferencia) {
+  const inicio = inicioDaSemana(dataReferencia);
   const fim = new Date(inicio);
 
   fim.setDate(inicio.getDate() + 6);
   fim.setHours(23, 59, 59, 999);
 
   return fim;
+}
+
+function proximaSegunda() {
+  const hoje = new Date();
+  const dia = hoje.getDay();
+  const diasAteSegunda = dia === 1 ? 7 : (8 - dia) % 7 || 7;
+
+  const data = new Date(hoje);
+  data.setDate(hoje.getDate() + diasAteSegunda);
+  data.setHours(0, 0, 0, 0);
+
+  return data;
+}
+
+function parseDataInput(valor) {
+  if (!valor) return null;
+
+  const data = new Date(`${valor}T00:00:00`);
+  return Number.isNaN(data.getTime()) ? null : data;
 }
 
 function dataDoPedido(pedido) {
@@ -88,6 +114,14 @@ function dataDoPagamento(pagamento) {
     pagamento.createdAt?.toDate?.() ||
     null
   );
+}
+
+function dentroDoPeriodo(data, inicio, fim) {
+  if (!data) return true;
+  if (inicio && data < inicio) return false;
+  if (fim && data > fim) return false;
+
+  return true;
 }
 
 function pagamentoTemPedido(pagamento, pedidoId) {
@@ -208,6 +242,40 @@ function valorPagamentoHistorico(pagamento) {
   );
 }
 
+function pagamentosFiltrados() {
+  const filtro = document.getElementById("filtroHistoricoPagamentos")?.value || "todos";
+  const dataSelecionada = parseDataInput(document.getElementById("semanaHistorico")?.value);
+  const todos = pagamentosDoMotoboy();
+
+  if (filtro === "todos") {
+    return todos;
+  }
+
+  if (filtro === "ultimos30") {
+    const fim = new Date();
+    const inicio = new Date();
+
+    inicio.setDate(fim.getDate() - 30);
+    inicio.setHours(0, 0, 0, 0);
+    fim.setHours(23, 59, 59, 999);
+
+    return todos.filter((pagamento) => {
+      return dentroDoPeriodo(dataDoPagamento(pagamento), inicio, fim);
+    });
+  }
+
+  const referencia = filtro === "semanaSelecionada" && dataSelecionada
+    ? dataSelecionada
+    : new Date();
+
+  const inicio = inicioDaSemana(referencia);
+  const fim = fimDaSemana(referencia);
+
+  return todos.filter((pagamento) => {
+    return dentroDoPeriodo(dataDoPagamento(pagamento), inicio, fim);
+  });
+}
+
 function totalRecebido() {
   return pagamentosDoMotoboy().reduce((total, pagamento) => {
     return total + valorPagamentoHistorico(pagamento);
@@ -231,11 +299,7 @@ function renderizarResumo() {
   setText("valorAbertoMotoboy", dinheiro(totalAberto));
   setText("totalEntregasAbertas", abertas.length);
   setText("totalEntregasPagas", pagas.length);
-
-  const inicio = inicioDaSemanaAtual();
-  const fim = fimDaSemanaAtual();
-
-  setText("semanaPagamento", `${dataCurta(inicio)} até ${dataCurta(fim)}`);
+  setText("proximoPagamento", `Segunda-feira, ${dataCurta(proximaSegunda())}`);
 }
 
 function renderizarTotalRecebido() {
@@ -300,14 +364,14 @@ function renderizarPagamentosRecebidos() {
   const lista = document.getElementById("listaPagamentosRecebidos");
   if (!lista) return;
 
-  const historico = pagamentosDoMotoboy();
+  const historico = pagamentosFiltrados();
 
   lista.innerHTML = "";
 
   if (historico.length === 0) {
     lista.innerHTML = `
       <div class="empty-state">
-        Nenhum pagamento recebido ainda.
+        Nenhum pagamento encontrado neste filtro.
       </div>
     `;
     return;
@@ -388,6 +452,27 @@ function renderizarTudo() {
   renderizarEntregasAReceber();
   renderizarPagamentosRecebidos();
   renderizarEntregasPagas();
+}
+
+function configurarFiltros() {
+  const filtro = document.getElementById("filtroHistoricoPagamentos");
+  const semana = document.getElementById("semanaHistorico");
+
+  if (semana && !semana.value) {
+    semana.value = formatarDataInput(new Date());
+  }
+
+  if (filtro) {
+    filtro.addEventListener("change", () => {
+      renderizarPagamentosRecebidos();
+    });
+  }
+
+  if (semana) {
+    semana.addEventListener("change", () => {
+      renderizarPagamentosRecebidos();
+    });
+  }
 }
 
 function escutarMotoboy() {
@@ -503,6 +588,8 @@ onAuthStateChanged(auth, async (user) => {
 
   const valido = await validarUsuario(user);
   if (!valido) return;
+
+  configurarFiltros();
 
   escutarMotoboy();
   escutarPedidos();
