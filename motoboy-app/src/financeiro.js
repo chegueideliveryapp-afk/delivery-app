@@ -120,6 +120,8 @@ function pedidoEntregueDoMotoboy(pedido) {
   return (
     pedido.status === "entregue" &&
     pedido.motoboyId === uid &&
+    pedido.pagamentoMotoboyEstornado !== true &&
+    pedido.pagamentoMotoboyStatus !== "estornado" &&
     numero(pedido.valorMotoboy, 0) > 0
   );
 }
@@ -489,36 +491,24 @@ function configurarFiltros() {
   }
 }
 
-function escutarMotoboy() {
-  onSnapshot(doc(db, "motoboys", uid), () => {
-    renderizarTudo();
-  });
-}
-
 function escutarPedidos() {
   const q = query(
     collection(db, "pedidos"),
     where("motoboyId", "==", uid)
   );
 
-  onSnapshot(
-    q,
-    (snapshot) => {
-      pedidos = [];
+  onSnapshot(q, (snapshot) => {
+    pedidos = [];
 
-      snapshot.forEach((docSnap) => {
-        pedidos.push({
-          id: docSnap.id,
-          ...docSnap.data()
-        });
+    snapshot.forEach((docSnap) => {
+      pedidos.push({
+        id: docSnap.id,
+        ...docSnap.data()
       });
+    });
 
-      renderizarTudo();
-    },
-    (erro) => {
-      console.error("Erro ao carregar pedidos:", erro);
-    }
-  );
+    renderizarTudo();
+  });
 }
 
 function escutarPagamentos() {
@@ -527,24 +517,18 @@ function escutarPagamentos() {
     where("motoboyId", "==", uid)
   );
 
-  onSnapshot(
-    q,
-    (snapshot) => {
-      pagamentos = [];
+  onSnapshot(q, (snapshot) => {
+    pagamentos = [];
 
-      snapshot.forEach((docSnap) => {
-        pagamentos.push({
-          id: docSnap.id,
-          ...docSnap.data()
-        });
+    snapshot.forEach((docSnap) => {
+      pagamentos.push({
+        id: docSnap.id,
+        ...docSnap.data()
       });
+    });
 
-      renderizarTudo();
-    },
-    (erro) => {
-      console.error("Erro ao carregar pagamentos:", erro);
-    }
-  );
+    renderizarTudo();
+  });
 }
 
 function escutarLedger() {
@@ -553,24 +537,18 @@ function escutarLedger() {
     where("motoboyId", "==", uid)
   );
 
-  onSnapshot(
-    q,
-    (snapshot) => {
-      ledger = [];
+  onSnapshot(q, (snapshot) => {
+    ledger = [];
 
-      snapshot.forEach((docSnap) => {
-        ledger.push({
-          id: docSnap.id,
-          ...docSnap.data()
-        });
+    snapshot.forEach((docSnap) => {
+      ledger.push({
+        id: docSnap.id,
+        ...docSnap.data()
       });
+    });
 
-      renderizarTudo();
-    },
-    (erro) => {
-      console.error("Erro ao carregar ledger:", erro);
-    }
-  );
+    renderizarTudo();
+  });
 }
 
 async function validarUsuario(user) {
@@ -597,7 +575,6 @@ onAuthStateChanged(auth, async (user) => {
   if (!valido) return;
 
   configurarFiltros();
-  escutarMotoboy();
   escutarPedidos();
   escutarPagamentos();
   escutarLedger();
