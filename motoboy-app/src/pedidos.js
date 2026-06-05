@@ -14,12 +14,14 @@ import {
   query,
   runTransaction,
   serverTimestamp,
-  updateDoc
+  updateDoc,
+  where
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 let uid = null;
 let motoboyAtual = null;
-let todosPedidos = [];
+let pedidosEmBusca = [];
+let pedidosDoMotoboy = [];
 let pedidosDisponiveis = [];
 let corridaAtual = null;
 let pedidoModalAtual = null;
@@ -616,14 +618,12 @@ async function finalizarEntrega(pedidoId) {
 
 function recalcularPedidosDisponiveis() {
   const disponiveis = [];
-  let atual = null;
 
-  todosPedidos.forEach((pedido) => {
-    if (pedido.status === "aceito" && pedido.motoboyId === uid) {
-      atual = pedido;
-      return;
-    }
+  const atual = pedidosDoMotoboy.find((pedido) => {
+    return pedido.status === "aceito" && pedido.motoboyId === uid;
+  }) || null;
 
+  pedidosEmBusca.forEach((pedido) => {
     if (pedidoEstaDisponivel(pedido)) {
       const origemPedido = obterLocationPedido(pedido);
 
@@ -652,21 +652,65 @@ function recalcularPedidosDisponiveis() {
   renderizarPedidosDisponiveis();
 }
 
-function escutarPedidos() {
-  const q = query(collection(db, "pedidos"));
+function escutarPedidosEmBusca() {
+  const q = query(
+    collection(db, "pedidos"),
+    where("status", "in", ["pendente", "buscando_motoboy"])
+  );
 
-  onSnapshot(q, (snapshot) => {
-    todosPedidos = [];
+  onSnapshot(
+    q,
+    (snapshot) => {
+      pedidosEmBusca = [];
 
-    snapshot.forEach((docSnap) => {
-      todosPedidos.push({
-        id: docSnap.id,
-        ...docSnap.data()
+      snapshot.forEach((docSnap) => {
+        pedidosEmBusca.push({
+          id: docSnap.id,
+          ...docSnap.data()
+        });
       });
-    });
 
-    recalcularPedidosDisponiveis();
-  });
+      recalcularPedidosDisponiveis();
+    },
+    (erro) => {
+      console.error("Erro ao carregar pedidos em busca:", erro);
+
+      const lista = document.getElementById("listaPedidosMotoboy");
+      if (lista) {
+        lista.innerHTML = `
+          <div class="empty-state">
+            Erro ao carregar pedidos. Verifique permissões do Firestore.
+          </div>
+        `;
+      }
+    }
+  );
+}
+
+function escutarPedidosDoMotoboy() {
+  const q = query(
+    collection(db, "pedidos"),
+    where("motoboyId", "==", uid)
+  );
+
+  onSnapshot(
+    q,
+    (snapshot) => {
+      pedidosDoMotoboy = [];
+
+      snapshot.forEach((docSnap) => {
+        pedidosDoMotoboy.push({
+          id: docSnap.id,
+          ...docSnap.data()
+        });
+      });
+
+      recalcularPedidosDisponiveis();
+    },
+    (erro) => {
+      console.error("Erro ao carregar pedidos do motoboy:", erro);
+    }
+  );
 }
 
 function escutarMotoboy() {
@@ -717,5 +761,6 @@ onAuthStateChanged(auth, async (user) => {
 
   configurarModal();
   escutarMotoboy();
-  escutarPedidos();
+  escutarPedidosEmBusca();
+  escutarPedidosDoMotoboy();
 });
