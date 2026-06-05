@@ -146,6 +146,7 @@ function renderizarRestaurantes(bounds) {
     marker.bindPopup(`
       <div class="map-popup">
         <strong>${restaurante.nome || "Restaurante"}</strong>
+        <p><b>Restaurante ID:</b> ${restaurante.id}</p>
         <p>Telefone: ${restaurante.telefone || "Não informado"}</p>
         <p>Endereço: ${restaurante.endereco || "Não informado"}</p>
         <p>Saldo: ${dinheiro(restaurante.saldoPrePago)}</p>
@@ -179,6 +180,7 @@ function renderizarMotoboys(bounds) {
     marker.bindPopup(`
       <div class="map-popup">
         <strong>${motoboy.nome || "Motoboy"}</strong>
+        <p><b>Motoboy ID:</b> ${motoboy.id}</p>
         <p>Telefone: ${motoboy.telefone || "Não informado"}</p>
         <p>Status: ${online ? "Online" : "Offline"}</p>
         <p>Corrida atual: ${emCorrida ? "Sim" : "Não"}</p>
@@ -210,6 +212,8 @@ function renderizarPedidosPendentes(bounds) {
       marker.bindPopup(`
         <div class="map-popup">
           <strong>Pedido pendente</strong>
+          <p><b>Pedido ID:</b> ${pedido.id}</p>
+          <p><b>Restaurante ID:</b> ${pedido.restauranteId || "Não informado"}</p>
           <p>Restaurante: ${pedido.restauranteNome || "Não informado"}</p>
           <p>Entrega: ${pedido.enderecoEntrega || "Não informado"}</p>
           <p>Status: ${pedido.status || "pendente"}</p>
@@ -251,6 +255,11 @@ function renderizarCorridasAndamento(bounds) {
       marker.bindPopup(`
         <div class="map-popup">
           <strong>Corrida em andamento</strong>
+
+          <p><b>Pedido ID:</b> ${pedido.id}</p>
+          <p><b>Motoboy ID:</b> ${pedido.motoboyId || "Não informado"}</p>
+          <p><b>Restaurante ID:</b> ${pedido.restauranteId || "Não informado"}</p>
+
           <p>Restaurante: ${pedido.restauranteNome || "Não informado"}</p>
           <p>Motoboy: ${motoboy?.nome || pedido.motoboyNome || "Não informado"}</p>
           <p>Telefone motoboy: ${motoboy?.telefone || "Não informado"}</p>
@@ -258,6 +267,7 @@ function renderizarCorridasAndamento(bounds) {
           <p>Status: ${pedido.status || "aceito"}</p>
           <p>Aceito em: ${dataTexto(pedido.aceitoAt)}</p>
           <p>Última localização: ${dataTexto(motoboy?.ultimaLocalizacaoAt)}</p>
+
           <span class="popup-badge">Corrida em andamento</span>
         </div>
       `);
