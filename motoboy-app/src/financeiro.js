@@ -19,6 +19,8 @@ let pedidos = [];
 let pagamentos = [];
 let ledger = [];
 
+const META_VISUAL_SEMANAL = 300;
+
 function dinheiro(valor) {
   return Number(valor || 0).toLocaleString("pt-BR", {
     style: "currency",
@@ -89,7 +91,6 @@ function fimDaSemana(dataReferencia) {
 function proximaSegunda() {
   const hoje = new Date();
   const dia = hoje.getDay();
-
   const diasAteSegunda = dia === 1 ? 7 : (8 - dia) % 7 || 7;
 
   const data = new Date(hoje);
@@ -136,11 +137,7 @@ function pagamentoTemPedido(pagamento, pedidoId) {
     return true;
   }
 
-  if (pagamento.pedidoId === pedidoId) {
-    return true;
-  }
-
-  return false;
+  return pagamento.pedidoId === pedidoId;
 }
 
 function ledgerDoPedido(pedidoId) {
@@ -190,32 +187,47 @@ function pedidoFoiPagoAoMotoboy(pedido) {
   );
 }
 
-function entregasAReceber() {
+function entregasTodas() {
   return pedidos
     .filter(pedidoEntregueDoMotoboy)
-    .filter((pedido) => !pedidoFoiPagoAoMotoboy(pedido))
     .sort((a, b) => {
       const dataA = dataDoPedido(a)?.getTime?.() || 0;
       const dataB = dataDoPedido(b)?.getTime?.() || 0;
       return dataB - dataA;
     });
+}
+
+function entregasAReceber() {
+  return entregasTodas().filter((pedido) => !pedidoFoiPagoAoMotoboy(pedido));
 }
 
 function entregasPagas() {
-  return pedidos
-    .filter(pedidoEntregueDoMotoboy)
-    .filter((pedido) => pedidoFoiPagoAoMotoboy(pedido))
-    .sort((a, b) => {
-      const dataA = dataDoPedido(a)?.getTime?.() || 0;
-      const dataB = dataDoPedido(b)?.getTime?.() || 0;
-      return dataB - dataA;
-    });
+  return entregasTodas().filter((pedido) => pedidoFoiPagoAoMotoboy(pedido));
 }
 
-function totalRecebidoPorEntregasPagas() {
-  return entregasPagas().reduce((total, pedido) => {
+function totalEntregas(lista) {
+  return lista.reduce((total, pedido) => {
     return total + numero(pedido.valorMotoboy, 0);
   }, 0);
+}
+
+function entregasDaSemanaAtual() {
+  const inicio = inicioDaSemana(new Date());
+  const fim = fimDaSemana(new Date());
+
+  return entregasTodas().filter((pedido) => {
+    return dentroDoPeriodo(dataDoPedido(pedido), inicio, fim);
+  });
+}
+
+function maiorValorEntrega() {
+  const todas = entregasTodas();
+
+  if (todas.length === 0) return 0;
+
+  return Math.max(
+    ...todas.map((pedido) => numero(pedido.valorMotoboy, 0))
+  );
 }
 
 function filtroHistorico() {
@@ -288,29 +300,43 @@ function agruparEntregasPagasPorSemana() {
 function renderizarResumo() {
   const abertas = entregasAReceber();
   const pagas = entregasPagas();
+  const todas = entregasTodas();
 
-  const totalAberto = abertas.reduce((total, pedido) => {
-    return total + numero(pedido.valorMotoboy, 0);
-  }, 0);
+  const totalAberto = totalEntregas(abertas);
+  const totalRecebido = totalEntregas(pagas);
+  const media = todas.length > 0 ? totalEntregas(todas) / todas.length : 0;
+  const totalSemana = totalEntregas(entregasDaSemanaAtual());
+  const percentualMeta = Math.min(100, (totalSemana / META_VISUAL_SEMANAL) * 100);
 
   setText("valorAbertoMotoboy", dinheiro(totalAberto));
+  setText("totalRecebidoMotoboy", dinheiro(totalRecebido));
+  setText("mediaEntregaMotoboy", dinheiro(media));
   setText("totalEntregasAbertas", abertas.length);
   setText("totalEntregasPagas", pagas.length);
-  setText("proximoPagamento", `Segunda-feira, ${dataCurta(proximaSegunda())}`);
+  setText("proximoPagamento", `Segunda, ${dataCurta(proximaSegunda())}`);
+  setText("ritmoGanhosTexto", `${dinheiro(totalSemana)} esta semana`);
+  setText("maiorEntregaTexto", dinheiro(maiorValorEntrega()));
+
+  const barra = document.getElementById("barraGanhosSemana");
+  if (barra) {
+    barra.style.width = `${percentualMeta}%`;
+  }
 }
 
 function renderizarTotalRecebido() {
   const box = document.getElementById("boxTotalRecebido");
   if (!box) return;
 
-  const total = totalRecebidoPorEntregasPagas();
   const pagas = entregasPagas();
+  const total = totalEntregas(pagas);
+  const media = pagas.length > 0 ? total / pagas.length : 0;
 
   box.innerHTML = `
     <div class="finance-total-box">
       <strong>${dinheiro(total)}</strong>
       <p>Total já pago a você pela Cheguei Delivery.</p>
-      <p>Entregas pagas: ${pagas.length}</p>
+      <p>Pagamentos calculados por entregas pagas: ${pagas.length}</p>
+      <p>Média recebida por entrega paga: ${dinheiro(media)}</p>
       <span class="status-pill aprovada">Recebido</span>
     </div>
   `;
