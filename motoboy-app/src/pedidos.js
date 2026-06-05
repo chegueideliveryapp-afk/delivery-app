@@ -153,22 +153,39 @@ function tocarSomNovaCorrida() {
     if (!AudioContext) return;
 
     const ctx = new AudioContext();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
 
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(880, ctx.currentTime);
-    osc.frequency.setValueAtTime(1040, ctx.currentTime + 0.16);
+    const masterGain = ctx.createGain();
+    masterGain.gain.setValueAtTime(0.001, ctx.currentTime);
+    masterGain.gain.exponentialRampToValueAtTime(1.0, ctx.currentTime + 0.03);
+    masterGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.8);
+    masterGain.connect(ctx.destination);
 
-    gain.gain.setValueAtTime(0.001, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.26, ctx.currentTime + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.55);
+    const frequencias = [880, 1175, 1568];
 
-    osc.connect(gain);
-    gain.connect(ctx.destination);
+    frequencias.forEach((freq, index) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
 
-    osc.start();
-    osc.stop(ctx.currentTime + 0.6);
+      const inicio = ctx.currentTime + (index * 0.28);
+      const fim = inicio + 0.42;
+
+      osc.type = "square";
+      osc.frequency.setValueAtTime(freq, inicio);
+
+      gain.gain.setValueAtTime(0.001, inicio);
+      gain.gain.exponentialRampToValueAtTime(0.9, inicio + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, fim);
+
+      osc.connect(gain);
+      gain.connect(masterGain);
+
+      osc.start(inicio);
+      osc.stop(fim);
+    });
+
+    setTimeout(() => {
+      ctx.close().catch(() => {});
+    }, 2200);
   } catch (erro) {
     console.warn("Som não liberado pelo navegador.", erro);
   }
@@ -377,7 +394,7 @@ function renderizarCorridaAtual() {
       }
 
       if (tipo === "google-cliente") {
-        abrirGoogleMapsParaCliente(corridaAtual);
+        abrirGoogleMapsParaCliente(corrAtual);
       }
 
       if (tipo === "waze-cliente") {
