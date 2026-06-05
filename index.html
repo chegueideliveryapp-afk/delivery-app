@@ -21,6 +21,10 @@
       --shadow: 0 18px 44px rgba(17, 24, 39, .10);
     }
 
+    html {
+      scroll-behavior: smooth;
+    }
+
     html,
     body {
       margin: 0;
@@ -28,6 +32,10 @@
       font-family: Inter, Arial, sans-serif;
       background: var(--soft);
       color: var(--ink);
+    }
+
+    a {
+      color: inherit;
     }
 
     .site-header {
@@ -42,7 +50,7 @@
       align-items: center;
       justify-content: space-between;
       gap: 20px;
-      background: rgba(255,255,255,.9);
+      background: rgba(255,255,255,.92);
       backdrop-filter: blur(16px);
       border-bottom: 1px solid rgba(230,232,238,.9);
     }
@@ -107,7 +115,7 @@
     }
 
     .hero {
-      min-height: 92vh;
+      min-height: 96vh;
       padding: 118px 28px 64px;
       color: #fff;
       display: grid;
@@ -115,8 +123,8 @@
       position: relative;
       overflow: hidden;
       background:
-        linear-gradient(90deg, rgba(10,12,18,.88) 0%, rgba(10,12,18,.64) 48%, rgba(10,12,18,.22) 100%),
-        url("https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=1800&q=80") center/cover;
+        linear-gradient(90deg, rgba(10,12,18,.88) 0%, rgba(10,12,18,.68) 52%, rgba(10,12,18,.18) 100%),
+        url("https://images.unsplash.com/photo-1604719312566-8912e9227c6a?auto=format&fit=crop&w=1800&q=80") center/cover;
     }
 
     .hero::after {
@@ -145,9 +153,9 @@
     }
 
     .hero h1 {
-      max-width: 850px;
+      max-width: 880px;
       margin: 0;
-      font-size: clamp(42px, 6vw, 78px);
+      font-size: clamp(42px, 6vw, 76px);
       line-height: .96;
       letter-spacing: 0;
     }
@@ -160,35 +168,49 @@
       line-height: 1.45;
     }
 
-    .hero-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      margin-top: 30px;
+    .choice-box {
+      margin-top: 34px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      max-width: 760px;
     }
 
-    .hero-actions a,
-    .cta-button {
-      min-height: 54px;
-      padding: 0 22px;
-      border-radius: 16px;
+    .choice {
+      min-height: 118px;
+      padding: 20px;
+      border-radius: 22px;
       text-decoration: none;
-      font-weight: 900;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .hero-actions a.primary,
-    .cta-button {
-      background: var(--red);
       color: #fff;
-      box-shadow: 0 16px 30px rgba(234, 29, 44, .30);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border: 1px solid rgba(255,255,255,.2);
+      background: rgba(255,255,255,.12);
+      backdrop-filter: blur(14px);
+      box-shadow: 0 18px 40px rgba(0,0,0,.22);
+      transition: transform .18s ease, background .18s ease;
     }
 
-    .hero-actions a.secondary {
-      background: #fff;
-      color: var(--ink);
+    .choice:hover {
+      transform: translateY(-3px);
+      background: rgba(255,255,255,.18);
+    }
+
+    .choice.primary {
+      background: var(--red);
+      border-color: var(--red);
+    }
+
+    .choice strong {
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    .choice span {
+      color: rgba(255,255,255,.84);
+      line-height: 1.35;
+      margin-top: 10px;
     }
 
     .main {
@@ -198,12 +220,13 @@
     }
 
     .section {
-      padding: 54px 0;
+      padding: 58px 0;
+      scroll-margin-top: 90px;
     }
 
     .section-head {
-      max-width: 820px;
-      margin-bottom: 24px;
+      max-width: 840px;
+      margin-bottom: 26px;
     }
 
     .section-head span {
@@ -214,7 +237,7 @@
 
     .section-head h2 {
       margin: 8px 0 0;
-      font-size: clamp(30px, 4vw, 48px);
+      font-size: clamp(30px, 4vw, 50px);
       line-height: 1.04;
       letter-spacing: 0;
     }
@@ -236,15 +259,16 @@
     .panel {
       background: #fff;
       border: 1px solid var(--line);
-      border-radius: 22px;
+      border-radius: 24px;
       padding: 26px;
       box-shadow: var(--shadow);
     }
 
     .panel.media {
-      min-height: 390px;
+      min-height: 420px;
       padding: 0;
       overflow: hidden;
+      position: relative;
     }
 
     .panel.media img {
@@ -254,9 +278,34 @@
       display: block;
     }
 
+    .image-label {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 18px;
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(20,22,27,.82);
+      color: #fff;
+      backdrop-filter: blur(12px);
+    }
+
+    .image-label strong {
+      display: block;
+      font-size: 18px;
+    }
+
+    .image-label span {
+      display: block;
+      margin-top: 5px;
+      color: rgba(255,255,255,.78);
+      line-height: 1.35;
+      font-size: 14px;
+    }
+
     .panel h3 {
       margin: 0;
-      font-size: 26px;
+      font-size: 28px;
       line-height: 1.1;
     }
 
@@ -305,6 +354,33 @@
       color: var(--muted);
       line-height: 1.42;
       font-size: 14px;
+    }
+
+    .commerce-impact {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-top: 22px;
+    }
+
+    .impact-card {
+      padding: 20px;
+      border-radius: 20px;
+      background: #fff;
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+    }
+
+    .impact-card strong {
+      display: block;
+      font-size: 26px;
+    }
+
+    .impact-card span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      line-height: 1.4;
     }
 
     .plans {
@@ -422,8 +498,8 @@
 
     .prepaid-note {
       margin-top: 18px;
-      padding: 20px;
-      border-radius: 20px;
+      padding: 22px;
+      border-radius: 22px;
       background: #101216;
       color: #fff;
       display: grid;
@@ -440,6 +516,61 @@
       margin: 0;
       color: rgba(255,255,255,.78);
       line-height: 1.5;
+    }
+
+    .driver-hero-card {
+      background:
+        linear-gradient(145deg, #101216, #262a33);
+      color: #fff;
+      border: 0;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .driver-hero-card::after {
+      content: "";
+      position: absolute;
+      right: -60px;
+      bottom: -80px;
+      width: 220px;
+      height: 220px;
+      border-radius: 50%;
+      background: rgba(234,29,44,.28);
+    }
+
+    .driver-money {
+      position: relative;
+      z-index: 1;
+      margin-top: 22px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .driver-money-card {
+      padding: 18px;
+      border-radius: 20px;
+      background: rgba(255,255,255,.1);
+      border: 1px solid rgba(255,255,255,.14);
+    }
+
+    .driver-money-card span {
+      display: block;
+      color: rgba(255,255,255,.72);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .driver-money-card strong {
+      display: block;
+      margin-top: 8px;
+      font-size: 34px;
+      line-height: 1;
+    }
+
+    .driver-money-card p {
+      margin: 8px 0 0;
+      color: rgba(255,255,255,.72);
+      font-size: 14px;
     }
 
     .comparison {
@@ -585,12 +716,14 @@
         padding: 64px 18px 72px;
       }
 
+      .choice-box,
       .split,
       .plans,
       .comparison,
       .flow,
       .cta,
-      .prepaid-note {
+      .prepaid-note,
+      .commerce-impact {
         grid-template-columns: 1fr;
       }
 
@@ -609,7 +742,8 @@
 
     @media (max-width: 460px) {
       .nav a,
-      .hero-actions a {
+      .choice,
+      .cta-actions a {
         width: 100%;
       }
 
@@ -628,6 +762,10 @@
       .price strong {
         font-size: 38px;
       }
+
+      .hero h1 {
+        font-size: 40px;
+      }
     }
   </style>
 </head>
@@ -643,70 +781,86 @@
     </a>
 
     <nav class="nav">
-      <a href="#restaurantes">Restaurantes</a>
-      <a href="#motoboys">Motoboys</a>
+      <a href="#comercio">Comércio</a>
+      <a href="#motoboy">Motoboy</a>
       <a href="#planos">Planos</a>
-      <a href="./motoboy-app/index.html">Sou motoboy</a>
-      <a class="primary" href="./web/restaurante/login.html">Sou restaurante</a>
+      <a href="./motoboy-app/index.html">Entrar motoboy</a>
+      <a class="primary" href="./web/restaurante/login.html">Entrar comércio</a>
     </nav>
   </header>
 
   <section class="hero">
     <div class="hero-inner">
-      <p class="eyebrow">Entrega local sem custo fixo pesado</p>
-      <h1>Reduza o custo de entrega do seu restaurante sem perder o controle da operação.</h1>
+      <p class="eyebrow">Escolha como você quer usar o Cheguei</p>
+      <h1>Entrega local com mais lucro para o comércio e mais clareza para o motoboy.</h1>
       <p class="lead">
-        O Cheguei Delivery conecta restaurantes, comércios e motoboys próximos em uma operação pré-paga,
-        rastreável e com taxa de plataforma clara por entrega.
+        O comércio economiza na logística, evita custo fixo com motoboy próprio e paga uma taxa clara por entrega.
+        O motoboy recebe 100% do valor da entrega definido para ele.
       </p>
 
-      <div class="hero-actions">
-        <a class="primary" href="./web/restaurante/login.html">Entrar como restaurante</a>
-        <a class="secondary" href="./motoboy-app/index.html">Entrar como motoboy</a>
+      <div class="choice-box">
+        <a class="choice primary" href="#comercio">
+          <strong>Sou Comércio</strong>
+          <span>Quero vender mais, gastar menos com entrega e proteger minha margem.</span>
+        </a>
+
+        <a class="choice" href="#motoboy">
+          <strong>Sou Motoboy</strong>
+          <span>Quero receber corridas próximas e ficar com 100% do valor da entrega.</span>
+        </a>
       </div>
     </div>
   </section>
 
   <main class="main">
-    <section class="section" id="restaurantes">
+    <section class="section" id="comercio">
       <div class="section-head">
-        <span>Para restaurantes e comércios</span>
-        <h2>Uma alternativa para quem não quer manter motoboy fixo nem depender só de aplicativos caros.</h2>
+        <span>Para comércio</span>
+        <h2>Venda com entrega sem carregar o peso de um motoboy fixo.</h2>
         <p>
-          Manter entregador próprio pode significar salário, encargos, ociosidade, faltas e gestão diária.
-          Já em grandes plataformas, o custo pode vir em comissões, taxas e perda de controle da operação.
+          Restaurantes, lanchonetes, mercados, adegas, farmácias e comércios locais podem operar com entregadores
+          sob demanda, mantendo o controle do saldo, dos pedidos e do custo por entrega.
         </p>
       </div>
 
       <div class="split">
         <div class="panel">
-          <h3>Você paga pela entrega quando usa</h3>
+          <h3>Mais faturamento com logística mais leve</h3>
           <p>
-            O restaurante solicita entregas conforme a demanda, acompanha a corrida e opera com saldo pré-pago.
+            Em vez de pagar motoboy parado ou depender de taxas altas de plataformas, você solicita entregas
+            quando precisa e acompanha tudo pela plataforma.
           </p>
 
           <div class="benefits">
             <div class="benefit">
               <div class="dot"></div>
               <div>
-                <strong>Sem custo fixo de motoboy parado</strong>
-                <span>Ideal para horários de pico, fins de semana, eventos e dias de maior movimento.</span>
+                <strong>Economia no custo fixo</strong>
+                <span>Reduza o impacto de salário, ociosidade, falta, escala e gestão diária de entregador próprio.</span>
               </div>
             </div>
 
             <div class="benefit">
               <div class="dot blue"></div>
               <div>
-                <strong>Motoboy por proximidade</strong>
-                <span>O sistema busca entregadores próximos ao estabelecimento.</span>
+                <strong>Mais margem por pedido</strong>
+                <span>Planos com taxa clara ajudam o comércio a prever melhor o custo da logística.</span>
               </div>
             </div>
 
             <div class="benefit">
               <div class="dot yellow"></div>
               <div>
-                <strong>Controle financeiro pré-pago</strong>
-                <span>Você recarrega saldo e acompanha o uso em cada pedido.</span>
+                <strong>Pré-pago para não perder controle</strong>
+                <span>Você adiciona saldo, cria pedidos e acompanha o uso do crédito na operação.</span>
+              </div>
+            </div>
+
+            <div class="benefit">
+              <div class="dot red"></div>
+              <div>
+                <strong>Menos dependência de plataforma grande</strong>
+                <span>Tenha uma alternativa local para não ficar preso somente a apps com taxas pesadas.</span>
               </div>
             </div>
           </div>
@@ -715,19 +869,40 @@
         <div class="panel media">
           <img
             src="https://images.unsplash.com/photo-1604719312566-8912e9227c6a?auto=format&fit=crop&w=1200&q=80"
-            alt="Comércio local com atendimento e entregas"
+            alt="Comércio local atendendo clientes"
           >
+          <div class="image-label">
+            <strong>Seu comércio com entrega sob demanda</strong>
+            <span>Menos custo parado, mais controle por pedido e operação financeira mais clara.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="commerce-impact">
+        <div class="impact-card">
+          <strong>Sem fixo</strong>
+          <span>Use entregadores quando houver demanda, sem pagar horas paradas.</span>
+        </div>
+
+        <div class="impact-card">
+          <strong>Pré-pago</strong>
+          <span>Você decide quanto coloca de saldo e acompanha os descontos.</span>
+        </div>
+
+        <div class="impact-card">
+          <strong>Mais margem</strong>
+          <span>Ao reduzir o peso da logística, sobra mais do faturamento para o negócio.</span>
         </div>
       </div>
     </section>
 
     <section class="section" id="planos">
       <div class="section-head">
-        <span>Planos para restaurantes</span>
-        <h2>Quanto maior o plano, menor a taxa da plataforma por entrega.</h2>
+        <span>Planos para comércio</span>
+        <h2>Quanto maior o plano, menor a taxa Cheguei por entrega.</h2>
         <p>
-          Todos os planos continuam usando o modelo pré-pago. O restaurante mantém saldo na plataforma
-          e cada pedido desconta a taxa do motoboy mais a taxa Cheguei do plano escolhido.
+          Todos os planos usam o modelo pré-pago. Em cada pedido, o comércio paga:
+          valor do motoboy + taxa Cheguei do plano escolhido.
         </p>
       </div>
 
@@ -742,23 +917,23 @@
           </div>
 
           <div class="fee-box">
-            <span>Taxa da plataforma</span>
+            <span>Taxa Cheguei</span>
             <strong>R$ 3,00</strong>
-            <p>por entrega + taxa do motoboy</p>
+            <p>por entrega + valor do motoboy</p>
           </div>
 
           <ul>
             <li>Modelo pré-pago</li>
-            <li>Solicitação de entregas</li>
+            <li>Pedidos sob demanda</li>
             <li>Busca de motoboys próximos</li>
-            <li>Histórico de pedidos e saldo</li>
+            <li>Histórico de saldo e entregas</li>
           </ul>
 
           <a href="./web/restaurante/login.html">Escolher Essencial</a>
         </div>
 
         <div class="plan-card featured">
-          <span class="plan-tag">Melhor equilíbrio</span>
+          <span class="plan-tag">Mais escolhido</span>
           <h3>Profissional</h3>
 
           <div class="price">
@@ -767,14 +942,14 @@
           </div>
 
           <div class="fee-box">
-            <span>Taxa da plataforma</span>
+            <span>Taxa Cheguei</span>
             <strong>R$ 1,75</strong>
-            <p>por entrega + taxa do motoboy</p>
+            <p>por entrega + valor do motoboy</p>
           </div>
 
           <ul>
             <li>Modelo pré-pago</li>
-            <li>Menor taxa por entrega</li>
+            <li>Taxa menor por entrega</li>
             <li>Rastreamento em tempo real</li>
             <li>Relatórios financeiros</li>
           </ul>
@@ -792,16 +967,16 @@
           </div>
 
           <div class="fee-box">
-            <span>Taxa da plataforma</span>
+            <span>Taxa Cheguei</span>
             <strong>R$ 1,00</strong>
-            <p>por entrega + taxa do motoboy</p>
+            <p>por entrega + valor do motoboy</p>
           </div>
 
           <ul>
             <li>Modelo pré-pago</li>
             <li>Taxa mínima por entrega</li>
             <li>Ideal para maior volume</li>
-            <li>Mais previsibilidade no custo final</li>
+            <li>Mais previsibilidade logística</li>
           </ul>
 
           <a href="./web/restaurante/login.html">Escolher Operação</a>
@@ -809,66 +984,122 @@
       </div>
 
       <div class="prepaid-note">
-        <strong>Como funciona o pré-pago?</strong>
+        <strong>Exemplo prático</strong>
         <p>
-          O restaurante adiciona saldo antecipadamente. Ao criar uma entrega, o sistema desconta
-          o valor total da corrida: taxa do motoboy + taxa Cheguei do plano. Assim a operação
-          fica clara, controlada e sem surpresas no fim do mês.
+          Se o valor do motoboy for R$ 10,00 e seu plano tiver taxa Cheguei de R$ 1,75,
+          o pedido desconta R$ 11,75 do saldo pré-pago. O motoboy recebe 100% dos R$ 10,00
+          definidos para a entrega.
         </p>
       </div>
     </section>
 
-    <section class="section" id="motoboys">
+    <section class="section" id="motoboy">
       <div class="section-head">
-        <span>Para motoboys</span>
-        <h2>Corridas próximas, valor visível e pagamento semanal.</h2>
+        <span>Para motoboy</span>
+        <h2>Você recebe 100% do valor da entrega que aparece no app.</h2>
         <p>
-          O motoboy fica online quando quiser trabalhar, recebe pedidos próximos e acompanha ganhos,
-          entregas pagas, abertas e estornadas no app.
+          O Cheguei cobra a taxa da plataforma do comércio. Para o motoboy, o app mostra o valor da corrida
+          antes de aceitar, e esse valor é o que entra nos ganhos da entrega.
         </p>
       </div>
 
       <div class="split">
         <div class="panel media">
           <img
-            src="https://images.unsplash.com/photo-1621955964441-c173e01c135b?auto=format&fit=crop&w=1200&q=80"
-            alt="Motoboy em operação de entrega urbana"
+            src="https://images.unsplash.com/photo-1580674285054-bed31e145f59?auto=format&fit=crop&w=1200&q=80"
+            alt="Motoboy com entrega urbana"
           >
+          <div class="image-label">
+            <strong>Corridas próximas e ganhos claros</strong>
+            <span>Fique online, receba oportunidades próximas e acompanhe seu financeiro.</span>
+          </div>
         </div>
 
+        <div class="panel driver-hero-card">
+          <h3>O valor que aparece é seu</h3>
+          <p>
+            O motoboy vê o valor da entrega antes de aceitar. A taxa da plataforma é paga pelo comércio,
+            não descontada do valor do motoboy.
+          </p>
+
+          <div class="driver-money">
+            <div class="driver-money-card">
+              <span>Valor da entrega</span>
+              <strong>100%</strong>
+              <p>O motoboy recebe o valor definido para aquela corrida.</p>
+            </div>
+
+            <div class="driver-money-card">
+              <span>Pagamento</span>
+              <strong>Segunda</strong>
+              <p>Ganhos acumulados para pagamento semanal.</p>
+            </div>
+
+            <div class="driver-money-card">
+              <span>Corridas</span>
+              <strong>Próximas</strong>
+              <p>Busca por GPS para reduzir deslocamento vazio.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="split" style="margin-top: 20px;">
         <div class="panel">
-          <h3>Mais clareza para quem roda</h3>
+          <h3>Feito para quem roda</h3>
 
           <div class="benefits">
             <div class="benefit">
               <div class="dot"></div>
               <div>
-                <strong>Recebe pedido quando está online</strong>
-                <span>O app usa GPS para localizar o motoboy e oferecer corridas próximas.</span>
+                <strong>Você escolhe ficar online</strong>
+                <span>Receba pedidos apenas quando estiver disponível para trabalhar.</span>
               </div>
             </div>
 
             <div class="benefit">
               <div class="dot blue"></div>
               <div>
-                <strong>Valor da corrida antes de aceitar</strong>
-                <span>O motoboy sabe quanto vai receber por aquela entrega.</span>
+                <strong>Valor visível antes de aceitar</strong>
+                <span>Você sabe quanto vai receber antes de pegar a corrida.</span>
               </div>
             </div>
 
             <div class="benefit">
               <div class="dot yellow"></div>
               <div>
-                <strong>Pagamento toda segunda-feira</strong>
-                <span>Ganhos acumulados e histórico financeiro para conferência.</span>
+                <strong>Histórico financeiro</strong>
+                <span>Veja entregas abertas, pagas e estornadas no app.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Mais organização na operação</h3>
+
+          <div class="benefits">
+            <div class="benefit">
+              <div class="dot red"></div>
+              <div>
+                <strong>Recusa registrada</strong>
+                <span>Se você recusar, o mesmo pedido não fica voltando para você.</span>
               </div>
             </div>
 
             <div class="benefit">
-              <div class="dot red"></div>
+              <div class="dot"></div>
               <div>
-                <strong>Rastreabilidade da operação</strong>
-                <span>Pedidos, recusas, entregas e estornos ficam registrados.</span>
+                <strong>Rota no mapa</strong>
+                <span>Depois de aceitar, abra o caminho no app de mapa que preferir.</span>
+              </div>
+            </div>
+
+            <div class="benefit">
+              <div class="dot blue"></div>
+              <div>
+                <strong>Pagamento semanal</strong>
+                <span>Acompanhe o total acumulado e os pagamentos recebidos.</span>
               </div>
             </div>
           </div>
@@ -879,37 +1110,37 @@
     <section class="section">
       <div class="section-head">
         <span>Comparativo</span>
-        <h2>Por que usar uma central própria pode reduzir atrito e custo.</h2>
+        <h2>Uma operação pensada para melhorar os dois lados.</h2>
       </div>
 
       <div class="comparison">
         <div class="comparison-card">
-          <h3>Motoboy fixo</h3>
+          <h3>Com motoboy fixo</h3>
           <ul>
-            <li>Custo mensal mesmo sem pedido</li>
+            <li>Comércio paga mesmo sem pedido</li>
             <li>Ociosidade em horários fracos</li>
-            <li>Gestão de faltas e escala</li>
-            <li>Dificuldade em picos de demanda</li>
+            <li>Gestão de escala, falta e reposição</li>
+            <li>Maior peso na margem mensal</li>
           </ul>
         </div>
 
         <div class="comparison-card">
-          <h3>Grandes plataformas</h3>
+          <h3>Com plataformas caras</h3>
           <ul>
-            <li>Taxas e comissões altas</li>
+            <li>Taxas e comissões pressionam o lucro</li>
+            <li>Menos controle da operação</li>
             <li>Dependência de regras externas</li>
-            <li>Menos controle do relacionamento</li>
-            <li>Margem do comércio pressionada</li>
+            <li>Relação com cliente fica distante</li>
           </ul>
         </div>
 
         <div class="comparison-card emphasis">
-          <h3>Cheguei Delivery</h3>
+          <h3>Com Cheguei</h3>
           <ul>
-            <li>Planos com taxa clara por entrega</li>
-            <li>Pré-pago para controle do saldo</li>
-            <li>Busca por motoboys próximos</li>
-            <li>Rastreamento e financeiro próprio</li>
+            <li>Comércio paga por uso e plano claro</li>
+            <li>Motoboy recebe 100% do valor da entrega</li>
+            <li>Saldo pré-pago e rastreamento</li>
+            <li>Operação local com controle financeiro</li>
           </ul>
         </div>
       </div>
@@ -918,54 +1149,54 @@
     <section class="section">
       <div class="section-head">
         <span>Fluxo da entrega</span>
-        <h2>Simples para o restaurante, organizado para o motoboy.</h2>
+        <h2>Simples para o comércio, direto para o motoboy.</h2>
       </div>
 
       <div class="flow">
         <div class="step">
           <b>1</b>
-          <strong>Restaurante cria o pedido</strong>
-          <span>O sistema calcula valores e desconta do saldo pré-pago.</span>
+          <strong>Comércio cria o pedido</strong>
+          <span>O sistema calcula valor do motoboy e taxa Cheguei.</span>
         </div>
 
         <div class="step">
           <b>2</b>
-          <strong>Sistema busca motoboys</strong>
-          <span>A busca começa perto do restaurante e pode ampliar o raio.</span>
+          <strong>Saldo pré-pago é usado</strong>
+          <span>O total é descontado do saldo do comércio.</span>
         </div>
 
         <div class="step">
           <b>3</b>
           <strong>Motoboy aceita</strong>
-          <span>A corrida fica vinculada a um entregador por vez.</span>
+          <span>Ele vê o valor dele antes de confirmar a corrida.</span>
         </div>
 
         <div class="step">
           <b>4</b>
-          <strong>Entrega e financeiro</strong>
-          <span>Ao finalizar, o ganho entra no saldo semanal do motoboy.</span>
+          <strong>Entrega finalizada</strong>
+          <span>O valor entra nos ganhos semanais do motoboy.</span>
         </div>
       </div>
 
       <div class="cta">
         <div>
-          <h2>Controle sua entrega local sem carregar custo fixo desnecessário.</h2>
+          <h2>Entrega local mais justa, previsível e controlada.</h2>
           <p>
-            Com planos mensais e taxa por entrega clara, o Cheguei Delivery ajuda restaurantes,
-            lanchonetes, mercados, farmácias, adegas e comércios locais a operar melhor.
+            Para o comércio: menos custo fixo e mais margem. Para o motoboy: valor claro,
+            corridas próximas e 100% do valor da entrega definido para ele.
           </p>
         </div>
 
         <div class="cta-actions">
-          <a class="primary" href="./web/restaurante/login.html">Acessar restaurante</a>
-          <a href="./motoboy-app/index.html">Acessar motoboy</a>
+          <a class="primary" href="./web/restaurante/login.html">Entrar como comércio</a>
+          <a href="./motoboy-app/index.html">Entrar como motoboy</a>
         </div>
       </div>
     </section>
   </main>
 
   <footer class="footer">
-    Cheguei Delivery. Plataforma de intermediação logística para restaurantes, comércios e motoboys.
+    Cheguei Delivery. Plataforma de intermediação logística para comércios locais e motoboys.
   </footer>
 </body>
 </html>
