@@ -2,11 +2,11 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>Dashboard Admin - Cheguei Delivery</title>
+  <title>Dashboard - Admin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <link rel="stylesheet" href="../css/base.css">
-  <link rel="stylesheet" href="../css/admin.css">
+  <link rel="stylesheet" href="../css/admin.css?v=240">
 </head>
 
 <body>
@@ -17,130 +17,176 @@
 
   <main class="page">
     <section class="panel">
-      <h2>Resumo da operação</h2>
-      <p class="hint">
-        Visão geral em tempo real da Cheguei Delivery.
-      </p>
+      <h2>Resumo da operacao</h2>
+      <p class="hint">Visao geral em tempo real da Cheguei Delivery.</p>
 
-      <div id="resumoAdmin" class="container" style="padding: 0; margin: 18px 0 0; max-width: none;">
-        <div class="empty">Carregando resumo...</div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <strong id="totalMotoboys">0</strong>
+          <span>Motoboys cadastrados</span>
+          <div class="status-row">
+            <span class="badge gray">Base de entregadores</span>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <strong id="motoboysOnline">0</strong>
+          <span>Motoboys online</span>
+          <div class="status-row">
+            <span class="badge green">Disponiveis agora</span>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <strong id="motoboysPendentes">0</strong>
+          <span>Motoboys pendentes</span>
+          <div class="status-row">
+            <span class="badge green">Aguardando aprovacao</span>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <strong id="restaurantesAtivos">0</strong>
+          <span>Restaurantes ativos</span>
+          <div class="status-row">
+            <span class="badge green">Operando na plataforma</span>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <strong id="saldoRestaurantes">R$ 0,00</strong>
+          <span>Saldo dos restaurantes</span>
+          <div class="status-row">
+            <span class="badge green">Pre-pago disponivel</span>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <strong id="pedidosPendentes">0</strong>
+          <span>Pedidos pendentes</span>
+          <div class="status-row">
+            <span class="badge gray">Buscando motoboy</span>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <strong id="pedidosAceitos">0</strong>
+          <span>Pedidos aceitos</span>
+          <div class="status-row">
+            <span class="badge gray">Em andamento</span>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <strong id="pedidosEntregues">0</strong>
+          <span>Pedidos entregues</span>
+          <div class="status-row">
+            <span class="badge green">Finalizados</span>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <strong id="recargasPendentes">0</strong>
+          <span>Recargas pendentes</span>
+          <div class="status-row">
+            <span class="badge yellow">Precisam aprovacao</span>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <strong id="valorPagarMotoboys">R$ 0,00</strong>
+          <span>A pagar motoboys</span>
+          <div class="status-row">
+            <span class="badge yellow">Entregas nao pagas</span>
+          </div>
+        </div>
       </div>
     </section>
 
     <section class="panel">
-      <h2>Relatório por período</h2>
+      <h2>BI financeiro</h2>
       <p class="hint">
-        Consulte uso de crédito dos restaurantes, valores gerados pelos motoboys e pagamentos realizados.
+        Analise de valores validos, ganhos da plataforma, ganhos dos motoboys e estornos.
       </p>
 
-      <div class="form-grid">
-        <input id="dataInicioRelatorio" type="date">
-        <input id="dataFimRelatorio" type="date">
+      <div class="stats-grid">
+        <div class="stat-card bi-card">
+          <strong id="biTotalCobrado">R$ 0,00</strong>
+          <span>Total cobrado dos restaurantes</span>
+          <div class="status-row">
+            <span class="badge gray">Pedidos nao estornados</span>
+          </div>
+        </div>
+
+        <div class="stat-card bi-card">
+          <strong id="biReceitaPlataforma">R$ 0,00</strong>
+          <span>Receita da plataforma</span>
+          <div class="status-row">
+            <span class="badge green">Taxa Cheguei valida</span>
+          </div>
+        </div>
+
+        <div class="stat-card bi-card">
+          <strong id="biValorMotoboys">R$ 0,00</strong>
+          <span>Gerado para motoboys</span>
+          <div class="status-row">
+            <span class="badge blue">Entregas validas</span>
+          </div>
+        </div>
+
+        <div class="stat-card bi-card">
+          <strong id="biValorEstornado">R$ 0,00</strong>
+          <span>Valor estornado</span>
+          <div class="status-row">
+            <span class="badge red">Devolvido ao restaurante</span>
+          </div>
+        </div>
       </div>
 
-      <div class="form-grid" style="margin-top: 14px;">
-        <input id="buscaRestauranteRelatorio" placeholder="Restaurante: nome, e-mail ou telefone">
+      <div class="charts-grid">
+        <div class="chart-card">
+          <h3>Financeiro da operacao</h3>
+          <canvas id="graficoFinanceiro"></canvas>
+        </div>
 
-        <select id="statusRestauranteRelatorio">
-          <option value="todos">Restaurantes: todos</option>
-          <option value="ativo">Somente ativos</option>
-          <option value="inativo">Somente inativos</option>
-          <option value="bloqueado">Somente bloqueados</option>
-          <option value="liberado">Somente liberados</option>
-        </select>
-
-        <select id="ordenacaoRestauranteRelatorio">
-          <option value="nome">Ordenar restaurantes por nome</option>
-          <option value="creditoUsado">Maior crédito usado</option>
-          <option value="recargas">Maior valor recarregado</option>
-          <option value="saldoAtual">Maior saldo atual</option>
-          <option value="pedidos">Maior quantidade de pedidos</option>
-        </select>
-      </div>
-
-      <div class="form-grid" style="margin-top: 14px;">
-        <input id="buscaMotoboyRelatorio" placeholder="Motoboy: nome, CPF ou telefone">
-
-        <select id="statusMotoboyRelatorio">
-          <option value="todos">Motoboys: todos</option>
-          <option value="online">Somente online</option>
-          <option value="offline">Somente offline</option>
-          <option value="aprovado">Somente aprovados</option>
-          <option value="pendente">Somente pendentes</option>
-          <option value="bloqueado">Somente bloqueados</option>
-          <option value="liberado">Somente liberados</option>
-        </select>
-
-        <select id="ordenacaoMotoboyRelatorio">
-          <option value="nome">Ordenar motoboys por nome</option>
-          <option value="valorGerado">Maior valor gerado</option>
-          <option value="valorPago">Maior valor pago</option>
-          <option value="valorAberto">Maior valor em aberto</option>
-          <option value="entregas">Maior quantidade de entregas</option>
-        </select>
-      </div>
-
-      <div class="form-grid" style="margin-top: 14px;">
-        <button id="btnAplicarRelatorio" class="primary-btn" type="button">
-          Aplicar filtros
-        </button>
+        <div class="chart-card">
+          <h3>Status dos pedidos</h3>
+          <canvas id="graficoPedidos"></canvas>
+        </div>
       </div>
     </section>
 
     <section class="panel">
-      <h2>Restaurantes no período</h2>
-      <p class="hint">
-        Veja quanto cada restaurante usou de crédito, quanto recarregou e o saldo atual.
-      </p>
+      <h2>Atencao</h2>
+      <p class="hint">Itens que normalmente exigem acao da administracao.</p>
 
-      <div id="relatorioRestaurantes">
-        <div class="empty">Carregando restaurantes...</div>
+      <div id="listaAlertasAdmin">
+        <div class="empty">Carregando alertas...</div>
       </div>
     </section>
 
     <section class="panel">
-      <h2>Motoboys no período</h2>
-      <p class="hint">
-        Veja quanto cada motoboy gerou em entregas, quanto já foi pago e quanto ainda está em aberto.
-      </p>
+      <h2>Menu</h2>
+      <p class="hint">Acesse rapidamente as principais areas da operacao.</p>
 
-      <div id="relatorioMotoboys">
-        <div class="empty">Carregando motoboys...</div>
-      </div>
-    </section>
-
-    <section class="panel">
-      <h2>Atalhos</h2>
-      <p class="hint">
-        Acesse rapidamente as áreas principais da administração.
-      </p>
-
-      <div class="container" style="padding: 0; margin: 18px 0 0; max-width: none;">
+      <div class="container dashboard-menu">
         <a class="menu-card" href="./motoboys.html">Motoboys</a>
         <a class="menu-card" href="./restaurantes.html">Restaurantes</a>
         <a class="menu-card" href="./pedidos.html">Pedidos</a>
-        <a class="menu-card" href="./recargas.html">Recargas Pix</a>
+        <a class="menu-card" href="./recargas.html">Recargas</a>
         <a class="menu-card" href="./pagamentos.html">Pagamentos</a>
         <a class="menu-card" href="./mapa.html">Mapa</a>
-        <a class="menu-card" href="./configuracoes.html">Configurações</a>
-      </div>
-    </section>
-
-    <section class="panel">
-      <h2>Atenção</h2>
-      <p class="hint">
-        Itens que normalmente exigem ação da administração.
-      </p>
-
-      <div id="alertasAdmin">
-        <div class="empty">Carregando alertas...</div>
+        <a class="menu-card" href="./configuracoes.html">Configuracoes</a>
+        <a class="menu-card" href="./relatorios.html">Relatorios</a>
       </div>
     </section>
   </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <script type="module">
     import { protegerPagina, logout } from "../js/auth.js";
-    import { carregarDashboardAdmin } from "../js/admin-dashboard.js?v=30";
+    import { carregarDashboardAdmin } from "../js/admin-dashboard.js?v=240";
 
     protegerPagina("admin");
     carregarDashboardAdmin();
