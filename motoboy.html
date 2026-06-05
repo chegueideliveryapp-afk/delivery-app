@@ -183,95 +183,339 @@
       font-size: 15px;
     }
 
-    .hero-card {
+    .delivery-animation {
       position: relative;
       min-height: 590px;
       overflow: hidden;
       border-radius: 36px;
-      background: #111;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(234,29,44,.35), transparent 22%),
+        radial-gradient(circle at 82% 24%, rgba(18,168,107,.26), transparent 24%),
+        linear-gradient(145deg, #151821 0%, #252b38 100%);
       box-shadow: var(--shadow);
-      isolation: isolate;
+      border: 1px solid rgba(255,255,255,.10);
     }
 
-    .hero-card img {
+    .map-grid {
+      position: absolute;
+      inset: 0;
+      opacity: .16;
+      background:
+        linear-gradient(90deg, transparent 0 18%, rgba(255,255,255,.6) 18% 18.4%, transparent 18.4% 100%),
+        linear-gradient(90deg, transparent 0 52%, rgba(255,255,255,.55) 52% 52.4%, transparent 52.4% 100%),
+        linear-gradient(0deg, transparent 0 28%, rgba(255,255,255,.55) 28% 28.4%, transparent 28.4% 100%),
+        linear-gradient(0deg, transparent 0 68%, rgba(255,255,255,.50) 68% 68.4%, transparent 68.4% 100%);
+    }
+
+    .route-svg {
       position: absolute;
       inset: 0;
       width: 100%;
       height: 100%;
-      object-fit: cover;
-      z-index: -2;
     }
 
-    .hero-card::after {
+    .route-shadow {
+      fill: none;
+      stroke: rgba(0,0,0,.22);
+      stroke-width: 18;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .route-base {
+      fill: none;
+      stroke: rgba(255,255,255,.22);
+      stroke-width: 12;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .route-live {
+      fill: none;
+      stroke: #12a86b;
+      stroke-width: 12;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-dasharray: 820;
+      stroke-dashoffset: 820;
+      animation: drawRoute 4.8s ease-in-out infinite;
+      filter: drop-shadow(0 0 10px rgba(18,168,107,.55));
+    }
+
+    @keyframes drawRoute {
+      0% { stroke-dashoffset: 820; }
+      55% { stroke-dashoffset: 0; }
+      100% { stroke-dashoffset: 0; }
+    }
+
+    .pin {
+      position: absolute;
+      width: 42px;
+      height: 42px;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      border: 5px solid #fff;
+      box-shadow: 0 14px 28px rgba(0,0,0,.24);
+      z-index: 3;
+    }
+
+    .pin::after {
       content: "";
       position: absolute;
-      inset: 0;
-      background:
-        linear-gradient(to bottom, rgba(0,0,0,.08), rgba(0,0,0,.72)),
-        linear-gradient(135deg, rgba(17, 19, 24, .38), rgba(234, 29, 44, .24));
-      z-index: -1;
+      inset: 9px;
+      border-radius: 50%;
+      background: #fff;
     }
 
-    .ride-widget {
+    .pin.start {
+      left: 68px;
+      bottom: 112px;
+      background: var(--red);
+    }
+
+    .pin.end {
+      right: 74px;
+      top: 104px;
+      background: var(--green);
+    }
+
+    .pin-label {
       position: absolute;
-      left: 26px;
-      right: 26px;
-      bottom: 26px;
+      z-index: 4;
+      min-height: 36px;
+      padding: 0 13px;
+      border-radius: 999px;
+      background: #fff;
+      color: var(--black);
+      display: inline-flex;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 950;
+      box-shadow: 0 12px 26px rgba(0,0,0,.20);
+    }
+
+    .pin-label.start-label {
+      left: 42px;
+      bottom: 66px;
+    }
+
+    .pin-label.end-label {
+      right: 38px;
+      top: 62px;
+    }
+
+    .money {
+      position: absolute;
+      z-index: 4;
+      width: 54px;
+      height: 38px;
+      border-radius: 12px;
+      background: #dcfce7;
+      border: 2px solid #86efac;
+      color: #166534;
+      display: grid;
+      place-items: center;
+      font-weight: 950;
+      box-shadow: 0 16px 28px rgba(0,0,0,.20);
+      opacity: 0;
+      animation: moneyPop 4.8s ease-in-out infinite;
+    }
+
+    .money::before {
+      content: "R$";
+      font-size: 15px;
+    }
+
+    .money.one {
+      left: 34%;
+      top: 50%;
+      animation-delay: .8s;
+    }
+
+    .money.two {
+      right: 30%;
+      top: 34%;
+      animation-delay: 1.7s;
+    }
+
+    .money.three {
+      left: 52%;
+      bottom: 24%;
+      animation-delay: 2.6s;
+    }
+
+    @keyframes moneyPop {
+      0%, 16% {
+        opacity: 0;
+        transform: translateY(10px) scale(.86) rotate(-8deg);
+      }
+      24%, 68% {
+        opacity: 1;
+        transform: translateY(0) scale(1) rotate(0deg);
+      }
+      86%, 100% {
+        opacity: 0;
+        transform: translateY(-18px) scale(.92) rotate(8deg);
+      }
+    }
+
+    .bike-wrap {
+      position: absolute;
+      left: 54px;
+      bottom: 86px;
+      width: 160px;
+      height: 120px;
+      z-index: 5;
+      offset-path: path("M 75 455 C 170 350, 185 235, 310 250 C 430 265, 402 120, 560 116");
+      offset-rotate: auto;
+      animation: ridePath 4.8s ease-in-out infinite;
+      filter: drop-shadow(0 18px 20px rgba(0,0,0,.30));
+    }
+
+    @keyframes ridePath {
+      0% { offset-distance: 0%; transform: scale(.86); }
+      10% { offset-distance: 0%; transform: scale(.86); }
+      62% { offset-distance: 100%; transform: scale(.86); }
+      100% { offset-distance: 100%; transform: scale(.86); }
+    }
+
+    .bike {
+      position: relative;
+      width: 160px;
+      height: 120px;
+    }
+
+    .wheel {
+      position: absolute;
+      bottom: 10px;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: #151821;
+      border: 7px solid #fff;
+      box-shadow: inset 0 0 0 6px #2c3342;
+      animation: wheelSpin .5s linear infinite;
+    }
+
+    .wheel.back { left: 14px; }
+    .wheel.front { right: 10px; }
+
+    @keyframes wheelSpin {
+      to { transform: rotate(360deg); }
+    }
+
+    .bike-body {
+      position: absolute;
+      left: 39px;
+      bottom: 38px;
+      width: 86px;
+      height: 32px;
+      border-radius: 18px;
+      background: var(--red);
+      transform: skewX(-12deg);
+    }
+
+    .bike-seat {
+      position: absolute;
+      left: 70px;
+      bottom: 72px;
+      width: 52px;
+      height: 13px;
+      border-radius: 999px;
+      background: #fff;
+    }
+
+    .rider-head {
+      position: absolute;
+      left: 91px;
+      bottom: 104px;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: #fff;
+    }
+
+    .rider-body {
+      position: absolute;
+      left: 78px;
+      bottom: 72px;
+      width: 44px;
+      height: 42px;
+      border-radius: 16px 16px 8px 8px;
+      background: var(--blue);
+      transform: rotate(-10deg);
+    }
+
+    .delivery-box {
+      position: absolute;
+      left: 18px;
+      bottom: 76px;
+      width: 48px;
+      height: 42px;
+      border-radius: 12px;
+      background: var(--yellow);
+      border: 4px solid #fff;
+    }
+
+    .gain-card {
+      position: absolute;
+      left: 28px;
+      right: 28px;
+      top: 28px;
+      z-index: 6;
       padding: 22px;
       border-radius: 26px;
-      background: rgba(255, 255, 255, .95);
+      background: rgba(255,255,255,.95);
       backdrop-filter: blur(16px);
       box-shadow: 0 24px 54px rgba(0,0,0,.22);
     }
 
-    .ride-widget span {
+    .gain-card span {
       display: block;
       color: var(--muted);
       font-size: 13px;
       font-weight: 950;
     }
 
-    .ride-widget strong {
+    .gain-card strong {
       display: block;
       margin-top: 8px;
-      font-size: 34px;
-      line-height: 1;
       color: var(--red);
+      font-size: 40px;
+      line-height: 1;
     }
 
-    .ride-widget p {
-      margin: 10px 0 0;
+    .gain-card p {
+      margin: 9px 0 0;
       color: #4f5663;
       font-weight: 850;
     }
 
-    .ride-flow {
+    .gain-row {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 10px;
-      margin-top: 18px;
+      margin-top: 16px;
     }
 
-    .flow-card {
-      min-height: 88px;
-      padding: 13px;
-      border-radius: 18px;
+    .gain-mini {
+      padding: 12px;
+      border-radius: 16px;
       background: #f5f7fa;
       border: 1px solid #e7ebf1;
     }
 
-    .flow-card b {
+    .gain-mini b {
       display: block;
-      font-size: 16px;
+      font-size: 15px;
     }
 
-    .flow-card small {
+    .gain-mini small {
       display: block;
       margin-top: 4px;
       color: var(--muted);
       font-size: 11px;
       font-weight: 850;
-      line-height: 1.25;
     }
 
     .section {
@@ -505,8 +749,8 @@
         grid-template-columns: 1fr 1fr;
       }
 
-      .hero-card {
-        min-height: 520px;
+      .delivery-animation {
+        min-height: 560px;
       }
     }
 
@@ -537,19 +781,39 @@
         grid-template-columns: 1fr;
       }
 
-      .hero-card {
-        min-height: 500px;
+      .delivery-animation {
+        min-height: 540px;
         border-radius: 28px;
       }
 
-      .ride-widget {
+      .gain-card {
         left: 16px;
         right: 16px;
-        bottom: 16px;
+        top: 16px;
       }
 
-      .ride-flow {
+      .gain-row {
         grid-template-columns: 1fr;
+      }
+
+      .bike-wrap {
+        transform: scale(.74);
+      }
+
+      .pin.start {
+        left: 36px;
+      }
+
+      .pin.end {
+        right: 42px;
+      }
+
+      .pin-label.start-label {
+        left: 20px;
+      }
+
+      .pin-label.end-label {
+        right: 18px;
       }
     }
   </style>
@@ -587,32 +851,56 @@
         </div>
       </div>
 
-      <div class="hero-card">
-        <img
-          src="https://upload.wikimedia.org/wikipedia/commons/d/d6/Mundo_de_Entrega_-_Isabella_Gemignani_-_Vista_da_Rua.jpg"
-          alt="Motoboy pilotando com bag de delivery"
-        >
+      <div class="delivery-animation">
+        <div class="map-grid"></div>
 
-        <div class="ride-widget">
-          <span>Nova corrida disponível</span>
-          <strong>Valor claro antes de aceitar</strong>
-          <p>Você decide se quer fazer aquela entrega.</p>
+        <svg class="route-svg" viewBox="0 0 640 590" preserveAspectRatio="none" aria-hidden="true">
+          <path class="route-shadow" d="M 75 455 C 170 350, 185 235, 310 250 C 430 265, 402 120, 560 116"></path>
+          <path class="route-base" d="M 75 455 C 170 350, 185 235, 310 250 C 430 265, 402 120, 560 116"></path>
+          <path class="route-live" d="M 75 455 C 170 350, 185 235, 310 250 C 430 265, 402 120, 560 116"></path>
+        </svg>
 
-          <div class="ride-flow">
-            <div class="flow-card">
-              <b>Online</b>
-              <small>Ative quando quiser trabalhar</small>
+        <div class="gain-card">
+          <span>Corrida disponível</span>
+          <strong>R$ 18,50</strong>
+          <p>Valor claro antes de aceitar. A corrida vira ganho no seu histórico.</p>
+
+          <div class="gain-row">
+            <div class="gain-mini">
+              <b>Próxima</b>
+              <small>Busca por GPS</small>
             </div>
 
-            <div class="flow-card">
-              <b>Corrida</b>
-              <small>Receba pedidos próximos pelo GPS</small>
+            <div class="gain-mini">
+              <b>Visível</b>
+              <small>Valor antes de aceitar</small>
             </div>
 
-            <div class="flow-card">
-              <b>Ganhos</b>
-              <small>Acompanhe no financeiro do app</small>
+            <div class="gain-mini">
+              <b>Semanal</b>
+              <small>Pagamento toda segunda</small>
             </div>
+          </div>
+        </div>
+
+        <div class="pin start"></div>
+        <div class="pin end"></div>
+        <div class="pin-label start-label">Restaurante</div>
+        <div class="pin-label end-label">Cliente</div>
+
+        <div class="money one"></div>
+        <div class="money two"></div>
+        <div class="money three"></div>
+
+        <div class="bike-wrap">
+          <div class="bike">
+            <div class="delivery-box"></div>
+            <div class="rider-head"></div>
+            <div class="rider-body"></div>
+            <div class="bike-seat"></div>
+            <div class="bike-body"></div>
+            <div class="wheel back"></div>
+            <div class="wheel front"></div>
           </div>
         </div>
       </div>
