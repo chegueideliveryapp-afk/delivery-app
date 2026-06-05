@@ -367,6 +367,11 @@ select.single-input:focus {
   color: #991b1b;
 }
 
+.status-pill.pendente {
+  background: #fef3c7;
+  color: #92400e;
+}
+
 .empty-mini {
   padding: 16px;
   border-radius: 16px;
@@ -436,36 +441,6 @@ select.single-input:focus {
   background: #fff;
 }
 
-.selected-address {
-  margin-top: 14px;
-  padding: 16px;
-  border: 1px solid #dcfce7;
-  border-radius: 18px;
-  background: #f0fdf4;
-}
-
-.selected-address span {
-  display: block;
-  color: #166534;
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.selected-address strong {
-  display: block;
-  margin-top: 6px;
-  color: #14532d;
-  font-size: 16px;
-  line-height: 1.35;
-}
-
-.selected-address p {
-  margin: 8px 0 0;
-  color: #166534;
-  font-size: 13px;
-  line-height: 1.4;
-}
-
 .field-label {
   display: block;
   margin-top: 14px;
@@ -493,25 +468,6 @@ select.single-input:focus {
 .secondary-action:disabled {
   opacity: .7;
   cursor: wait;
-}
-
-.maps-action {
-  background: #16181d;
-  color: #fff;
-  border-color: #16181d;
-}
-
-.maps-action:hover {
-  background: #ea1d2c;
-  color: #fff;
-  border-color: #ea1d2c;
-}
-
-.helper-text {
-  margin: 8px 0 0;
-  color: #747985;
-  font-size: 13px;
-  line-height: 1.4;
 }
 
 .return-check {
@@ -574,6 +530,123 @@ select.single-input:focus {
 
 .form-message {
   min-height: 20px;
+}
+
+.maps-action {
+  background: #16181d;
+  color: #fff;
+  border-color: #16181d;
+}
+
+.maps-action:hover {
+  background: #ea1d2c;
+  color: #fff;
+  border-color: #ea1d2c;
+}
+
+.helper-text {
+  margin: 8px 0 0;
+  color: #747985;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.confirmed-address {
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 16px;
+  background: #ecfdf5;
+  border: 1px solid #bbf7d0;
+}
+
+.confirmed-address span {
+  display: block;
+  color: #166534;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.confirmed-address strong {
+  display: block;
+  margin-top: 5px;
+  color: #14532d;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.pending-orders-section {
+  margin-top: 18px;
+}
+
+.pending-order-card {
+  padding: 16px;
+  border: 1px solid #e6e8ee;
+  border-radius: 18px;
+  background: #fbfcfd;
+  margin-top: 12px;
+}
+
+.pending-order-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.pending-order-top span {
+  display: block;
+  color: #747985;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.pending-order-top strong {
+  display: block;
+  margin-top: 5px;
+  color: #16181d;
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.pending-order-info {
+  margin-top: 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.pending-order-info p {
+  margin: 0;
+  color: #5d6472;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.pending-order-info b {
+  color: #16181d;
+}
+
+.search-progress {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 14px;
+  background: #fff7d6;
+  color: #8a5a00;
+  font-size: 13px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.retry-order-btn {
+  margin-top: 14px;
+  background: #16181d;
+  color: #fff;
+  border-color: #16181d;
+}
+
+.retry-order-btn:hover {
+  background: #ea1d2c;
+  border-color: #ea1d2c;
+  color: #fff;
 }
 
 .hidden {
