@@ -12,22 +12,19 @@ import {
   onSnapshot,
   collection,
   addDoc,
-  setDoc,
   serverTimestamp,
   query,
   where,
-  runTransaction
+  runTransaction,
+  updateDoc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-const GOOGLE_MAPS_API_KEY = "AIzaSyApRas85TE6FYQRzKMxjY2mTPs-XplM0u4";
 
 let restauranteLogado = null;
 let configApp = null;
 let pedidoCalculado = null;
-let googleMapsPromise = null;
-let placesService = null;
-let autocompleteService = null;
-let placesContainer = null;
+let enderecoEncontrado = null;
+let timersBuscaMotoboy = {};
+let novoPedidoConfigurado = false;
 
 function dinheiro(valor) {
   return Number(valor || 0).toLocaleString("pt-BR", {
@@ -36,40 +33,29 @@ function dinheiro(valor) {
   });
 }
 
+function numero(valor, padrao = 0) {
+  const n = Number(valor ?? padrao);
+  return Number.isFinite(n) ? n : padrao;
+}
+
 function setText(id, texto) {
   const el = document.getElementById(id);
   if (el) el.innerText = texto;
 }
 
-function mostrarMensagem(texto, sucesso = false) {
+function mostrarMensagem(texto) {
   const msg = document.getElementById("mensagem");
-
-  if (!msg) return;
-
-  msg.innerText = texto || "";
-  msg.style.color = sucesso ? "#166534" : "#c02626";
+  if (msg) msg.innerText = texto;
 }
 
-function numero(valor, padrao = 0) {
-  const n = Number(valor || padrao);
-  return Number.isFinite(n) ? n : padrao;
-}
-
-function arredondar2(valor) {
-  return Math.round((Number(valor || 0) + Number.EPSILON) * 100) / 100;
+function mostrarErroDashboard(texto) {
+  setText("nomeRestaurante", "Erro ao carregar");
+  setText("statusConta", "Atenção");
+  setText("statusDescricao", texto);
 }
 
 function limparTelefone(telefone) {
   return String(telefone || "").replace(/\D/g, "");
-}
-
-function normalizarTexto(texto) {
-  return String(texto || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
 }
 
 function montarWhatsappSuporte(numero, restauranteNome) {
@@ -92,6 +78,37 @@ function statusRecargaTexto(status) {
   if (status === "aprovada") return "Aprovada";
   if (status === "recusada") return "Recusada";
   return "Pendente";
+}
+
+function calcularDistanciaKm(lat1, lng1, lat2, lng2) {
+  const nLat1 = Number(lat1);
+  const nLng1 = Number(lng1);
+  const nLat2 = Number(lat2);
+  const nLng2 = Number(lng2);
+
+  if (
+    !Number.isFinite(nLat1) ||
+    !Number.isFinite(nLng1) ||
+    !Number.isFinite(nLat2) ||
+    !Number.isFinite(nLng2)
+  ) {
+    return 0;
+  }
+
+  const R = 6371;
+  const dLat = (nLat2 - nLat1) * Math.PI / 180;
+  const dLng = (nLng2 - nLng1) * Math.PI / 180;
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(nLat1 * Math.PI / 180) *
+    Math.cos(nLat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) *
+    Math.sin(dLng / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c;
 }
 
 function montarEnderecoEntrega() {
@@ -120,326 +137,6 @@ function montarEnderecoEntrega() {
   };
 }
 
-function calcularDistanciaKm(lat1, lng1, lat2, lng2) {
-  const raioTerraKm = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) *
-    Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLng / 2) *
-    Math.sin(dLng / 2);
-
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-  return raioTerraKm * c;
-}
-
-function carregarGoogleMapsPlaces() {
-  if (window.google?.maps?.places?.PlacesService) {
-    return Promise.resolve(window.google.maps);
-  }
-
-  if (googleMapsPromise) return googleMapsPromise;
-
-  googleMapsPromise = new Promise((resolve, reject) => {
-    const callbackName = `initGoogleMapsPlacesCheguei_${Date.now()}`;
-
-    window[callbackName] = () => {
-      delete window[callbackName];
-      resolve(window.google.maps);
-    };
-
-    const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=${callbackName}`;
-    script.async = true;
-    script.defer = true;
-    script.onerror = () => reject(new Error("Erro ao carregar Google Maps Places."));
-
-    document.head.appendChild(script);
-  });
-
-  return googleMapsPromise;
-}
-
-async function obterPlacesServices() {
-  const maps = await carregarGoogleMapsPlaces();
-
-  if (!placesContainer) {
-    placesContainer = document.createElement("div");
-    placesContainer.style.display = "none";
-    document.body.appendChild(placesContainer);
-  }
-
-  if (!placesService) {
-    placesService = new maps.places.PlacesService(placesContainer);
-  }
-
-  if (!autocompleteService) {
-    autocompleteService = new maps.places.AutocompleteService();
-  }
-
-  return {
-    maps,
-    placesService,
-    autocompleteService
-  };
-}
-
-async function buscarEnderecoNoCache(cacheId) {
-  const opcoesColecao = [
-    "geocoding_cache",
-    "enderecos_cache",
-    "cache_enderecos"
-  ];
-
-  for (const nomeColecao of opcoesColecao) {
-    const ref = doc(db, nomeColecao, cacheId);
-    const snap = await getDoc(ref);
-
-    if (snap.exists()) {
-      return snap.data();
-    }
-  }
-
-  return null;
-}
-
-async function salvarEnderecoNoCache(cacheId, dados) {
-  await setDoc(
-    doc(db, "geocoding_cache", cacheId),
-    {
-      ...dados,
-      updatedAt: serverTimestamp()
-    },
-    { merge: true }
-  );
-}
-
-function pontuarPredicao(prediction, endereco) {
-  const descricao = normalizarTexto(prediction.description || "");
-  const rua = normalizarTexto(endereco.rua);
-  const numeroEndereco = normalizarTexto(endereco.numeroEndereco);
-  const bairro = normalizarTexto(endereco.bairro);
-  const cidade = normalizarTexto(endereco.cidade);
-
-  let pontos = 0;
-
-  if (cidade && descricao.includes(cidade)) pontos += 40;
-  if (bairro && descricao.includes(bairro)) pontos += 30;
-  if (rua && descricao.includes(rua)) pontos += 30;
-  if (numeroEndereco && descricao.includes(numeroEndereco)) pontos += 15;
-
-  if (descricao.includes("brasil")) pontos += 5;
-  if (descricao.includes("sp")) pontos += 5;
-
-  return pontos;
-}
-
-async function buscarPredicoesEndereco(endereco) {
-  const { maps, autocompleteService } = await obterPlacesServices();
-
-  const input = [
-    endereco.rua,
-    endereco.numeroEndereco,
-    endereco.bairro,
-    endereco.cidade,
-    "SP",
-    "Brasil"
-  ].filter(Boolean).join(", ");
-
-  return new Promise((resolve, reject) => {
-    autocompleteService.getPlacePredictions(
-      {
-        input,
-        componentRestrictions: {
-          country: "br"
-        },
-        location: restauranteLogado?.location
-          ? new maps.LatLng(
-              Number(restauranteLogado.location.lat),
-              Number(restauranteLogado.location.lng)
-            )
-          : undefined,
-        radius: 50000,
-        types: ["address"]
-      },
-      (predictions, status) => {
-        const statusOk = window.google.maps.places.PlacesServiceStatus.OK;
-
-        if (status !== statusOk || !predictions?.length) {
-          reject(new Error(`Nenhum endereço encontrado. Status: ${status}`));
-          return;
-        }
-
-        const ordenadas = predictions
-          .map((prediction) => ({
-            ...prediction,
-            pontos: pontuarPredicao(prediction, endereco)
-          }))
-          .sort((a, b) => b.pontos - a.pontos);
-
-        resolve(ordenadas);
-      }
-    );
-  });
-}
-
-async function buscarDetalhesPlace(placeId) {
-  const { placesService } = await obterPlacesServices();
-
-  return new Promise((resolve, reject) => {
-    placesService.getDetails(
-      {
-        placeId,
-        fields: [
-          "place_id",
-          "name",
-          "formatted_address",
-          "geometry"
-        ]
-      },
-      (place, status) => {
-        const statusOk = window.google.maps.places.PlacesServiceStatus.OK;
-
-        if (status !== statusOk || !place) {
-          reject(new Error(`Erro ao carregar detalhes do endereço. Status: ${status}`));
-          return;
-        }
-
-        if (!place.geometry?.location) {
-          reject(new Error("Endereço encontrado sem localização."));
-          return;
-        }
-
-        resolve({
-          placeId: place.place_id || placeId,
-          enderecoFormatado: place.formatted_address || place.name || "",
-          location: {
-            lat: place.geometry.location.lat(),
-            lng: place.geometry.location.lng()
-          },
-          provider: "google_places_autocomplete"
-        });
-      }
-    );
-  });
-}
-
-async function aplicarEnderecoEncontrado(cacheId, endereco, dadosEndereco) {
-  const origemLat = Number(restauranteLogado.location.lat);
-  const origemLng = Number(restauranteLogado.location.lng);
-  const destinoLat = Number(dadosEndereco.location.lat);
-  const destinoLng = Number(dadosEndereco.location.lng);
-
-  const distanciaKm = calcularDistanciaKm(
-    origemLat,
-    origemLng,
-    destinoLat,
-    destinoLng
-  );
-
-  const distanciaComMargem = arredondar2(distanciaKm * 1.25);
-
-  const distanciaInput = document.getElementById("distanciaEntregaKm");
-  if (distanciaInput) {
-    distanciaInput.value = distanciaComMargem;
-  }
-
-  await salvarEnderecoNoCache(cacheId, {
-    cacheId,
-    enderecoDigitado: endereco.enderecoCompleto,
-    enderecoFormatado: dadosEndereco.enderecoFormatado,
-    placeId: dadosEndereco.placeId || "",
-    location: dadosEndereco.location,
-    provider: dadosEndereco.provider,
-    createdAt: serverTimestamp()
-  });
-
-  const enderecoFinal = dadosEndereco.enderecoFormatado || endereco.enderecoCompleto;
-
-  const resultadoEndereco = document.getElementById("resultadoEndereco");
-  if (resultadoEndereco) {
-    resultadoEndereco.classList.remove("hidden");
-    resultadoEndereco.innerHTML = `
-      <div class="address-suggestion muted">
-        Endereço selecionado:<br>
-        <strong>${enderecoFinal}</strong><br>
-        Distância estimada para cobrança: ${distanciaComMargem.toFixed(2)} km
-      </div>
-    `;
-  }
-
-  const enderecoConfirmadoBox = document.getElementById("enderecoConfirmadoBox");
-  const enderecoConfirmadoTexto = document.getElementById("enderecoConfirmadoTexto");
-  const enderecoConfirmadoDetalhe = document.getElementById("enderecoConfirmadoDetalhe");
-
-  if (enderecoConfirmadoBox) {
-    enderecoConfirmadoBox.classList.remove("hidden");
-  }
-
-  if (enderecoConfirmadoTexto) {
-    enderecoConfirmadoTexto.innerText = enderecoFinal;
-  }
-
-  if (enderecoConfirmadoDetalhe) {
-    enderecoConfirmadoDetalhe.innerText =
-      `Distância calculada: ${distanciaComMargem.toFixed(2)} km. Confira se o endereço está correto antes de criar o pedido.`;
-  }
-
-  calcularPedido();
-
-  mostrarMensagem("Endereço selecionado e distância calculada.", true);
-}
-
-function renderizarOpcoesEndereco(cacheId, endereco, predicoes) {
-  const lista = predicoes.slice(0, 5);
-
-  const html = lista.map((prediction, index) => {
-    return `
-      <button
-        type="button"
-        class="address-suggestion"
-        data-place-id="${prediction.place_id}"
-        data-cache-id="${cacheId}"
-      >
-        ${index === 0 ? "Melhor opção: " : ""}
-        ${prediction.description}
-      </button>
-    `;
-  }).join("");
-
-  const resultadoEndereco = document.getElementById("resultadoEndereco");
-
-  if (resultadoEndereco) {
-    resultadoEndereco.classList.remove("hidden");
-    resultadoEndereco.innerHTML = `
-      <div class="address-suggestion muted">
-        Confira o endereço antes de criar o pedido. Clique na opção correta:
-      </div>
-      ${html}
-    `;
-  }
-
-  document.querySelectorAll("button[data-place-id]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      button.disabled = true;
-      button.innerText = "Selecionando endereço...";
-
-      try {
-        const detalhes = await buscarDetalhesPlace(button.dataset.placeId);
-        await aplicarEnderecoEncontrado(button.dataset.cacheId, endereco, detalhes);
-      } catch (erro) {
-        console.error(erro);
-        mostrarMensagem(erro.message || "Erro ao selecionar endereço.");
-        button.disabled = false;
-      }
-    });
-  });
-}
-
 function atualizarResumoPagamento() {
   const forma = document.getElementById("formaPagamento")?.value || "pix";
   const precisaRetorno = document.getElementById("precisaRetorno")?.checked === true;
@@ -463,35 +160,152 @@ function calcularValoresPedido() {
   const distanciaKm = numero(document.getElementById("distanciaEntregaKm")?.value, 0);
   const precisaRetorno = document.getElementById("precisaRetorno")?.checked === true;
 
-  const taxaBaseMotoboy = numero(configApp?.taxaBaseMotoboy, 0);
-  const valorKmMotoboy = numero(configApp?.valorKmMotoboy, 0);
-  const valorMinimoMotoboy = numero(configApp?.valorMinimoMotoboy, 0);
-  const multiplicadorDemanda = numero(configApp?.multiplicadorDemanda, 1);
+  const taxaBaseMotoboy = numero(configApp?.taxaBaseMotoboy, 7);
+  const valorKmMotoboy = numero(configApp?.valorKmMotoboy, 1.5);
+  const valorMinimoMotoboy = numero(configApp?.valorMinimoMotoboy, 5);
 
   const taxaRetornoMotoboy = precisaRetorno
     ? numero(configApp?.taxaRetornoMotoboy, 0)
     : 0;
 
-  const taxaSistema = numero(configApp?.taxaSistemaPadrao, 5);
+  const taxaSistema = numero(configApp?.taxaSistemaPadrao, 2);
+  const multiplicador = numero(configApp?.multiplicadorDemanda, 1);
 
-  const valorPorDistancia = distanciaKm * valorKmMotoboy * multiplicadorDemanda;
-  const valorCalculadoMotoboy = taxaBaseMotoboy + valorPorDistancia;
+  const valorCalculadoMotoboy =
+    (taxaBaseMotoboy + (distanciaKm * valorKmMotoboy)) * multiplicador;
 
-  const valorMotoboy = arredondar2(
-    Math.max(valorMinimoMotoboy, valorCalculadoMotoboy) + taxaRetornoMotoboy
-  );
+  const valorMotoboy =
+    Math.max(valorMinimoMotoboy, valorCalculadoMotoboy) + taxaRetornoMotoboy;
 
-  const taxaSistemaFinal = arredondar2(taxaSistema);
-  const taxaRetornoFinal = arredondar2(taxaRetornoMotoboy);
-  const valorTotal = arredondar2(valorMotoboy + taxaSistemaFinal);
+  const valorTotal = valorMotoboy + taxaSistema;
 
   return {
-    distanciaKm: arredondar2(distanciaKm),
+    distanciaKm,
     valorMotoboy,
-    taxaSistema: taxaSistemaFinal,
-    taxaRetornoMotoboy: taxaRetornoFinal,
-    valorTotal
+    taxaSistema,
+    taxaRetornoMotoboy,
+    valorTotal,
+    taxaBaseMotoboy,
+    valorKmMotoboy,
+    valorMinimoMotoboy,
+    multiplicador
   };
+}
+
+function configurarNovoPedidoUmaVez() {
+  if (novoPedidoConfigurado) return;
+
+  novoPedidoConfigurado = true;
+
+  const distancia = document.getElementById("distanciaEntregaKm");
+  if (distancia) {
+    distancia.addEventListener("input", calcularPedido);
+  }
+
+  const formaPagamento = document.getElementById("formaPagamento");
+  if (formaPagamento) {
+    formaPagamento.addEventListener("change", calcularPedido);
+  }
+
+  const precisaRetorno = document.getElementById("precisaRetorno");
+  if (precisaRetorno) {
+    precisaRetorno.addEventListener("change", () => {
+      calcularPedido();
+    });
+  }
+}
+
+function timestampParaMillis(timestamp) {
+  if (!timestamp) return Date.now();
+  if (timestamp.toMillis) return timestamp.toMillis();
+  if (timestamp.toDate) return timestamp.toDate().getTime();
+  return Date.now();
+}
+
+function statusPedidoTexto(status) {
+  if (status === "pendente") return "Buscando motoboy";
+  if (status === "buscando_motoboy") return "Buscando motoboy";
+  if (status === "sem_motoboy") return "Sem motoboy disponível";
+  if (status === "aceito") return "Aceito";
+  if (status === "entregue") return "Entregue";
+  return status || "Pendente";
+}
+
+function classeStatusPedido(status) {
+  if (status === "sem_motoboy") return "recusada";
+  if (status === "aceito") return "aprovada";
+  if (status === "entregue") return "aprovada";
+  return "pendente";
+}
+
+function limparTimersBuscaMotoboy() {
+  Object.values(timersBuscaMotoboy).forEach((timerId) => {
+    clearTimeout(timerId);
+  });
+
+  timersBuscaMotoboy = {};
+}
+
+async function avancarRaioOuMarcarSemMotoboy(pedidoId, pedido) {
+  const raios = Array.isArray(pedido.raiosBuscaKm) && pedido.raiosBuscaKm.length > 0
+    ? pedido.raiosBuscaKm.map(Number)
+    : [3, 5, 10, 15];
+
+  const tentativaAtual = Number(pedido.tentativaBusca || 0);
+  const proximaTentativa = tentativaAtual + 1;
+
+  const pedidoRef = doc(db, "pedidos", pedidoId);
+
+  if (proximaTentativa >= raios.length) {
+    await updateDoc(pedidoRef, {
+      status: "sem_motoboy",
+      semMotoboyAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+
+    return;
+  }
+
+  await updateDoc(pedidoRef, {
+    status: "buscando_motoboy",
+    tentativaBusca: proximaTentativa,
+    raioAtualKm: raios[proximaTentativa],
+    ultimaExpansaoAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  });
+}
+
+function programarExpansaoDoPedido(pedidoId, pedido) {
+  if (timersBuscaMotoboy[pedidoId]) {
+    clearTimeout(timersBuscaMotoboy[pedidoId]);
+  }
+
+  const statusBusca =
+    pedido.status === "pendente" ||
+    pedido.status === "buscando_motoboy";
+
+  if (!statusBusca) return;
+  if (pedido.motoboyId) return;
+
+  const tempoPorRaioSegundos = Number(
+    pedido.tempoPorRaioSegundos ||
+    configApp?.tempoPorRaioSegundos ||
+    15
+  );
+
+  const atualizadoEm = timestampParaMillis(pedido.updatedAt || pedido.createdAt);
+  const agora = Date.now();
+  const tempoPassado = agora - atualizadoEm;
+  const tempoTotal = tempoPorRaioSegundos * 1000;
+  const tempoRestante = Math.max(1000, tempoTotal - tempoPassado);
+
+  timersBuscaMotoboy[pedidoId] = setTimeout(async () => {
+    try {
+      await avancarRaioOuMarcarSemMotoboy(pedidoId, pedido);
+    } catch (erro) {
+      console.error("Erro ao avançar raio do pedido:", erro);
+    }
+  }, tempoRestante);
 }
 
 export async function loginRestaurante() {
@@ -583,9 +397,7 @@ export function carregarDashboardRestaurante() {
       restauranteRef,
       (snap) => {
         if (!snap.exists()) {
-          setText("nomeRestaurante", "Erro ao carregar");
-          setText("statusConta", "Atenção");
-          setText("statusDescricao", "Cadastro do restaurante não encontrado.");
+          mostrarErroDashboard("Cadastro do restaurante não encontrado.");
           return;
         }
 
@@ -615,9 +427,7 @@ export function carregarDashboardRestaurante() {
       },
       (erro) => {
         console.error(erro);
-        setText("nomeRestaurante", "Erro ao carregar");
-        setText("statusConta", "Atenção");
-        setText("statusDescricao", "Sem permissão para carregar o restaurante.");
+        mostrarErroDashboard("Sem permissão para carregar o restaurante.");
       }
     );
   });
@@ -670,64 +480,54 @@ export function carregarRecargaRestaurante() {
       where("restauranteId", "==", user.uid)
     );
 
-    onSnapshot(
-      q,
-      (snapshot) => {
-        const lista = document.getElementById("listaRecargas");
-        if (!lista) return;
+    onSnapshot(q, (snapshot) => {
+      const lista = document.getElementById("listaRecargas");
+      if (!lista) return;
 
-        lista.innerHTML = "";
+      lista.innerHTML = "";
 
-        if (snapshot.empty) {
-          lista.innerHTML = `<div class="empty-mini">Nenhuma recarga solicitada ainda.</div>`;
-          return;
-        }
-
-        const recargas = [];
-
-        snapshot.forEach((docSnap) => {
-          recargas.push({
-            id: docSnap.id,
-            ...docSnap.data()
-          });
-        });
-
-        recargas.sort((a, b) => {
-          const dataA = a.solicitadoAt?.toMillis?.() || 0;
-          const dataB = b.solicitadoAt?.toMillis?.() || 0;
-          return dataB - dataA;
-        });
-
-        recargas.forEach((r) => {
-          const item = document.createElement("div");
-          item.className = "recharge-item";
-
-          item.innerHTML = `
-            <div>
-              <strong>${dinheiro(r.valor)}</strong>
-              <p>${r.observacao || "Sem observação"}</p>
-            </div>
-            <span class="status-pill ${r.status || "pendente"}">
-              ${statusRecargaTexto(r.status)}
-            </span>
-          `;
-
-          lista.appendChild(item);
-        });
-      },
-      (erro) => {
-        console.error(erro);
-        const lista = document.getElementById("listaRecargas");
-        if (lista) {
-          lista.innerHTML = `<div class="empty-mini">Erro ao carregar recargas.</div>`;
-        }
+      if (snapshot.empty) {
+        lista.innerHTML = `<div class="empty-mini">Nenhuma recarga solicitada ainda.</div>`;
+        return;
       }
-    );
+
+      const recargas = [];
+
+      snapshot.forEach((docSnap) => {
+        recargas.push({
+          id: docSnap.id,
+          ...docSnap.data()
+        });
+      });
+
+      recargas.sort((a, b) => {
+        const dataA = a.solicitadoAt?.toMillis?.() || 0;
+        const dataB = b.solicitadoAt?.toMillis?.() || 0;
+        return dataB - dataA;
+      });
+
+      recargas.forEach((r) => {
+        const item = document.createElement("div");
+        item.className = "recharge-item";
+
+        item.innerHTML = `
+          <div>
+            <strong>${dinheiro(r.valor)}</strong>
+            <p>${r.observacao || "Sem observação"}</p>
+          </div>
+          <span class="status-pill ${r.status || "pendente"}">
+            ${statusRecargaTexto(r.status)}
+          </span>
+        `;
+
+        lista.appendChild(item);
+      });
+    });
   });
 }
 
 export async function solicitarRecarga() {
-  const valor = arredondar2(document.getElementById("valorRecarga").value || 0);
+  const valor = Number(document.getElementById("valorRecarga").value || 0);
   const observacao = document.getElementById("observacaoRecarga").value.trim();
   const msg = document.getElementById("mensagem");
   const btn = document.getElementById("btnSolicitarRecarga");
@@ -783,132 +583,141 @@ export function carregarNovoPedidoRestaurante() {
       return;
     }
 
+    configurarNovoPedidoUmaVez();
+
     const restauranteRef = doc(db, "restaurantes", user.uid);
     const configRef = doc(db, "config", "app");
 
-    onSnapshot(
-      restauranteRef,
-      (snap) => {
-        if (!snap.exists()) {
-          setText("saldoPrePago", "Cadastro não encontrado");
-          mostrarMensagem("Restaurante não encontrado no Firestore.");
-          return;
-        }
-
-        restauranteLogado = {
-          id: user.uid,
-          ...snap.data()
-        };
-
-        setText("saldoPrePago", dinheiro(restauranteLogado.saldoPrePago));
-
-        if (restauranteLogado.location?.lat && restauranteLogado.location?.lng) {
-          calcularPedido();
-        }
-      },
-      (erro) => {
-        console.error(erro);
-        setText("saldoPrePago", "Erro");
-        mostrarMensagem("Erro ao carregar saldo do restaurante.");
+    onSnapshot(restauranteRef, (snap) => {
+      if (!snap.exists()) {
+        setText("saldoPrePago", "Cadastro não encontrado");
+        mostrarMensagem("Restaurante não encontrado no Firestore.");
+        return;
       }
-    );
 
-    onSnapshot(
-      configRef,
-      (snap) => {
-        if (!snap.exists()) {
-          mostrarMensagem("Configuração do app não encontrada.");
-          return;
-        }
+      restauranteLogado = {
+        id: user.uid,
+        ...snap.data()
+      };
 
-        configApp = snap.data();
+      setText("saldoPrePago", dinheiro(restauranteLogado.saldoPrePago));
 
-        const raios = configApp.raiosBuscaKm || [3, 5, 10, 15];
-        setText("raioInicialPedido", `${raios[0] || 3} km`);
-
-        calcularPedido();
-      },
-      (erro) => {
-        console.error(erro);
-        mostrarMensagem("Erro ao carregar configurações do app.");
+      if (!document.getElementById("enderecoCidade")?.value && restauranteLogado.cidade) {
+        document.getElementById("enderecoCidade").value = restauranteLogado.cidade;
       }
-    );
+
+      calcularPedido();
+    });
+
+    onSnapshot(configRef, (snap) => {
+      if (!snap.exists()) {
+        mostrarMensagem("Configuração do app não encontrada.");
+        return;
+      }
+
+      configApp = snap.data();
+
+      const raios = configApp.raiosBuscaKm || [3, 5, 10, 15];
+      setText("raioInicialPedido", `${raios[0] || 3} km`);
+
+      calcularPedido();
+    });
   });
 }
 
 export async function buscarEnderecoEntrega() {
-  const resultado = document.getElementById("resultadoEndereco");
+  const msg = document.getElementById("mensagem");
   const btn = document.getElementById("btnBuscarEndereco");
+  const distanciaInput = document.getElementById("distanciaEntregaKm");
+  const enderecoBox = document.getElementById("enderecoConfirmadoBox");
 
-  mostrarMensagem("");
-
-  if (resultado) {
-    resultado.innerHTML = "";
-    resultado.classList.add("hidden");
-  }
+  if (msg) msg.innerText = "";
 
   if (!restauranteLogado) {
-    mostrarMensagem("Restaurante ainda não carregado.");
+    if (msg) msg.innerText = "Restaurante ainda não carregado.";
     return;
   }
 
   if (!restauranteLogado.location?.lat || !restauranteLogado.location?.lng) {
-    mostrarMensagem("Restaurante sem localização fixa cadastrada.");
+    if (msg) msg.innerText = "Restaurante sem localização fixa cadastrada.";
     return;
   }
 
   const endereco = montarEnderecoEntrega();
 
   if (!endereco.rua || !endereco.numeroEndereco || !endereco.bairro || !endereco.cidade) {
-    mostrarMensagem("Informe rua, número, bairro e cidade.");
+    if (msg) msg.innerText = "Informe rua, número, bairro e cidade.";
     return;
   }
 
-  const cacheId = normalizarTexto(`places-v2-${endereco.enderecoCompleto}`);
+  if (!window.google?.maps?.places) {
+    if (msg) msg.innerText = "Google Places não carregou. Confira a API Key.";
+    return;
+  }
 
   if (btn) {
     btn.disabled = true;
-    btn.innerText = "Buscando...";
+    btn.innerText = "Buscando endereço...";
   }
 
   try {
-    const cache = await buscarEnderecoNoCache(cacheId);
+    const service = new google.maps.places.PlacesService(document.createElement("div"));
 
-    if (cache?.location?.lat && cache?.location?.lng) {
-      await aplicarEnderecoEncontrado(cacheId, endereco, cache);
+    const request = {
+      query: endereco.enderecoCompleto,
+      fields: ["name", "formatted_address", "geometry"]
+    };
 
+    service.findPlaceFromQuery(request, (results, status) => {
       if (btn) {
         btn.disabled = false;
         btn.innerText = "Buscar endereço";
       }
 
-      return;
-    }
+      if (status !== google.maps.places.PlacesServiceStatus.OK || !results || !results[0]) {
+        if (msg) msg.innerText = "Erro ao buscar endereço. Confira rua, número, bairro e cidade.";
+        return;
+      }
 
-    const predicoes = await buscarPredicoesEndereco(endereco);
+      const place = results[0];
+      const lat = place.geometry.location.lat();
+      const lng = place.geometry.location.lng();
 
-    if (!predicoes.length) {
-      throw new Error("Nenhum endereço encontrado.");
-    }
+      const distancia = calcularDistanciaKm(
+        restauranteLogado.location.lat,
+        restauranteLogado.location.lng,
+        lat,
+        lng
+      );
 
-    renderizarOpcoesEndereco(cacheId, endereco, predicoes);
+      enderecoEncontrado = {
+        enderecoFormatado: place.formatted_address || endereco.enderecoCompleto,
+        lat,
+        lng,
+        distanciaKm: distancia
+      };
 
-    const melhor = predicoes[0];
+      if (distanciaInput) {
+        distanciaInput.value = distancia.toFixed(1);
+      }
 
-    if (melhor.pontos >= 70) {
-      const detalhes = await buscarDetalhesPlace(melhor.place_id);
-      await aplicarEnderecoEncontrado(cacheId, endereco, detalhes);
-    } else {
-      mostrarMensagem("Confira e selecione o endereço correto na lista.", true);
-    }
+      setText("enderecoConfirmadoTexto", enderecoEncontrado.enderecoFormatado);
+
+      if (enderecoBox) {
+        enderecoBox.classList.remove("hidden");
+      }
+
+      calcularPedido();
+    });
   } catch (erro) {
     console.error(erro);
-    mostrarMensagem(erro.message || "Erro ao buscar endereço.");
-  }
 
-  if (btn) {
-    btn.disabled = false;
-    btn.innerText = "Buscar endereço";
+    if (btn) {
+      btn.disabled = false;
+      btn.innerText = "Buscar endereço";
+    }
+
+    if (msg) msg.innerText = "Erro ao buscar endereço.";
   }
 }
 
@@ -936,6 +745,7 @@ export function calcularPedido() {
 }
 
 export async function criarPedido() {
+  const msg = document.getElementById("mensagem");
   const btn = document.getElementById("btnCriarPedido");
 
   const pedidoCopiado = document.getElementById("pedidoCopiado")?.value.trim() || "";
@@ -943,27 +753,22 @@ export async function criarPedido() {
   const observacao = document.getElementById("observacaoPedido")?.value.trim() || "";
   const formaPagamento = document.getElementById("formaPagamento")?.value || "pix";
   const precisaRetorno = document.getElementById("precisaRetorno")?.checked === true;
-  const valorTroco = arredondar2(document.getElementById("valorTroco")?.value || 0);
+  const valorTroco = numero(document.getElementById("valorTroco")?.value, 0);
 
-  mostrarMensagem("");
+  if (msg) msg.innerText = "";
 
   if (!restauranteLogado) {
-    mostrarMensagem("Restaurante não carregado.");
+    if (msg) msg.innerText = "Restaurante não carregado.";
     return;
   }
 
-  if (!configApp) {
-    mostrarMensagem("Configurações do app não carregadas.");
-    return;
-  }
-
-  if (!endereco.rua || !endereco.numeroEndereco || !endereco.bairro || !endereco.cidade) {
-    mostrarMensagem("Informe rua, número, bairro e cidade.");
+  if (!enderecoEncontrado) {
+    if (msg) msg.innerText = "Busque e confirme o endereço antes de criar o pedido.";
     return;
   }
 
   if (!pedidoCalculado || !pedidoCalculado.distanciaKm) {
-    mostrarMensagem("Busque o endereço antes de criar o pedido.");
+    if (msg) msg.innerText = "Calcule a distância antes de criar o pedido.";
     return;
   }
 
@@ -994,17 +799,14 @@ export async function criarPedido() {
         throw new Error("Restaurante bloqueado.");
       }
 
-      const saldoAntes = arredondar2(restaurante.saldoPrePago || 0);
-      const valorTotalPedido = arredondar2(pedidoCalculado.valorTotal);
-      const taxaSistema = arredondar2(pedidoCalculado.taxaSistema);
-      const valorMotoboy = arredondar2(pedidoCalculado.valorMotoboy);
-      const taxaRetornoMotoboy = arredondar2(pedidoCalculado.taxaRetornoMotoboy);
+      const saldoAntes = numero(restaurante.saldoPrePago, 0);
+      const valorTotal = numero(pedidoCalculado.valorTotal, 0);
 
-      if (saldoAntes < valorTotalPedido) {
-        throw new Error(`Saldo insuficiente. Este pedido custa ${dinheiro(valorTotalPedido)} e seu saldo é ${dinheiro(saldoAntes)}.`);
+      if (saldoAntes < valorTotal) {
+        throw new Error("Saldo insuficiente.");
       }
 
-      const saldoDepois = arredondar2(saldoAntes - valorTotalPedido);
+      const saldoDepois = saldoAntes - valorTotal;
       const raiosBuscaKm = configApp?.raiosBuscaKm || [3, 5, 10, 15];
 
       transaction.set(pedidoRef, {
@@ -1013,25 +815,30 @@ export async function criarPedido() {
 
         pedidoCopiado,
 
-        enderecoEntrega: endereco.enderecoCompleto,
+        enderecoEntrega: enderecoEncontrado.enderecoFormatado,
         enderecoRua: endereco.rua,
         enderecoNumero: endereco.numeroEndereco,
         enderecoBairro: endereco.bairro,
         enderecoCidade: endereco.cidade,
         enderecoComplemento: endereco.complemento,
 
-        restauranteLocation: {
-          lat: Number(restaurante.location.lat),
-          lng: Number(restaurante.location.lng)
-        },
+        lat: Number(restaurante.location.lat),
+        lng: Number(restaurante.location.lng),
 
         location: {
           lat: Number(restaurante.location.lat),
           lng: Number(restaurante.location.lng)
         },
 
-        lat: Number(restaurante.location.lat),
-        lng: Number(restaurante.location.lng),
+        restauranteLocation: {
+          lat: Number(restaurante.location.lat),
+          lng: Number(restaurante.location.lng)
+        },
+
+        entregaLocation: {
+          lat: Number(enderecoEncontrado.lat),
+          lng: Number(enderecoEncontrado.lng)
+        },
 
         distanciaKm: pedidoCalculado.distanciaKm,
 
@@ -1040,26 +847,26 @@ export async function criarPedido() {
         valorTroco,
         observacao,
 
-        valorMotoboy,
-        taxaSistema,
-        taxaRetornoMotoboy,
-        valorTotal: valorTotalPedido,
+        valorMotoboy: pedidoCalculado.valorMotoboy,
+        taxaSistema: pedidoCalculado.taxaSistema,
+        taxaRetornoMotoboy: pedidoCalculado.taxaRetornoMotoboy,
+        valorTotal: pedidoCalculado.valorTotal,
 
-        taxaBaseMotoboyUsada: arredondar2(configApp?.taxaBaseMotoboy || 0),
-        valorKmMotoboyUsado: arredondar2(configApp?.valorKmMotoboy || 0),
-        valorMinimoMotoboyUsado: arredondar2(configApp?.valorMinimoMotoboy || 0),
-        multiplicadorDemandaUsado: numero(configApp?.multiplicadorDemanda, 1),
+        taxaBaseMotoboyUsada: pedidoCalculado.taxaBaseMotoboy,
+        valorKmMotoboyUsado: pedidoCalculado.valorKmMotoboy,
+        valorMinimoMotoboyUsado: pedidoCalculado.valorMinimoMotoboy,
+        multiplicadorDemandaUsado: pedidoCalculado.multiplicador,
         motivoMultiplicador: configApp?.motivoMultiplicador || "",
 
-        status: "pendente",
+        status: "buscando_motoboy",
         motoboyId: "",
         motoboyNome: "",
         recusadoPor: [],
 
         raioAtualKm: raiosBuscaKm[0] || 3,
         raiosBuscaKm,
-        tempoPorRaioSegundos: numero(configApp?.tempoPorRaioSegundos, 15),
         tentativaBusca: 0,
+        tempoPorRaioSegundos: numero(configApp?.tempoPorRaioSegundos, 15),
 
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -1069,8 +876,9 @@ export async function criarPedido() {
 
       transaction.update(restauranteRef, {
         saldoPrePago: saldoDepois,
-        totalPedidos: Number(restaurante.totalPedidos || 0) + 1,
-        totalGasto: arredondar2(Number(restaurante.totalGasto || 0) + valorTotalPedido),
+        totalPedidos: numero(restaurante.totalPedidos, 0) + 1,
+        totalGasto: numero(restaurante.totalGasto, 0) + valorTotal,
+        ultimoPedidoAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
 
@@ -1078,15 +886,12 @@ export async function criarPedido() {
         restauranteId: restauranteLogado.id,
         restauranteNome: restaurante.nome || restauranteLogado.nome || "",
         tipo: "debito_pedido",
-        valor: -valorTotalPedido,
-        valorMotoboy,
-        taxaSistema,
-        taxaRetornoMotoboy,
+        valor: -valorTotal,
         saldoAntes,
         saldoDepois,
         pedidoId: pedidoRef.id,
         recargaId: null,
-        descricao: "Valor total do pedido debitado do saldo pré-pago",
+        descricao: "Pedido criado e valor debitado do saldo pré-pago",
         createdAt: serverTimestamp()
       });
     });
@@ -1095,28 +900,15 @@ export async function criarPedido() {
     document.getElementById("enderecoRua").value = "";
     document.getElementById("enderecoNumero").value = "";
     document.getElementById("enderecoBairro").value = "";
-    document.getElementById("enderecoCidade").value = "";
     document.getElementById("enderecoComplemento").value = "";
     document.getElementById("distanciaEntregaKm").value = "";
     document.getElementById("observacaoPedido").value = "";
     document.getElementById("precisaRetorno").checked = false;
     document.getElementById("valorTroco").value = "";
     document.getElementById("valorTroco").classList.add("hidden");
+    document.getElementById("enderecoConfirmadoBox")?.classList.add("hidden");
 
-    const resultadoEndereco = document.getElementById("resultadoEndereco");
-    if (resultadoEndereco) {
-      resultadoEndereco.innerHTML = "";
-      resultadoEndereco.classList.add("hidden");
-    }
-
-    const enderecoConfirmadoBox = document.getElementById("enderecoConfirmadoBox");
-    if (enderecoConfirmadoBox) {
-      enderecoConfirmadoBox.classList.add("hidden");
-    }
-
-    setText("enderecoConfirmadoTexto", "---");
-    setText("enderecoConfirmadoDetalhe", "Confira se o endereço está correto antes de criar o pedido.");
-
+    enderecoEncontrado = null;
     pedidoCalculado = null;
 
     setText("valorTotalPedido", dinheiro(0));
@@ -1125,16 +917,184 @@ export async function criarPedido() {
     setText("taxaRetornoPedido", dinheiro(0));
     setText("distanciaResumoPedido", "---");
 
-    mostrarMensagem("Pedido criado com sucesso.", true);
+    if (msg) msg.innerText = "Pedido criado com sucesso.";
   } catch (erro) {
     console.error(erro);
-    mostrarMensagem(erro.message || "Erro ao criar pedido.");
+
+    if (msg) {
+      msg.innerText = erro.message || "Erro ao criar pedido.";
+    }
   }
 
   if (btn) {
     btn.disabled = false;
     btn.innerText = "Criar pedido";
   }
+}
+
+export async function tentarNovamentePedido(pedidoId) {
+  if (!pedidoId) return;
+
+  const pedidoRef = doc(db, "pedidos", pedidoId);
+  const pedidoSnap = await getDoc(pedidoRef);
+
+  if (!pedidoSnap.exists()) {
+    alert("Pedido não encontrado.");
+    return;
+  }
+
+  const pedido = pedidoSnap.data();
+
+  const raios = Array.isArray(pedido.raiosBuscaKm) && pedido.raiosBuscaKm.length > 0
+    ? pedido.raiosBuscaKm.map(Number)
+    : [3, 5, 10, 15];
+
+  await updateDoc(pedidoRef, {
+    status: "buscando_motoboy",
+    motoboyId: "",
+    motoboyNome: "",
+    raioAtualKm: raios[0] || 3,
+    tentativaBusca: 0,
+    recusadoPor: [],
+    ultimaExpansaoAt: serverTimestamp(),
+    semMotoboyAt: null,
+    updatedAt: serverTimestamp()
+  });
+
+  alert("Busca reiniciada. O sistema tentará encontrar motoboys novamente.");
+}
+
+export function carregarPedidosPendentesRestaurante() {
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) return;
+
+    const lista = document.getElementById("listaPedidosPendentes");
+    if (!lista) return;
+
+    const q = query(
+      collection(db, "pedidos"),
+      where("restauranteId", "==", user.uid)
+    );
+
+    onSnapshot(
+      q,
+      (snapshot) => {
+        limparTimersBuscaMotoboy();
+
+        const pedidos = [];
+
+        snapshot.forEach((docSnap) => {
+          const pedido = {
+            id: docSnap.id,
+            ...docSnap.data()
+          };
+
+          const deveAparecer =
+            pedido.status === "pendente" ||
+            pedido.status === "buscando_motoboy" ||
+            pedido.status === "sem_motoboy";
+
+          if (deveAparecer) {
+            pedidos.push(pedido);
+          }
+        });
+
+        pedidos.sort((a, b) => {
+          const dataA = timestampParaMillis(a.createdAt);
+          const dataB = timestampParaMillis(b.createdAt);
+          return dataB - dataA;
+        });
+
+        lista.innerHTML = "";
+
+        if (pedidos.length === 0) {
+          lista.innerHTML = `
+            <div class="empty-mini">
+              Nenhum pedido pendente no momento.
+            </div>
+          `;
+          return;
+        }
+
+        pedidos.forEach((pedido) => {
+          programarExpansaoDoPedido(pedido.id, pedido);
+
+          const card = document.createElement("div");
+          card.className = "pending-order-card";
+
+          const statusClasse = classeStatusPedido(pedido.status);
+          const statusTexto = statusPedidoTexto(pedido.status);
+
+          card.innerHTML = `
+            <div class="pending-order-top">
+              <div>
+                <span>Aguardando motoboy</span>
+                <strong>${pedido.enderecoEntrega || "Endereço não informado"}</strong>
+              </div>
+
+              <span class="status-pill ${statusClasse}">
+                ${statusTexto}
+              </span>
+            </div>
+
+            <div class="pending-order-info">
+              <p><b>Pagamento:</b> ${pedido.formaPagamento || "pix"}</p>
+              <p><b>Retorno:</b> ${pedido.precisaRetorno ? "Sim" : "Não"}</p>
+              <p><b>Distância:</b> ${Number(pedido.distanciaKm || 0).toFixed(2)} km</p>
+              <p><b>Raio atual:</b> ${pedido.raioAtualKm || 3} km</p>
+              <p><b>Motoboy:</b> ${pedido.motoboyNome || "Ainda não aceito"}</p>
+              <p><b>Valor motoboy:</b> ${dinheiro(pedido.valorMotoboy)}</p>
+              <p><b>Taxa Cheguei:</b> ${dinheiro(pedido.taxaSistema)}</p>
+              <p><b>Total debitado:</b> ${dinheiro(pedido.valorTotal)}</p>
+            </div>
+
+            ${
+              pedido.status === "sem_motoboy"
+                ? `
+                  <button class="secondary-action retry-order-btn" data-tentar-novamente="${pedido.id}">
+                    Tentar novamente
+                  </button>
+                `
+                : `
+                  <div class="search-progress">
+                    Buscando motoboy no raio de ${pedido.raioAtualKm || 3} km...
+                  </div>
+                `
+            }
+          `;
+
+          lista.appendChild(card);
+        });
+
+        lista.querySelectorAll("button[data-tentar-novamente]").forEach((button) => {
+          button.addEventListener("click", async () => {
+            const pedidoId = button.dataset.tentarNovamente;
+
+            button.disabled = true;
+            button.innerText = "Reiniciando busca...";
+
+            try {
+              await tentarNovamentePedido(pedidoId);
+            } catch (erro) {
+              console.error(erro);
+              alert("Erro ao tentar novamente.");
+              button.disabled = false;
+              button.innerText = "Tentar novamente";
+            }
+          });
+        });
+      },
+      (erro) => {
+        console.error("Erro ao carregar pedidos pendentes:", erro);
+
+        lista.innerHTML = `
+          <div class="empty-mini">
+            Erro ao carregar pedidos pendentes.
+          </div>
+        `;
+      }
+    );
+  });
 }
 
 export async function sairRestaurante() {
