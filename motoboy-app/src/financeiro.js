@@ -225,9 +225,7 @@ function maiorValorEntrega() {
 
   if (todas.length === 0) return 0;
 
-  return Math.max(
-    ...todas.map((pedido) => numero(pedido.valorMotoboy, 0))
-  );
+  return Math.max(...todas.map((pedido) => numero(pedido.valorMotoboy, 0)));
 }
 
 function filtroHistorico() {
@@ -335,7 +333,7 @@ function renderizarTotalRecebido() {
     <div class="finance-total-box">
       <strong>${dinheiro(total)}</strong>
       <p>Total já pago a você pela Cheguei Delivery.</p>
-      <p>Pagamentos calculados por entregas pagas: ${pagas.length}</p>
+      <p>Entregas pagas: ${pagas.length}</p>
       <p>Média recebida por entrega paga: ${dinheiro(media)}</p>
       <span class="status-pill aprovada">Recebido</span>
     </div>
@@ -401,7 +399,6 @@ function renderizarHistoricoSemanal() {
       <strong>${dinheiro(grupo.total)}</strong>
       <p>Semana: ${dataCurta(grupo.inicio)} até ${dataCurta(grupo.fim)}</p>
       <p>Entregas pagas: ${grupo.entregas}</p>
-      <p>Histórico calculado pelas entregas já pagas.</p>
       <span class="status-pill aprovada">Pago</span>
     `;
 
@@ -428,14 +425,39 @@ function renderizarEntregasPagas() {
 
   pagas.forEach((pedido) => {
     const card = document.createElement("div");
-    card.className = "finance-item";
+    card.className = "paid-delivery-card";
 
     card.innerHTML = `
-      <strong>${pedido.restauranteNome || "Restaurante não informado"}</strong>
-      <p>Valor pago: ${dinheiro(pedido.valorMotoboy)}</p>
-      <p>Aceitou em: ${dataTexto(pedido.aceitoAt)}</p>
-      <p>Finalizou em: ${dataTexto(pedido.entregueAt || pedido.updatedAt)}</p>
-      <span class="status-pill aprovada">Pago</span>
+      <div class="paid-delivery-top">
+        <div>
+          <span>Restaurante</span>
+          <strong>${pedido.restauranteNome || "Restaurante não informado"}</strong>
+        </div>
+
+        <span class="paid-badge">Pago</span>
+      </div>
+
+      <div class="paid-delivery-value">
+        <span>Valor recebido</span>
+        <strong>${dinheiro(pedido.valorMotoboy)}</strong>
+      </div>
+
+      <div class="paid-delivery-info">
+        <div>
+          <span>Aceitou</span>
+          <strong>${dataTexto(pedido.aceitoAt)}</strong>
+        </div>
+
+        <div>
+          <span>Finalizou</span>
+          <strong>${dataTexto(pedido.entregueAt || pedido.updatedAt)}</strong>
+        </div>
+      </div>
+
+      <div class="support-order-id">
+        <span>ID do pedido para suporte</span>
+        <strong>${pedido.id}</strong>
+      </div>
     `;
 
     lista.appendChild(card);
