@@ -13,6 +13,7 @@ let motoboysCache = {};
 let pedidosCache = [];
 let ledgerCache = [];
 let pagamentosCache = [];
+let semanaBase = new Date();
 
 function dinheiro(valor) {
   return Number(valor || 0).toLocaleString("pt-BR", {
@@ -48,20 +49,19 @@ function formatarDataInput(data) {
   return `${ano}-${mes}-${dia}`;
 }
 
-function inicioDaSemana() {
-  const hoje = new Date();
-  const dia = hoje.getDay();
+function obterInicioSemana(dataReferencia) {
+  const data = new Date(dataReferencia);
+  const dia = data.getDay();
   const diferenca = dia === 0 ? -6 : 1 - dia;
 
-  const segunda = new Date(hoje);
-  segunda.setDate(hoje.getDate() + diferenca);
-  segunda.setHours(0, 0, 0, 0);
+  data.setDate(data.getDate() + diferenca);
+  data.setHours(0, 0, 0, 0);
 
-  return segunda;
+  return data;
 }
 
-function fimDaSemana() {
-  const inicio = inicioDaSemana();
+function obterFimSemana(dataReferencia) {
+  const inicio = obterInicioSemana(dataReferencia);
   const fim = new Date(inicio);
 
   fim.setDate(inicio.getDate() + 6);
@@ -82,6 +82,39 @@ function parseDataFim(valor) {
 
   const data = new Date(`${valor}T23:59:59`);
   return Number.isNaN(data.getTime()) ? null : data;
+}
+
+function aplicarSemanaNaTela(dataReferencia) {
+  semanaBase = new Date(dataReferencia);
+
+  const inicio = obterInicioSemana(semanaBase);
+  const fim = obterFimSemana(semanaBase);
+
+  const dataInicio = document.getElementById("dataInicio");
+  const dataFim = document.getElementById("dataFim");
+
+  if (dataInicio) dataInicio.value = formatarDataInput(inicio);
+  if (dataFim) dataFim.value = formatarDataInput(fim);
+
+  atualizarResumoSemana();
+  renderizarTudo();
+}
+
+function atualizarResumoSemana() {
+  const inicio = parseDataInicio(document.getElementById("dataInicio")?.value);
+  const fim = parseDataFim(document.getElementById("dataFim")?.value);
+
+  const semanaResumo = document.getElementById("semanaResumo");
+  const semanaDescricao = document.getElementById("semanaDescricao");
+
+  if (semanaResumo) {
+    semanaResumo.innerText = `${dataCurta(inicio)} até ${dataCurta(fim)}`;
+  }
+
+  if (semanaDescricao) {
+    semanaDescricao.innerText =
+      `Você está conferindo as entregas finalizadas de segunda-feira (${dataCurta(inicio)}) até domingo (${dataCurta(fim)}).`;
+  }
 }
 
 function dataDoPedido(pedido) {
@@ -119,19 +152,6 @@ function nomeMotoboy(motoboyId, fallback = "") {
 
 function telefoneMotoboy(motoboyId) {
   return motoboysCache[motoboyId]?.telefone || "Telefone não informado";
-}
-
-function preencherDatasPadrao() {
-  const dataInicio = document.getElementById("dataInicio");
-  const dataFim = document.getElementById("dataFim");
-
-  if (dataInicio && !dataInicio.value) {
-    dataInicio.value = formatarDataInput(inicioDaSemana());
-  }
-
-  if (dataFim && !dataFim.value) {
-    dataFim.value = formatarDataInput(fimDaSemana());
-  }
 }
 
 function atualizarSelectMotoboys() {
@@ -194,11 +214,14 @@ function pagamentoContemLedgerDoPedido(pagamento, pedidoId) {
 
 function pedidoFoiPagoPorPagamento(pedido) {
   return pagamentosCache.some((pagamento) => {
-    return (
+    const pagamentoValido =
       pagamento.status === "pago" ||
       pagamento.pago === true ||
-      pagamento.pagoAt
-    ) && (
+      pagamento.pagoAt;
+
+    if (!pagamentoValido) return false;
+
+    return (
       pagamentoTemPedido(pagamento, pedido.id) ||
       pagamentoContemLedgerDoPedido(pagamento, pedido.id)
     );
@@ -246,13 +269,22 @@ function valorPagamentoHistorico(pagamento) {
   );
 }
 
-function agruparPedidosPendentesPagamento() {
+function pedidosDaSemana() {
+  const dataInicio = parseDataInicio(document.getElementById("dataInicio")?.value);
+  const dataFim = parseDataFim(document.getElementById("dataFim")?.value);
   const filtroMotoboy = document.getElementById("filtroMotoboy")?.value || "";
+
+  return pedidosCache
+    .filter(pedidoEntregueComValorMotoboy)
+    .filter((pedido) => dentroDoPeriodoPorData(dataDoPedido(pedido), dataInicio, dataFim))
+    .filter((pedido) => !filtroMotoboy || pedido.motoboyId === filtroMotoboy);
+}
+
+function agruparPendentesDaSemana() {
   const grupos = {};
 
-  pedidosCache
+  pedidosDaSemana()
     .filter(pedidoPendentePagamento)
-    .filter((pedido) => !filtroMotoboy || pedido.motoboyId === filtroMotoboy)
     .forEach((pedido) => {
       const motoboyId = pedido.motoboyId;
 
@@ -265,8 +297,7 @@ function agruparPedidosPendentesPagamento() {
           entregas: 0,
           pedidos: [],
           primeiraData: null,
-          ultimaData: null,
-          saldoAtual: numero(motoboysCache[motoboyId]?.saldo, 0)
+          ultimaData: null
         };
       }
 
@@ -297,20 +328,22 @@ function renderizarPagamentosPendentes() {
 
   if (!lista) return;
 
-  const grupos = agruparPedidosPendentesPagamento();
+  atualizarResumoSemana();
+
+  const grupos = agruparPendentesDaSemana();
 
   const totalGeral = grupos.reduce((acc, grupo) => acc + numero(grupo.total, 0), 0);
   const totalEntregas = grupos.reduce((acc, grupo) => acc + numero(grupo.entregas, 0), 0);
 
   if (resumo) {
     resumo.innerText =
-      `${dinheiro(totalGeral)} em aberto, ${totalEntregas} entrega(s), agrupado em ${grupos.length} motoboy(s).`;
+      `${dinheiro(totalGeral)} a pagar nesta semana, ${totalEntregas} entrega(s), agrupado em ${grupos.length} motoboy(s).`;
   }
 
   lista.innerHTML = "";
 
   if (grupos.length === 0) {
-    lista.innerHTML = `<div class="empty">Nenhum pagamento pendente no momento.</div>`;
+    lista.innerHTML = `<div class="empty">Nenhum pagamento pendente nesta semana.</div>`;
     return;
   }
 
@@ -324,9 +357,8 @@ function renderizarPagamentosPendentes() {
 
         <p>Motoboy ID: ${grupo.motoboyId}</p>
         <p>Telefone: ${grupo.telefone}</p>
-        <p>Total a pagar: <b>${dinheiro(grupo.total)}</b></p>
-        <p>Saldo atual no cadastro: ${dinheiro(grupo.saldoAtual)}</p>
-        <p>Entregas pendentes: ${grupo.entregas}</p>
+        <p>Total a pagar nesta semana: <b>${dinheiro(grupo.total)}</b></p>
+        <p>Entregas pendentes nesta semana: ${grupo.entregas}</p>
         <p>Período: ${dataCurta(grupo.primeiraData)} até ${dataCurta(grupo.ultimaData)}</p>
 
         <div class="status-row">
@@ -357,7 +389,7 @@ function renderizarPagamentosPendentes() {
       if (!grupo) return;
 
       const confirmar = confirm(
-        `Confirmar pagamento para ${grupo.motoboyNome}?\n\nValor: ${dinheiro(grupo.total)}\nEntregas: ${grupo.entregas}`
+        `Confirmar pagamento semanal para ${grupo.motoboyNome}?\n\nValor: ${dinheiro(grupo.total)}\nEntregas: ${grupo.entregas}\nPeríodo: ${dataCurta(grupo.primeiraData)} até ${dataCurta(grupo.ultimaData)}`
       );
 
       if (!confirmar) return;
@@ -367,7 +399,7 @@ function renderizarPagamentosPendentes() {
 
       try {
         await marcarGrupoComoPago(grupo);
-        alert("Pagamento marcado como realizado.");
+        alert("Pagamento semanal marcado como realizado.");
       } catch (erro) {
         console.error(erro);
         alert("Erro ao marcar pagamento: " + (erro.message || "erro desconhecido"));
@@ -382,26 +414,16 @@ function renderizarEntregasPeriodo() {
   const lista = document.getElementById("listaEntregasPeriodo");
   if (!lista) return;
 
-  const dataInicio = parseDataInicio(document.getElementById("dataInicio")?.value);
-  const dataFim = parseDataFim(document.getElementById("dataFim")?.value);
-  const filtroMotoboy = document.getElementById("filtroMotoboy")?.value || "";
-
-  const entregas = pedidosCache
-    .filter(pedidoEntregueComValorMotoboy)
-    .filter((pedido) => {
-      return dentroDoPeriodoPorData(dataDoPedido(pedido), dataInicio, dataFim);
-    })
-    .filter((pedido) => !filtroMotoboy || pedido.motoboyId === filtroMotoboy)
-    .sort((a, b) => {
-      const dataA = dataDoPedido(a)?.getTime?.() || 0;
-      const dataB = dataDoPedido(b)?.getTime?.() || 0;
-      return dataB - dataA;
-    });
+  const entregas = pedidosDaSemana().sort((a, b) => {
+    const dataA = dataDoPedido(a)?.getTime?.() || 0;
+    const dataB = dataDoPedido(b)?.getTime?.() || 0;
+    return dataB - dataA;
+  });
 
   lista.innerHTML = "";
 
   if (entregas.length === 0) {
-    lista.innerHTML = `<div class="empty">Nenhuma entrega encontrada neste período.</div>`;
+    lista.innerHTML = `<div class="empty">Nenhuma entrega encontrada nesta semana.</div>`;
     return;
   }
 
@@ -426,7 +448,7 @@ function renderizarEntregasPeriodo() {
           ${
             pago
               ? `<span class="badge green">Pago</span>`
-              : `<span class="badge yellow">Pendente</span>`
+              : `<span class="badge yellow">Pendente nesta semana</span>`
           }
         </div>
       </div>
@@ -480,7 +502,7 @@ function renderizarHistoricoPagamentos() {
         <p>Valor pago: <b>${dinheiro(valor)}</b></p>
         <p>Entregas pagas: ${pagamento.totalEntregas || pagamento.entregas || 0}</p>
         <p>Pago em: ${dataTexto(pagamento.pagoAt || pagamento.createdAt)}</p>
-        <p>Período: ${periodoInicio} até ${periodoFim}</p>
+        <p>Período pago: ${periodoInicio} até ${periodoFim}</p>
 
         <div class="status-row">
           <span class="badge green">Pago</span>
@@ -645,7 +667,7 @@ function escutarPagamentosMotoboy() {
 }
 
 export function iniciarPagamentosMotoboyAdmin() {
-  preencherDatasPadrao();
+  aplicarSemanaNaTela(new Date());
 
   escutarMotoboys();
   escutarPedidos();
@@ -654,5 +676,22 @@ export function iniciarPagamentosMotoboyAdmin() {
 }
 
 export function filtrarPagamentosMotoboyAdmin() {
+  atualizarResumoSemana();
   renderizarTudo();
+}
+
+export function irParaSemanaAnterior() {
+  const novaData = new Date(semanaBase);
+  novaData.setDate(novaData.getDate() - 7);
+  aplicarSemanaNaTela(novaData);
+}
+
+export function irParaSemanaAtual() {
+  aplicarSemanaNaTela(new Date());
+}
+
+export function irParaProximaSemana() {
+  const novaData = new Date(semanaBase);
+  novaData.setDate(novaData.getDate() + 7);
+  aplicarSemanaNaTela(novaData);
 }
