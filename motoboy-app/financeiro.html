@@ -20,8 +20,8 @@
     </header>
 
     <section class="balance-card">
-      <span>Saldo acumulado</span>
-      <strong id="saldoFinanceiro">R$ 0,00</strong>
+      <span>A receber</span>
+      <strong id="valorAbertoMotoboy">R$ 0,00</strong>
 
       <div class="payday-row">
         <span>Pagamento</span>
@@ -29,24 +29,52 @@
       </div>
     </section>
 
+    <section class="status-card">
+      <span class="status-label">Semana de pagamento</span>
+      <strong id="semanaPagamento">Carregando...</strong>
+      <p>
+        O fechamento considera as entregas finalizadas de segunda-feira até domingo.
+      </p>
+    </section>
+
     <section class="quick-grid">
       <div class="quick-card">
-        <span>Entregas feitas</span>
-        <strong id="totalEntregasFinanceiro">0</strong>
+        <span>Entregas abertas</span>
+        <strong id="totalEntregasAbertas">0</strong>
       </div>
 
       <div class="quick-card">
-        <span>A receber</span>
-        <strong id="totalAbertoFinanceiro">R$ 0,00</strong>
+        <span>Já pagas</span>
+        <strong id="totalEntregasPagas">0</strong>
       </div>
     </section>
 
     <section class="feed-card">
-      <h2>Histórico</h2>
+      <h2>Entregas a receber</h2>
 
-      <div id="listaHistoricoFinanceiro">
+      <div id="listaEntregasAReceber">
         <div class="empty-state">
-          Carregando histórico financeiro...
+          Carregando entregas em aberto...
+        </div>
+      </div>
+    </section>
+
+    <section class="feed-card">
+      <h2>Histórico de pagamentos</h2>
+
+      <div id="listaPagamentosRecebidos">
+        <div class="empty-state">
+          Carregando pagamentos...
+        </div>
+      </div>
+    </section>
+
+    <section class="feed-card">
+      <h2>Conferência</h2>
+
+      <div id="boxConferenciaFinanceira">
+        <div class="empty-state">
+          Conferindo saldo...
         </div>
       </div>
     </section>
