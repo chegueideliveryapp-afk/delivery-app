@@ -5,7 +5,7 @@
   <title>Financeiro - Cheguei Motoboy</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <link rel="stylesheet" href="./css/app.css?v=132">
+  <link rel="stylesheet" href="./css/app.css?v=140">
 </head>
 
 <body>
@@ -30,10 +30,10 @@
     </section>
 
     <section class="status-card">
-      <span class="status-label">Semana de pagamento</span>
-      <strong id="semanaPagamento">Carregando...</strong>
+      <span class="status-label">Próximo pagamento</span>
+      <strong id="proximoPagamento">Carregando...</strong>
       <p>
-        O fechamento considera as entregas finalizadas de segunda-feira até domingo.
+        Os pagamentos são feitos semanalmente pela administração.
       </p>
     </section>
 
@@ -72,6 +72,17 @@
     <section class="feed-card">
       <h2>Histórico de pagamentos</h2>
 
+      <div class="finance-filter">
+        <select id="filtroHistoricoPagamentos">
+          <option value="todos">Todos os pagamentos</option>
+          <option value="semanaAtual">Semana atual</option>
+          <option value="ultimos30">Últimos 30 dias</option>
+          <option value="semanaSelecionada">Semana selecionada</option>
+        </select>
+
+        <input id="semanaHistorico" type="date">
+      </div>
+
       <div id="listaPagamentosRecebidos">
         <div class="empty-state">
           Carregando pagamentos...
@@ -90,6 +101,6 @@
     </section>
   </main>
 
-  <script type="module" src="./src/financeiro.js?v=132"></script>
+  <script type="module" src="./src/financeiro.js?v=140"></script>
 </body>
 </html>
