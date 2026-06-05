@@ -2,11 +2,11 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>Novo Pedido  - Cheguei Delivery</title>
+  <title>Novo Pedido - Cheguei Delivery</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <link rel="stylesheet" href="../css/base.css">
-  <link rel="stylesheet" href="../css/restaurante.css?v=500">
+  <link rel="stylesheet" href="../css/restaurante.css?v=231">
 </head>
 
 <body>
@@ -23,7 +23,7 @@
     <section class="wallet-card">
       <span>Saldo pré-pago</span>
       <strong id="saldoPrePago">Carregando...</strong>
-      <p>O pedido será liberado se houver saldo suficiente para a taxa Cheguei.</p>
+      <p>O pedido será liberado se houver saldo suficiente para pagar a entrega.</p>
     </section>
 
     <section class="order-layout">
@@ -83,14 +83,9 @@
           Primeiro o sistema procura no cache. Se não encontrar, usa o Google Places uma única vez e salva o endereço para os próximos pedidos.
         </p>
 
-        <div id="resultadoEndereco" class="address-result hidden"></div>
-
         <div id="enderecoConfirmadoBox" class="confirmed-address hidden">
           <span>Endereço confirmado</span>
           <strong id="enderecoConfirmadoTexto">---</strong>
-          <p id="enderecoConfirmadoDetalhe">
-            Confira se o endereço está correto antes de criar o pedido.
-          </p>
         </div>
 
         <input
@@ -99,7 +94,7 @@
           placeholder="Distância calculada automaticamente"
           type="number"
           min="0"
-          step="0.01"
+          step="0.1"
           readonly
         >
 
@@ -166,77 +161,50 @@
       </div>
     </section>
 
-    <section class="history-card info-card">
+    <section class="history-card info-card pending-orders-section">
       <span>Aguardando motoboy</span>
       <strong>Pedidos pendentes</strong>
       <p class="helper-text">
         Aqui aparecem os pedidos pendentes, em busca de motoboy ou sem motoboy disponível.
       </p>
 
-      <div id="listaPedidosPendentesRestaurante">
-        <div class="empty-mini">Carregando pedidos pendentes...</div>
+      <div id="listaPedidosPendentes">
+        <div class="empty-mini">
+          Carregando pedidos pendentes...
+        </div>
       </div>
     </section>
   </main>
+
+  <script
+    async
+    defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyApRas85TE6FYQRzKMxjY2mTPs-XplM0u4&libraries=places">
+  </script>
 
   <script type="module">
     import {
       protegerRestaurante,
       carregarNovoPedidoRestaurante,
+      carregarPedidosPendentesRestaurante,
       buscarEnderecoEntrega,
       calcularPedido,
       criarPedido
-    } from "../js/restaurante.js?v=500";
+    } from "../js/restaurante.js?v=231";
 
     protegerRestaurante();
     carregarNovoPedidoRestaurante();
+    carregarPedidosPendentesRestaurante();
 
-    const btnBuscarEndereco = document.getElementById("btnBuscarEndereco");
-    if (btnBuscarEndereco) {
-      btnBuscarEndereco.addEventListener("click", buscarEnderecoEntrega);
-    }
+    document.getElementById("btnBuscarEndereco").addEventListener("click", buscarEnderecoEntrega);
+    document.getElementById("formaPagamento").addEventListener("change", calcularPedido);
 
-    const formaPagamento = document.getElementById("formaPagamento");
-    if (formaPagamento) {
-      formaPagamento.addEventListener("change", calcularPedido);
-    }
+    document.getElementById("precisaRetorno").addEventListener("change", (event) => {
+      document.getElementById("valorTroco")?.classList.toggle("hidden", !event.target.checked);
+      calcularPedido();
+    });
 
-    const precisaRetorno = document.getElementById("precisaRetorno");
-    if (precisaRetorno) {
-      precisaRetorno.addEventListener("change", (event) => {
-        const valorTroco = document.getElementById("valorTroco");
-
-        if (valorTroco) {
-          valorTroco.classList.toggle("hidden", !event.target.checked);
-        }
-
-        calcularPedido();
-      });
-    }
-
-    const btnCriarPedido = document.getElementById("btnCriarPedido");
-    if (btnCriarPedido) {
-      btnCriarPedido.addEventListener("click", criarPedido);
-    }
-
-    import("../js/restaurante-pendentes.js?v=500")
-      .then((modulo) => {
-        if (typeof modulo.carregarPedidosPendentesRestaurante === "function") {
-          modulo.carregarPedidosPendentesRestaurante();
-        }
-      })
-      .catch((erro) => {
-        console.warn("Lista de pedidos pendentes não carregada:", erro);
-
-        const lista = document.getElementById("listaPedidosPendentesRestaurante");
-        if (lista) {
-          lista.innerHTML = `
-            <div class="empty-mini">
-              Nenhum pedido pendente no momento.
-            </div>
-          `;
-        }
-      });
+    document.getElementById("btnCriarPedido").addEventListener("click", criarPedido);
   </script>
 </body>
 </html>
