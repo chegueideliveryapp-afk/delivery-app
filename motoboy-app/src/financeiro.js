@@ -15,11 +15,8 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 let uid = null;
-let pedidos = [];
-let pagamentos = [];
-let ledger = [];
-
-const META_VISUAL_SEMANAL = 300;
+let pedidosCache = [];
+let pagamentosCache = [];
 
 function dinheiro(valor) {
   return Number(valor || 0).toLocaleString("pt-BR", {
@@ -38,66 +35,18 @@ function setText(id, texto) {
   if (el) el.innerText = texto;
 }
 
+function setHtml(id, html) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = html;
+}
+
 function dataTexto(timestamp) {
-  if (!timestamp?.toDate) return "Data não informada";
+  if (!timestamp?.toDate) return "Não informado";
 
   return timestamp.toDate().toLocaleString("pt-BR", {
     dateStyle: "short",
     timeStyle: "short"
   });
-}
-
-function dataCurta(data) {
-  if (!data) return "Não informado";
-  return data.toLocaleDateString("pt-BR");
-}
-
-function formatarDataInput(data) {
-  const ano = data.getFullYear();
-  const mes = String(data.getMonth() + 1).padStart(2, "0");
-  const dia = String(data.getDate()).padStart(2, "0");
-
-  return `${ano}-${mes}-${dia}`;
-}
-
-function parseDataInput(valor) {
-  if (!valor) return null;
-
-  const data = new Date(`${valor}T00:00:00`);
-  return Number.isNaN(data.getTime()) ? null : data;
-}
-
-function inicioDaSemana(dataReferencia) {
-  const data = new Date(dataReferencia);
-  const dia = data.getDay();
-  const diferenca = dia === 0 ? -6 : 1 - dia;
-
-  data.setDate(data.getDate() + diferenca);
-  data.setHours(0, 0, 0, 0);
-
-  return data;
-}
-
-function fimDaSemana(dataReferencia) {
-  const inicio = inicioDaSemana(dataReferencia);
-  const fim = new Date(inicio);
-
-  fim.setDate(inicio.getDate() + 6);
-  fim.setHours(23, 59, 59, 999);
-
-  return fim;
-}
-
-function proximaSegunda() {
-  const hoje = new Date();
-  const dia = hoje.getDay();
-  const diasAteSegunda = dia === 1 ? 7 : (8 - dia) % 7 || 7;
-
-  const data = new Date(hoje);
-  data.setDate(hoje.getDate() + diasAteSegunda);
-  data.setHours(0, 0, 0, 0);
-
-  return data;
 }
 
 function dataDoPedido(pedido) {
@@ -109,28 +58,45 @@ function dataDoPedido(pedido) {
   );
 }
 
-function dentroDoPeriodo(data, inicio, fim) {
-  if (!data) return true;
-  if (inicio && data < inicio) return false;
-  if (fim && data > fim) return false;
-  return true;
+function inicioSemana(dataReferencia = new Date()) {
+  const data = new Date(dataReferencia);
+  const dia = data.getDay();
+  const diff = dia === 0 ? -6 : 1 - dia;
+
+  data.setDate(data.getDate() + diff);
+  data.setHours(0, 0, 0, 0);
+
+  return data;
 }
 
-function pedidoEntregueDoMotoboy(pedido) {
-  return (
-    pedido.status === "entregue" &&
-    pedido.motoboyId === uid &&
-    pedido.pagamentoMotoboyEstornado !== true &&
-    pedido.pagamentoMotoboyStatus !== "estornado" &&
-    numero(pedido.valorMotoboy, 0) > 0
-  );
+function fimSemana(dataReferencia = new Date()) {
+  const inicio = inicioSemana(dataReferencia);
+  const fim = new Date(inicio);
+
+  fim.setDate(inicio.getDate() + 6);
+  fim.setHours(23, 59, 59, 999);
+
+  return fim;
 }
 
-function pagamentoValido(pagamento) {
+function proximaSegundaTexto() {
+  const hoje = new Date();
+  const dia = hoje.getDay();
+  const dias = dia === 1 ? 7 : (8 - dia) % 7 || 7;
+
+  const proxima = new Date(hoje);
+  proxima.setDate(hoje.getDate() + dias);
+  proxima.setHours(0, 0, 0, 0);
+
+  return proxima.toLocaleDateString("pt-BR");
+}
+
+function pedidoFoiEstornado(pedido) {
   return (
-    pagamento.status === "pago" ||
-    pagamento.pago === true ||
-    Boolean(pagamento.pagoAt)
+    pedido.estornado === true ||
+    pedido.pagamentoMotoboyEstornado === true ||
+    pedido.pagamentoMotoboyStatus === "estornado" ||
+    pedido.statusFinanceiroMotoboy === "estornado"
   );
 }
 
@@ -139,428 +105,392 @@ function pagamentoTemPedido(pagamento, pedidoId) {
     return true;
   }
 
-  return pagamento.pedidoId === pedidoId;
+  if (pagamento.pedidoId === pedidoId) {
+    return true;
+  }
+
+  return false;
 }
 
-function ledgerDoPedido(pedidoId) {
-  return ledger.filter((item) => item.pedidoId === pedidoId);
-}
-
-function ledgerFoiPago(item) {
-  return (
-    item.statusPagamento === "pago" ||
-    item.pago === true ||
-    Boolean(item.pagamentoId)
-  );
-}
-
-function pagamentoContemLedgerDoPedido(pagamento, pedidoId) {
-  if (!Array.isArray(pagamento.ledgerIds)) return false;
-
-  const ledgersDoPedido = ledgerDoPedido(pedidoId);
-
-  return ledgersDoPedido.some((item) => {
-    return pagamento.ledgerIds.includes(item.id);
-  });
-}
-
-function pedidoFoiPagoPorPagamento(pedido) {
-  return pagamentos.some((pagamento) => {
-    if (!pagamentoValido(pagamento)) return false;
-
-    return (
-      pagamentoTemPedido(pagamento, pedido.id) ||
-      pagamentoContemLedgerDoPedido(pagamento, pedido.id)
-    );
-  });
-}
-
-function pedidoFoiPagoPorLedger(pedido) {
-  return ledgerDoPedido(pedido.id).some((item) => ledgerFoiPago(item));
-}
-
-function pedidoFoiPagoAoMotoboy(pedido) {
-  return (
+function pedidoFoiPago(pedido) {
+  if (
     pedido.pagamentoMotoboyPago === true ||
     pedido.pagamentoMotoboyStatus === "pago" ||
-    Boolean(pedido.pagamentoMotoboyId) ||
-    pedidoFoiPagoPorPagamento(pedido) ||
-    pedidoFoiPagoPorLedger(pedido)
+    Boolean(pedido.pagamentoMotoboyId)
+  ) {
+    return true;
+  }
+
+  return pagamentosCache.some((pagamento) => {
+    const pagamentoValido =
+      pagamento.status === "pago" ||
+      pagamento.pago === true ||
+      pagamento.pagoAt;
+
+    if (!pagamentoValido) return false;
+
+    return pagamentoTemPedido(pagamento, pedido.id);
+  });
+}
+
+function pedidoEntregueDoMotoboy(pedido) {
+  return (
+    pedido.status === "entregue" &&
+    pedido.motoboyId === uid &&
+    numero(pedido.valorMotoboy, 0) > 0
   );
 }
 
-function entregasTodas() {
-  return pedidos
-    .filter(pedidoEntregueDoMotoboy)
+function pedidoAbertoParaReceber(pedido) {
+  return (
+    pedidoEntregueDoMotoboy(pedido) &&
+    !pedidoFoiEstornado(pedido) &&
+    !pedidoFoiPago(pedido)
+  );
+}
+
+function pedidoPagoValido(pedido) {
+  return (
+    pedidoEntregueDoMotoboy(pedido) &&
+    !pedidoFoiEstornado(pedido) &&
+    pedidoFoiPago(pedido)
+  );
+}
+
+function valorPagamento(pagamento) {
+  return numero(
+    pagamento.valorTotal ??
+    pagamento.valorTotalSemana ??
+    pagamento.valorPago ??
+    pagamento.valor,
+    0
+  );
+}
+
+function totalEntregasPagamento(pagamento) {
+  if (Array.isArray(pagamento.pedidoIds)) return pagamento.pedidoIds.length;
+
+  return numero(
+    pagamento.totalEntregas ??
+    pagamento.entregas,
+    0
+  );
+}
+
+function pagamentoDentroDoFiltro(pagamento) {
+  const filtro = document.getElementById("filtroHistoricoPagamentos")?.value || "todos";
+  const dataPagamento =
+    pagamento.pagoAt?.toDate?.() ||
+    pagamento.createdAt?.toDate?.() ||
+    null;
+
+  if (!dataPagamento) return true;
+
+  if (filtro === "todos") return true;
+
+  if (filtro === "semanaAtual") {
+    return dataPagamento >= inicioSemana() && dataPagamento <= fimSemana();
+  }
+
+  if (filtro === "ultimos30") {
+    const limite = new Date();
+    limite.setDate(limite.getDate() - 30);
+    limite.setHours(0, 0, 0, 0);
+
+    return dataPagamento >= limite;
+  }
+
+  if (filtro === "semanaSelecionada") {
+    const valor = document.getElementById("semanaHistorico")?.value;
+
+    if (!valor) return true;
+
+    const dataEscolhida = new Date(`${valor}T00:00:00`);
+
+    return (
+      dataPagamento >= inicioSemana(dataEscolhida) &&
+      dataPagamento <= fimSemana(dataEscolhida)
+    );
+  }
+
+  return true;
+}
+
+function renderizarResumo() {
+  const entregasAbertas = pedidosCache.filter(pedidoAbertoParaReceber);
+  const entregasPagas = pedidosCache.filter(pedidoPagoValido);
+  const entregasValidas = [...entregasAbertas, ...entregasPagas];
+
+  const valorAberto = entregasAbertas.reduce((acc, pedido) => {
+    return acc + numero(pedido.valorMotoboy, 0);
+  }, 0);
+
+  const pagamentosValidos = pagamentosCache.filter((pagamento) => {
+    return pagamento.status === "pago" || pagamento.pago === true || pagamento.pagoAt;
+  });
+
+  const totalRecebido = pagamentosValidos.reduce((acc, pagamento) => {
+    return acc + valorPagamento(pagamento);
+  }, 0);
+
+  const totalEntregasValidas = entregasValidas.length;
+
+  const somaEntregasValidas = entregasValidas.reduce((acc, pedido) => {
+    return acc + numero(pedido.valorMotoboy, 0);
+  }, 0);
+
+  const media = totalEntregasValidas > 0
+    ? somaEntregasValidas / totalEntregasValidas
+    : 0;
+
+  const maiorEntrega = entregasValidas.reduce((maior, pedido) => {
+    return Math.max(maior, numero(pedido.valorMotoboy, 0));
+  }, 0);
+
+  const inicio = inicioSemana();
+  const fim = fimSemana();
+
+  const ganhosSemana = entregasValidas
+    .filter((pedido) => {
+      const data = dataDoPedido(pedido);
+      return data && data >= inicio && data <= fim;
+    })
+    .reduce((acc, pedido) => acc + numero(pedido.valorMotoboy, 0), 0);
+
+  const percentual = maiorEntrega > 0
+    ? Math.min(100, (ganhosSemana / Math.max(maiorEntrega * 10, 1)) * 100)
+    : 0;
+
+  setText("valorAbertoMotoboy", dinheiro(valorAberto));
+  setText("proximoPagamento", proximaSegundaTexto());
+  setText("totalRecebidoMotoboy", dinheiro(totalRecebido));
+  setText("mediaEntregaMotoboy", dinheiro(media));
+  setText("totalEntregasAbertas", entregasAbertas.length);
+  setText("totalEntregasPagas", entregasPagas.length);
+  setText("ritmoGanhosTexto", `${dinheiro(ganhosSemana)} esta semana`);
+  setText("maiorEntregaTexto", dinheiro(maiorEntrega));
+
+  const barra = document.getElementById("barraGanhosSemana");
+  if (barra) barra.style.width = `${percentual}%`;
+}
+
+function renderizarEntregasAReceber() {
+  const entregas = pedidosCache
+    .filter(pedidoAbertoParaReceber)
     .sort((a, b) => {
       const dataA = dataDoPedido(a)?.getTime?.() || 0;
       const dataB = dataDoPedido(b)?.getTime?.() || 0;
       return dataB - dataA;
     });
-}
 
-function entregasAReceber() {
-  return entregasTodas().filter((pedido) => !pedidoFoiPagoAoMotoboy(pedido));
-}
-
-function entregasPagas() {
-  return entregasTodas().filter((pedido) => pedidoFoiPagoAoMotoboy(pedido));
-}
-
-function totalEntregas(lista) {
-  return lista.reduce((total, pedido) => {
-    return total + numero(pedido.valorMotoboy, 0);
-  }, 0);
-}
-
-function entregasDaSemanaAtual() {
-  const inicio = inicioDaSemana(new Date());
-  const fim = fimDaSemana(new Date());
-
-  return entregasTodas().filter((pedido) => {
-    return dentroDoPeriodo(dataDoPedido(pedido), inicio, fim);
-  });
-}
-
-function maiorValorEntrega() {
-  const todas = entregasTodas();
-
-  if (todas.length === 0) return 0;
-
-  return Math.max(...todas.map((pedido) => numero(pedido.valorMotoboy, 0)));
-}
-
-function filtroHistorico() {
-  return document.getElementById("filtroHistoricoPagamentos")?.value || "todos";
-}
-
-function entregasPagasFiltradas() {
-  const filtro = filtroHistorico();
-  const todas = entregasPagas();
-
-  if (filtro === "todos") {
-    return todas;
+  if (!entregas.length) {
+    setHtml(
+      "listaEntregasAReceber",
+      `<div class="empty-state">Nenhuma entrega em aberto para receber.</div>`
+    );
+    return;
   }
 
-  if (filtro === "ultimos30") {
-    const fim = new Date();
-    const inicio = new Date();
-
-    inicio.setDate(fim.getDate() - 30);
-    inicio.setHours(0, 0, 0, 0);
-    fim.setHours(23, 59, 59, 999);
-
-    return todas.filter((pedido) => {
-      return dentroDoPeriodo(dataDoPedido(pedido), inicio, fim);
-    });
-  }
-
-  const dataSelecionada = parseDataInput(
-    document.getElementById("semanaHistorico")?.value
+  setHtml(
+    "listaEntregasAReceber",
+    entregas.map((pedido) => {
+      return `
+        <div class="finance-item">
+          <strong>${pedido.restauranteNome || "Restaurante"}</strong>
+          <p><b>Pedido:</b> ${pedido.id}</p>
+          <p><b>Valor:</b> ${dinheiro(pedido.valorMotoboy)}</p>
+          <p><b>Finalizada em:</b> ${dataTexto(pedido.entregueAt)}</p>
+          <span class="status-pill pendente">A receber</span>
+        </div>
+      `;
+    }).join("")
   );
-
-  const referencia =
-    filtro === "semanaSelecionada" && dataSelecionada
-      ? dataSelecionada
-      : new Date();
-
-  const inicio = inicioDaSemana(referencia);
-  const fim = fimDaSemana(referencia);
-
-  return todas.filter((pedido) => {
-    return dentroDoPeriodo(dataDoPedido(pedido), inicio, fim);
-  });
 }
 
-function agruparEntregasPagasPorSemana() {
-  const grupos = {};
+function renderizarPagamentosRecebidos() {
+  const pagamentos = pagamentosCache
+    .filter((pagamento) => pagamento.status === "pago" || pagamento.pago === true || pagamento.pagoAt)
+    .filter(pagamentoDentroDoFiltro)
+    .sort((a, b) => {
+      const dataA = a.pagoAt?.toMillis?.() || a.createdAt?.toMillis?.() || 0;
+      const dataB = b.pagoAt?.toMillis?.() || b.createdAt?.toMillis?.() || 0;
+      return dataB - dataA;
+    });
 
-  entregasPagasFiltradas().forEach((pedido) => {
-    const data = dataDoPedido(pedido) || new Date();
-    const inicio = inicioDaSemana(data);
-    const fim = fimDaSemana(data);
-    const chave = formatarDataInput(inicio);
-
-    if (!grupos[chave]) {
-      grupos[chave] = {
-        inicio,
-        fim,
-        total: 0,
-        entregas: 0
-      };
-    }
-
-    grupos[chave].total += numero(pedido.valorMotoboy, 0);
-    grupos[chave].entregas += 1;
-  });
-
-  return Object.values(grupos).sort((a, b) => b.inicio - a.inicio);
-}
-
-function renderizarResumo() {
-  const abertas = entregasAReceber();
-  const pagas = entregasPagas();
-  const todas = entregasTodas();
-
-  const totalAberto = totalEntregas(abertas);
-  const totalRecebido = totalEntregas(pagas);
-  const media = todas.length > 0 ? totalEntregas(todas) / todas.length : 0;
-  const totalSemana = totalEntregas(entregasDaSemanaAtual());
-  const percentualMeta = Math.min(100, (totalSemana / META_VISUAL_SEMANAL) * 100);
-
-  setText("valorAbertoMotoboy", dinheiro(totalAberto));
-  setText("totalRecebidoMotoboy", dinheiro(totalRecebido));
-  setText("mediaEntregaMotoboy", dinheiro(media));
-  setText("totalEntregasAbertas", abertas.length);
-  setText("totalEntregasPagas", pagas.length);
-  setText("proximoPagamento", `Segunda, ${dataCurta(proximaSegunda())}`);
-  setText("ritmoGanhosTexto", `${dinheiro(totalSemana)} esta semana`);
-  setText("maiorEntregaTexto", dinheiro(maiorValorEntrega()));
-
-  const barra = document.getElementById("barraGanhosSemana");
-  if (barra) {
-    barra.style.width = `${percentualMeta}%`;
-  }
-}
-
-function renderizarTotalRecebido() {
-  const box = document.getElementById("boxTotalRecebido");
-  if (!box) return;
-
-  const pagas = entregasPagas();
-  const total = totalEntregas(pagas);
-  const media = pagas.length > 0 ? total / pagas.length : 0;
-
-  box.innerHTML = `
-    <div class="finance-total-box">
-      <strong>${dinheiro(total)}</strong>
-      <p>Total já pago a você pela Cheguei Delivery.</p>
-      <p>Entregas pagas: ${pagas.length}</p>
-      <p>Média recebida por entrega paga: ${dinheiro(media)}</p>
-      <span class="status-pill aprovada">Recebido</span>
-    </div>
-  `;
-}
-
-function renderizarEntregasAReceber() {
-  const lista = document.getElementById("listaEntregasAReceber");
-  if (!lista) return;
-
-  const abertas = entregasAReceber();
-
-  lista.innerHTML = "";
-
-  if (abertas.length === 0) {
-    lista.innerHTML = `
-      <div class="empty-state">
-        Nenhuma entrega em aberto para receber.
-      </div>
-    `;
+  if (!pagamentos.length) {
+    setHtml(
+      "listaPagamentosRecebidos",
+      `<div class="empty-state">Nenhum pagamento encontrado neste filtro.</div>`
+    );
     return;
   }
 
-  abertas.forEach((pedido) => {
-    const card = document.createElement("div");
-    card.className = "finance-item";
-
-    card.innerHTML = `
-      <strong>${dinheiro(pedido.valorMotoboy)}</strong>
-      <p>Restaurante: ${pedido.restauranteNome || "Não informado"}</p>
-      <p>Entrega: ${pedido.enderecoEntrega || "Endereço não informado"}</p>
-      <p>Aceitou em: ${dataTexto(pedido.aceitoAt)}</p>
-      <p>Finalizou em: ${dataTexto(pedido.entregueAt || pedido.updatedAt)}</p>
-      <span class="status-pill pendente">A receber</span>
-    `;
-
-    lista.appendChild(card);
-  });
-}
-
-function renderizarHistoricoSemanal() {
-  const lista = document.getElementById("listaPagamentosRecebidos");
-  if (!lista) return;
-
-  const grupos = agruparEntregasPagasPorSemana();
-
-  lista.innerHTML = "";
-
-  if (grupos.length === 0) {
-    lista.innerHTML = `
-      <div class="empty-state">
-        Nenhum pagamento encontrado neste filtro.
-      </div>
-    `;
-    return;
-  }
-
-  grupos.forEach((grupo) => {
-    const card = document.createElement("div");
-    card.className = "finance-item";
-
-    card.innerHTML = `
-      <strong>${dinheiro(grupo.total)}</strong>
-      <p>Semana: ${dataCurta(grupo.inicio)} até ${dataCurta(grupo.fim)}</p>
-      <p>Entregas pagas: ${grupo.entregas}</p>
-      <span class="status-pill aprovada">Pago</span>
-    `;
-
-    lista.appendChild(card);
-  });
+  setHtml(
+    "listaPagamentosRecebidos",
+    pagamentos.map((pagamento) => {
+      return `
+        <div class="finance-item">
+          <strong>${dinheiro(valorPagamento(pagamento))}</strong>
+          <p><b>Pagamento:</b> ${pagamento.id}</p>
+          <p><b>Pago em:</b> ${dataTexto(pagamento.pagoAt || pagamento.createdAt)}</p>
+          <p><b>Entregas pagas:</b> ${totalEntregasPagamento(pagamento)}</p>
+          <p><b>Período:</b> ${pagamento.periodoInicio || "Não informado"} até ${pagamento.periodoFim || "Não informado"}</p>
+          <span class="status-pill aprovada">Recebido</span>
+        </div>
+      `;
+    }).join("")
+  );
 }
 
 function renderizarEntregasPagas() {
-  const lista = document.getElementById("listaEntregasPagas");
-  if (!lista) return;
+  const entregas = pedidosCache
+    .filter(pedidoPagoValido)
+    .sort((a, b) => {
+      const dataA = dataDoPedido(a)?.getTime?.() || 0;
+      const dataB = dataDoPedido(b)?.getTime?.() || 0;
+      return dataB - dataA;
+    });
 
-  const pagas = entregasPagas();
-
-  lista.innerHTML = "";
-
-  if (pagas.length === 0) {
-    lista.innerHTML = `
-      <div class="empty-state">
-        Nenhuma entrega paga encontrada.
-      </div>
-    `;
+  if (!entregas.length) {
+    setHtml(
+      "listaEntregasPagas",
+      `<div class="empty-state">Nenhuma entrega paga ainda.</div>`
+    );
     return;
   }
 
-  pagas.forEach((pedido) => {
-    const card = document.createElement("div");
-    card.className = "paid-delivery-card";
-
-    card.innerHTML = `
-      <div class="paid-delivery-top">
-        <div>
-          <span>Restaurante</span>
-          <strong>${pedido.restauranteNome || "Restaurante não informado"}</strong>
+  setHtml(
+    "listaEntregasPagas",
+    entregas.map((pedido) => {
+      return `
+        <div class="finance-item">
+          <strong>${pedido.restauranteNome || "Restaurante"}</strong>
+          <p><b>Pedido:</b> ${pedido.id}</p>
+          <p><b>Valor pago:</b> ${dinheiro(pedido.valorMotoboy)}</p>
+          <p><b>Aceitou em:</b> ${dataTexto(pedido.aceitoAt)}</p>
+          <p><b>Finalizou em:</b> ${dataTexto(pedido.entregueAt)}</p>
+          <span class="status-pill aprovada">Pago</span>
         </div>
+      `;
+    }).join("")
+  );
+}
 
-        <span class="paid-badge">Pago</span>
-      </div>
+function renderizarEntregasEstornadas() {
+  const entregas = pedidosCache
+    .filter((pedido) => pedido.motoboyId === uid)
+    .filter(pedidoFoiEstornado)
+    .sort((a, b) => {
+      const dataA = a.estornadoAt?.toMillis?.() || a.updatedAt?.toMillis?.() || 0;
+      const dataB = b.estornadoAt?.toMillis?.() || b.updatedAt?.toMillis?.() || 0;
+      return dataB - dataA;
+    });
 
-      <div class="paid-delivery-value">
-        <span>Valor recebido</span>
-        <strong>${dinheiro(pedido.valorMotoboy)}</strong>
-      </div>
+  if (!entregas.length) {
+    setHtml(
+      "listaEntregasEstornadas",
+      `<div class="empty-state">Nenhuma entrega estornada.</div>`
+    );
+    return;
+  }
 
-      <div class="paid-delivery-info">
-        <div>
-          <span>Aceitou</span>
-          <strong>${dataTexto(pedido.aceitoAt)}</strong>
+  setHtml(
+    "listaEntregasEstornadas",
+    entregas.map((pedido) => {
+      return `
+        <div class="finance-item refund">
+          <strong>${pedido.restauranteNome || "Restaurante"}</strong>
+          <p><b>Pedido:</b> ${pedido.id}</p>
+          <p><b>Valor removido:</b> ${dinheiro(pedido.valorMotoboy)}</p>
+          <p><b>Motivo:</b> ${pedido.motivoEstorno || "Motivo não informado"}</p>
+          <p><b>Entregue em:</b> ${dataTexto(pedido.entregueAt)}</p>
+          <p><b>Estornado em:</b> ${dataTexto(pedido.estornadoAt)}</p>
+          <span class="status-pill estornada">Estornado</span>
         </div>
-
-        <div>
-          <span>Finalizou</span>
-          <strong>${dataTexto(pedido.entregueAt || pedido.updatedAt)}</strong>
-        </div>
-      </div>
-
-      <div class="support-order-id">
-        <span>ID do pedido para suporte</span>
-        <strong>${pedido.id}</strong>
-      </div>
-    `;
-
-    lista.appendChild(card);
-  });
+      `;
+    }).join("")
+  );
 }
 
 function renderizarTudo() {
   renderizarResumo();
-  renderizarTotalRecebido();
   renderizarEntregasAReceber();
-  renderizarHistoricoSemanal();
+  renderizarPagamentosRecebidos();
   renderizarEntregasPagas();
+  renderizarEntregasEstornadas();
 }
 
 function configurarFiltros() {
   const filtro = document.getElementById("filtroHistoricoPagamentos");
   const semana = document.getElementById("semanaHistorico");
 
-  if (semana && !semana.value) {
-    semana.value = formatarDataInput(new Date());
-  }
-
   if (filtro) {
-    filtro.addEventListener("change", renderizarTudo);
+    filtro.addEventListener("change", renderizarPagamentosRecebidos);
   }
 
   if (semana) {
-    semana.addEventListener("change", renderizarTudo);
+    semana.addEventListener("change", renderizarPagamentosRecebidos);
   }
 }
 
-function escutarPedidos() {
+function escutarPedidosMotoboy() {
   const q = query(
     collection(db, "pedidos"),
     where("motoboyId", "==", uid)
   );
 
-  onSnapshot(q, (snapshot) => {
-    pedidos = [];
+  onSnapshot(
+    q,
+    (snapshot) => {
+      pedidosCache = [];
 
-    snapshot.forEach((docSnap) => {
-      pedidos.push({
-        id: docSnap.id,
-        ...docSnap.data()
+      snapshot.forEach((docSnap) => {
+        pedidosCache.push({
+          id: docSnap.id,
+          ...docSnap.data()
+        });
       });
-    });
 
-    renderizarTudo();
-  });
+      renderizarTudo();
+    },
+    (erro) => {
+      console.error(erro);
+      setHtml(
+        "listaEntregasAReceber",
+        `<div class="empty-state">Erro ao carregar entregas.</div>`
+      );
+    }
+  );
 }
 
-function escutarPagamentos() {
+function escutarPagamentosMotoboy() {
   const q = query(
     collection(db, "pagamentos_motoboy"),
     where("motoboyId", "==", uid)
   );
 
-  onSnapshot(q, (snapshot) => {
-    pagamentos = [];
+  onSnapshot(
+    q,
+    (snapshot) => {
+      pagamentosCache = [];
 
-    snapshot.forEach((docSnap) => {
-      pagamentos.push({
-        id: docSnap.id,
-        ...docSnap.data()
+      snapshot.forEach((docSnap) => {
+        pagamentosCache.push({
+          id: docSnap.id,
+          ...docSnap.data()
+        });
       });
-    });
 
-    renderizarTudo();
-  });
-}
-
-function escutarLedger() {
-  const q = query(
-    collection(db, "ledger_motoboy"),
-    where("motoboyId", "==", uid)
+      renderizarTudo();
+    },
+    (erro) => {
+      console.error(erro);
+      setHtml(
+        "listaPagamentosRecebidos",
+        `<div class="empty-state">Erro ao carregar pagamentos.</div>`
+      );
+    }
   );
-
-  onSnapshot(q, (snapshot) => {
-    ledger = [];
-
-    snapshot.forEach((docSnap) => {
-      ledger.push({
-        id: docSnap.id,
-        ...docSnap.data()
-      });
-    });
-
-    renderizarTudo();
-  });
-}
-
-async function validarUsuario(user) {
-  const snap = await getDoc(doc(db, "users", user.uid));
-
-  if (!snap.exists() || snap.data().role !== "motoboy") {
-    await signOut(auth);
-    window.location.href = "./index.html";
-    return false;
-  }
-
-  return true;
 }
 
 onAuthStateChanged(auth, async (user) => {
@@ -571,11 +501,16 @@ onAuthStateChanged(auth, async (user) => {
 
   uid = user.uid;
 
-  const valido = await validarUsuario(user);
-  if (!valido) return;
+  const userSnap = await getDoc(doc(db, "users", uid));
+
+  if (!userSnap.exists() || userSnap.data().role !== "motoboy") {
+    await signOut(auth);
+    window.location.href = "./index.html";
+    return;
+  }
 
   configurarFiltros();
-  escutarPedidos();
-  escutarPagamentos();
-  escutarLedger();
+  renderizarTudo();
+  escutarPedidosMotoboy();
+  escutarPagamentosMotoboy();
 });
