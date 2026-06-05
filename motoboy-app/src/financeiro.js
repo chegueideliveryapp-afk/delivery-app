@@ -17,7 +17,8 @@ import {
 let uid = null;
 let motoboyAtual = null;
 let pedidos = [];
-let pagamentos = [];
+let pagamentosDiretos = [];
+let pagamentosPorPedidos = [];
 let ledger = [];
 
 function dinheiro(valor) {
@@ -124,8 +125,44 @@ function pagamentoContemLedgerDoPedido(pagamento, pedidoId) {
   });
 }
 
+function todosPagamentos() {
+  const mapa = {};
+
+  pagamentosDiretos.forEach((pagamento) => {
+    mapa[pagamento.id] = pagamento;
+  });
+
+  pagamentosPorPedidos.forEach((pagamento) => {
+    mapa[pagamento.id] = pagamento;
+  });
+
+  return Object.values(mapa);
+}
+
+function pagamentoPertenceAoMotoboy(pagamento) {
+  if (pagamento.motoboyId === uid) return true;
+
+  const pedidosDoMotoboy = pedidos.filter((pedido) => {
+    return pedido.motoboyId === uid;
+  });
+
+  const temPedidoDoMotoboy = pedidosDoMotoboy.some((pedido) => {
+    return pagamentoTemPedido(pagamento, pedido.id);
+  });
+
+  if (temPedidoDoMotoboy) return true;
+
+  if (Array.isArray(pagamento.ledgerIds)) {
+    return ledger.some((item) => {
+      return item.motoboyId === uid && pagamento.ledgerIds.includes(item.id);
+    });
+  }
+
+  return false;
+}
+
 function pedidoFoiPagoPorPagamento(pedido) {
-  return pagamentos.some((pagamento) => {
+  return todosPagamentos().some((pagamento) => {
     const pagamentoValido =
       pagamento.status === "pago" ||
       pagamento.pago === true ||
@@ -182,6 +219,19 @@ function entregasPagas() {
     .sort((a, b) => {
       const dataA = dataDoPedido(a)?.getTime?.() || 0;
       const dataB = dataDoPedido(b)?.getTime?.() || 0;
+      return dataB - dataA;
+    });
+}
+
+function pagamentosDoMotoboy() {
+  return todosPagamentos()
+    .filter(pagamentoPertenceAoMotoboy)
+    .filter((pagamento) => {
+      return pagamento.status === "pago" || pagamento.pago === true || pagamento.pagoAt;
+    })
+    .sort((a, b) => {
+      const dataA = dataDoPagamento(a)?.getTime?.() || 0;
+      const dataB = dataDoPagamento(b)?.getTime?.() || 0;
       return dataB - dataA;
     });
 }
@@ -255,13 +305,7 @@ function renderizarPagamentosRecebidos() {
   const lista = document.getElementById("listaPagamentosRecebidos");
   if (!lista) return;
 
-  const historico = pagamentos
-    .slice()
-    .sort((a, b) => {
-      const dataA = dataDoPagamento(a)?.getTime?.() || 0;
-      const dataB = dataDoPagamento(b)?.getTime?.() || 0;
-      return dataB - dataA;
-    });
+  const historico = pagamentosDoMotoboy();
 
   lista.innerHTML = "";
 
@@ -306,6 +350,43 @@ function renderizarPagamentosRecebidos() {
   });
 }
 
+function renderizarEntregasPagas() {
+  const lista = document.getElementById("listaEntregasPagas");
+  if (!lista) return;
+
+  const pagas = entregasPagas();
+
+  lista.innerHTML = "";
+
+  if (pagas.length === 0) {
+    lista.innerHTML = `
+      <div class="empty-state">
+        Nenhuma entrega paga encontrada.
+      </div>
+    `;
+    return;
+  }
+
+  pagas.forEach((pedido) => {
+    const card = document.createElement("div");
+    card.className = "finance-item";
+
+    card.innerHTML = `
+      <div>
+        <strong>${dinheiro(pedido.valorMotoboy)}</strong>
+        <p>Pedido: ${pedido.id}</p>
+        <p>Restaurante: ${pedido.restauranteNome || "Não informado"}</p>
+        <p>Entrega: ${pedido.enderecoEntrega || "Endereço não informado"}</p>
+        <p>Finalizada em: ${dataTexto(pedido.entregueAt || pedido.updatedAt || pedido.createdAt)}</p>
+      </div>
+
+      <span class="finance-status paid">Pago</span>
+    `;
+
+    lista.appendChild(card);
+  });
+}
+
 function renderizarConferencia() {
   const box = document.getElementById("boxConferenciaFinanceira");
   if (!box) return;
@@ -336,6 +417,7 @@ function renderizarTudo() {
   renderizarResumo();
   renderizarEntregasAReceber();
   renderizarPagamentosRecebidos();
+  renderizarEntregasPagas();
   renderizarConferencia();
 }
 
@@ -378,7 +460,7 @@ function escutarPedidos() {
   );
 }
 
-function escutarPagamentos() {
+function escutarPagamentosDiretos() {
   const q = query(
     collection(db, "pagamentos_motoboy"),
     where("motoboyId", "==", uid)
@@ -387,10 +469,10 @@ function escutarPagamentos() {
   onSnapshot(
     q,
     (snapshot) => {
-      pagamentos = [];
+      pagamentosDiretos = [];
 
       snapshot.forEach((docSnap) => {
-        pagamentos.push({
+        pagamentosDiretos.push({
           id: docSnap.id,
           ...docSnap.data()
         });
@@ -399,7 +481,30 @@ function escutarPagamentos() {
       renderizarTudo();
     },
     (erro) => {
-      console.error("Erro ao carregar pagamentos:", erro);
+      console.error("Erro ao carregar pagamentos diretos:", erro);
+    }
+  );
+}
+
+function escutarPagamentosPorPedidos() {
+  onSnapshot(
+    collection(db, "pagamentos_motoboy"),
+    (snapshot) => {
+      pagamentosPorPedidos = [];
+
+      snapshot.forEach((docSnap) => {
+        const pagamento = {
+          id: docSnap.id,
+          ...docSnap.data()
+        };
+
+        pagamentosPorPedidos.push(pagamento);
+      });
+
+      renderizarTudo();
+    },
+    (erro) => {
+      console.error("Erro ao carregar histórico geral:", erro);
     }
   );
 }
@@ -455,6 +560,7 @@ onAuthStateChanged(auth, async (user) => {
 
   escutarMotoboy();
   escutarPedidos();
-  escutarPagamentos();
+  escutarPagamentosDiretos();
+  escutarPagamentosPorPedidos();
   escutarLedger();
 });
