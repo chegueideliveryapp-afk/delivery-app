@@ -28,7 +28,7 @@ function numero(valor, padrao = 0) {
 }
 
 function dataTexto(timestamp) {
-  if (!timestamp?.toDate) return "Data não informada";
+  if (!timestamp?.toDate) return "Data nao informada";
 
   return timestamp.toDate().toLocaleString("pt-BR", {
     dateStyle: "short",
@@ -37,7 +37,7 @@ function dataTexto(timestamp) {
 }
 
 function dataCurta(data) {
-  if (!data) return "Não informado";
+  if (!data) return "Nao informado";
   return data.toLocaleDateString("pt-BR");
 }
 
@@ -108,12 +108,12 @@ function atualizarResumoSemana() {
   const semanaDescricao = document.getElementById("semanaDescricao");
 
   if (semanaResumo) {
-    semanaResumo.innerText = `${dataCurta(inicio)} até ${dataCurta(fim)}`;
+    semanaResumo.innerText = `${dataCurta(inicio)} ate ${dataCurta(fim)}`;
   }
 
   if (semanaDescricao) {
     semanaDescricao.innerText =
-      `Você está conferindo as entregas finalizadas de segunda-feira (${dataCurta(inicio)}) até domingo (${dataCurta(fim)}).`;
+      `Voce esta conferindo as entregas finalizadas de segunda-feira (${dataCurta(inicio)}) ate domingo (${dataCurta(fim)}).`;
   }
 }
 
@@ -146,12 +146,12 @@ function nomeMotoboy(motoboyId, fallback = "") {
   return (
     motoboysCache[motoboyId]?.nome ||
     fallback ||
-    "Motoboy não informado"
+    "Motoboy nao informado"
   );
 }
 
 function telefoneMotoboy(motoboyId) {
-  return motoboysCache[motoboyId]?.telefone || "Telefone não informado";
+  return motoboysCache[motoboyId]?.telefone || "Telefone nao informado";
 }
 
 function atualizarSelectMotoboys() {
@@ -244,6 +244,15 @@ function pedidoFoiPagoAoMotoboy(pedido) {
   );
 }
 
+function pedidoFoiEstornado(pedido) {
+  return (
+    pedido.estornado === true ||
+    pedido.pagamentoMotoboyEstornado === true ||
+    pedido.pagamentoMotoboyStatus === "estornado" ||
+    pedido.statusFinanceiroMotoboy === "estornado"
+  );
+}
+
 function pedidoEntregueComValorMotoboy(pedido) {
   return (
     pedido.status === "entregue" &&
@@ -255,6 +264,7 @@ function pedidoEntregueComValorMotoboy(pedido) {
 function pedidoPendentePagamento(pedido) {
   return (
     pedidoEntregueComValorMotoboy(pedido) &&
+    !pedidoFoiEstornado(pedido) &&
     !pedidoFoiPagoAoMotoboy(pedido)
   );
 }
@@ -278,6 +288,16 @@ function pedidosDaSemana() {
     .filter(pedidoEntregueComValorMotoboy)
     .filter((pedido) => dentroDoPeriodoPorData(dataDoPedido(pedido), dataInicio, dataFim))
     .filter((pedido) => !filtroMotoboy || pedido.motoboyId === filtroMotoboy);
+}
+
+function pedidosEstornadosDaSemana() {
+  return pedidosDaSemana()
+    .filter(pedidoFoiEstornado)
+    .sort((a, b) => {
+      const dataA = dataDoPedido(a)?.getTime?.() || 0;
+      const dataB = dataDoPedido(b)?.getTime?.() || 0;
+      return dataB - dataA;
+    });
 }
 
 function agruparPendentesDaSemana() {
@@ -322,6 +342,33 @@ function agruparPendentesDaSemana() {
   return Object.values(grupos).sort((a, b) => b.total - a.total);
 }
 
+function garantirBlocoEstornadas() {
+  let lista = document.getElementById("listaEntregasEstornadas");
+  if (lista) return lista;
+
+  const referencia = document.getElementById("listaEntregasPeriodo");
+  if (!referencia) return null;
+
+  const painelReferencia = referencia.closest(".panel");
+  if (!painelReferencia) return null;
+
+  const painel = document.createElement("section");
+  painel.className = "panel";
+  painel.innerHTML = `
+    <h2>Entregas estornadas</h2>
+    <p class="hint">
+      Entregas removidas do pagamento do motoboy e devolvidas ao saldo do restaurante.
+    </p>
+    <div id="listaEntregasEstornadas">
+      <div class="empty">Carregando entregas estornadas...</div>
+    </div>
+  `;
+
+  painelReferencia.after(painel);
+
+  return document.getElementById("listaEntregasEstornadas");
+}
+
 function renderizarPagamentosPendentes() {
   const lista = document.getElementById("listaPagamentosMotoboy");
   const resumo = document.getElementById("resumoPagamentos");
@@ -359,7 +406,7 @@ function renderizarPagamentosPendentes() {
         <p>Telefone: ${grupo.telefone}</p>
         <p>Total a pagar nesta semana: <b>${dinheiro(grupo.total)}</b></p>
         <p>Entregas pendentes nesta semana: ${grupo.entregas}</p>
-        <p>Período: ${dataCurta(grupo.primeiraData)} até ${dataCurta(grupo.ultimaData)}</p>
+        <p>Periodo: ${dataCurta(grupo.primeiraData)} ate ${dataCurta(grupo.ultimaData)}</p>
 
         <div class="status-row">
           <span class="badge yellow">Pagamento pendente</span>
@@ -389,7 +436,7 @@ function renderizarPagamentosPendentes() {
       if (!grupo) return;
 
       const confirmar = confirm(
-        `Confirmar pagamento semanal para ${grupo.motoboyNome}?\n\nValor: ${dinheiro(grupo.total)}\nEntregas: ${grupo.entregas}\nPeríodo: ${dataCurta(grupo.primeiraData)} até ${dataCurta(grupo.ultimaData)}`
+        `Confirmar pagamento semanal para ${grupo.motoboyNome}?\n\nValor: ${dinheiro(grupo.total)}\nEntregas: ${grupo.entregas}\nPeriodo: ${dataCurta(grupo.primeiraData)} ate ${dataCurta(grupo.ultimaData)}`
       );
 
       if (!confirmar) return;
@@ -429,6 +476,7 @@ function renderizarEntregasPeriodo() {
 
   entregas.forEach((pedido) => {
     const pago = pedidoFoiPagoAoMotoboy(pedido);
+    const estornado = pedidoFoiEstornado(pedido);
 
     const card = document.createElement("div");
     card.className = "list-card";
@@ -439,17 +487,66 @@ function renderizarEntregasPeriodo() {
 
         <p>Valor motoboy: <b>${dinheiro(pedido.valorMotoboy)}</b></p>
         <p>Pedido ID: ${pedido.id}</p>
-        <p>Motoboy ID: ${pedido.motoboyId || "Não informado"}</p>
-        <p>Restaurante: ${pedido.restauranteNome || "Não informado"}</p>
-        <p>Entrega: ${pedido.enderecoEntrega || "Não informado"}</p>
+        <p>Motoboy ID: ${pedido.motoboyId || "Nao informado"}</p>
+        <p>Restaurante: ${pedido.restauranteNome || "Nao informado"}</p>
+        <p>Entrega: ${pedido.enderecoEntrega || "Nao informado"}</p>
         <p>Data: ${dataTexto(pedido.entregueAt || pedido.updatedAt || pedido.createdAt)}</p>
+
+        ${
+          estornado && pedido.motivoEstorno
+            ? `<p>Motivo do estorno: ${pedido.motivoEstorno}</p>`
+            : ""
+        }
 
         <div class="status-row">
           ${
-            pago
-              ? `<span class="badge green">Pago</span>`
-              : `<span class="badge yellow">Pendente nesta semana</span>`
+            estornado
+              ? `<span class="badge red">Estornado</span>`
+              : pago
+                ? `<span class="badge green">Pago</span>`
+                : `<span class="badge yellow">Pendente nesta semana</span>`
           }
+        </div>
+      </div>
+    `;
+
+    lista.appendChild(card);
+  });
+}
+
+function renderizarEntregasEstornadas() {
+  const lista = garantirBlocoEstornadas();
+  if (!lista) return;
+
+  const entregas = pedidosEstornadosDaSemana();
+
+  lista.innerHTML = "";
+
+  if (entregas.length === 0) {
+    lista.innerHTML = `<div class="empty">Nenhuma entrega estornada nesta semana.</div>`;
+    return;
+  }
+
+  entregas.forEach((pedido) => {
+    const card = document.createElement("div");
+    card.className = "list-card";
+
+    card.innerHTML = `
+      <div>
+        <strong>${nomeMotoboy(pedido.motoboyId, pedido.motoboyNome)}</strong>
+
+        <p>Pedido ID: ${pedido.id}</p>
+        <p>Restaurante: ${pedido.restauranteNome || "Nao informado"}</p>
+        <p>Entrega: ${pedido.enderecoEntrega || "Nao informado"}</p>
+        <p>Valor removido do motoboy: <b>${dinheiro(pedido.valorMotoboy)}</b></p>
+        <p>Total devolvido ao restaurante: <b>${dinheiro(pedido.valorTotal)}</b></p>
+        <p>Entregue em: ${dataTexto(pedido.entregueAt || pedido.updatedAt || pedido.createdAt)}</p>
+        <p>Estornado em: ${dataTexto(pedido.estornadoAt)}</p>
+        <p>Motivo: ${pedido.motivoEstorno || "Motivo nao informado"}</p>
+
+        <div class="status-row">
+          <span class="badge red">Estornado</span>
+          <span class="badge gray">Nao entra no pagamento</span>
         </div>
       </div>
     `;
@@ -483,12 +580,12 @@ function renderizarHistoricoPagamentos() {
     const periodoInicio =
       pagamento.periodoInicio ||
       pagamento.inicioSemanaTexto ||
-      "Não informado";
+      "Nao informado";
 
     const periodoFim =
       pagamento.periodoFim ||
       pagamento.fimSemanaTexto ||
-      "Não informado";
+      "Nao informado";
 
     const card = document.createElement("div");
     card.className = "list-card";
@@ -498,11 +595,11 @@ function renderizarHistoricoPagamentos() {
         <strong>${pagamento.motoboyNome || nomeMotoboy(pagamento.motoboyId)}</strong>
 
         <p>Pagamento ID: ${pagamento.id}</p>
-        <p>Motoboy ID: ${pagamento.motoboyId || "Não informado"}</p>
+        <p>Motoboy ID: ${pagamento.motoboyId || "Nao informado"}</p>
         <p>Valor pago: <b>${dinheiro(valor)}</b></p>
         <p>Entregas pagas: ${pagamento.totalEntregas || pagamento.entregas || 0}</p>
         <p>Pago em: ${dataTexto(pagamento.pagoAt || pagamento.createdAt)}</p>
-        <p>Período pago: ${periodoInicio} até ${periodoFim}</p>
+        <p>Periodo pago: ${periodoInicio} ate ${periodoFim}</p>
 
         <div class="status-row">
           <span class="badge green">Pago</span>
@@ -523,7 +620,7 @@ async function marcarGrupoComoPago(grupo) {
   const uidAdmin = auth.currentUser?.uid;
 
   if (!uidAdmin) {
-    throw new Error("Admin não autenticado.");
+    throw new Error("Admin nao autenticado.");
   }
 
   const pagamentoRef = doc(collection(db, "pagamentos_motoboy"));
@@ -533,7 +630,7 @@ async function marcarGrupoComoPago(grupo) {
     const motoboySnap = await transaction.get(motoboyRef);
 
     if (!motoboySnap.exists()) {
-      throw new Error("Motoboy não encontrado.");
+      throw new Error("Motoboy nao encontrado.");
     }
 
     const motoboy = motoboySnap.data();
@@ -602,6 +699,7 @@ async function marcarGrupoComoPago(grupo) {
 function renderizarTudo() {
   renderizarPagamentosPendentes();
   renderizarEntregasPeriodo();
+  renderizarEntregasEstornadas();
   renderizarHistoricoPagamentos();
 }
 
