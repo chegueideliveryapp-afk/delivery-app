@@ -17,6 +17,7 @@ import {
 let uid = null;
 let pedidosCache = [];
 let pagamentosCache = [];
+let ledgerCache = [];
 
 function dinheiro(valor) {
   return Number(valor || 0).toLocaleString("pt-BR", {
@@ -91,6 +92,14 @@ function proximaSegundaTexto() {
   return proxima.toLocaleDateString("pt-BR");
 }
 
+function pedidoDentroDaSemanaAtual(pedido) {
+  const data = dataDoPedido(pedido);
+
+  if (!data) return false;
+
+  return data >= inicioSemana() && data <= fimSemana();
+}
+
 function pedidoFoiEstornado(pedido) {
   return (
     pedido.estornado === true ||
@@ -112,15 +121,24 @@ function pagamentoTemPedido(pagamento, pedidoId) {
   return false;
 }
 
-function pedidoFoiPago(pedido) {
-  if (
-    pedido.pagamentoMotoboyPago === true ||
-    pedido.pagamentoMotoboyStatus === "pago" ||
-    Boolean(pedido.pagamentoMotoboyId)
-  ) {
-    return true;
-  }
+function ledgerDoPedido(pedidoId) {
+  return ledgerCache.filter((ledger) => ledger.pedidoId === pedidoId);
+}
 
+function ledgerFoiPago(ledger) {
+  return (
+    ledger.statusPagamento === "pago" ||
+    ledger.pago === true ||
+    Boolean(ledger.pagamentoId)
+  );
+}
+
+function pedidoFoiPagoPorLedger(pedido) {
+  const ledgers = ledgerDoPedido(pedido.id);
+  return ledgers.some(ledgerFoiPago);
+}
+
+function pedidoFoiPagoPorPagamento(pedido) {
   return pagamentosCache.some((pagamento) => {
     const pagamentoValido =
       pagamento.status === "pago" ||
@@ -131,6 +149,16 @@ function pedidoFoiPago(pedido) {
 
     return pagamentoTemPedido(pagamento, pedido.id);
   });
+}
+
+function pedidoFoiPago(pedido) {
+  return (
+    pedido.pagamentoMotoboyPago === true ||
+    pedido.pagamentoMotoboyStatus === "pago" ||
+    Boolean(pedido.pagamentoMotoboyId) ||
+    pedidoFoiPagoPorPagamento(pedido) ||
+    pedidoFoiPagoPorLedger(pedido)
+  );
 }
 
 function pedidoEntregueDoMotoboy(pedido) {
@@ -144,6 +172,7 @@ function pedidoEntregueDoMotoboy(pedido) {
 function pedidoAbertoParaReceber(pedido) {
   return (
     pedidoEntregueDoMotoboy(pedido) &&
+    pedidoDentroDaSemanaAtual(pedido) &&
     !pedidoFoiEstornado(pedido) &&
     !pedidoFoiPago(pedido)
   );
@@ -154,6 +183,13 @@ function pedidoPagoValido(pedido) {
     pedidoEntregueDoMotoboy(pedido) &&
     !pedidoFoiEstornado(pedido) &&
     pedidoFoiPago(pedido)
+  );
+}
+
+function pedidoValidoParaMedia(pedido) {
+  return (
+    pedidoEntregueDoMotoboy(pedido) &&
+    !pedidoFoiEstornado(pedido)
   );
 }
 
@@ -217,11 +253,11 @@ function pagamentoDentroDoFiltro(pagamento) {
 }
 
 function renderizarResumo() {
-  const entregasAbertas = pedidosCache.filter(pedidoAbertoParaReceber);
+  const entregasAbertasSemana = pedidosCache.filter(pedidoAbertoParaReceber);
   const entregasPagas = pedidosCache.filter(pedidoPagoValido);
-  const entregasValidas = [...entregasAbertas, ...entregasPagas];
+  const entregasValidas = pedidosCache.filter(pedidoValidoParaMedia);
 
-  const valorAberto = entregasAbertas.reduce((acc, pedido) => {
+  const valorAbertoSemana = entregasAbertasSemana.reduce((acc, pedido) => {
     return acc + numero(pedido.valorMotoboy, 0);
   }, 0);
 
@@ -233,39 +269,31 @@ function renderizarResumo() {
     return acc + valorPagamento(pagamento);
   }, 0);
 
-  const totalEntregasValidas = entregasValidas.length;
-
   const somaEntregasValidas = entregasValidas.reduce((acc, pedido) => {
     return acc + numero(pedido.valorMotoboy, 0);
   }, 0);
 
-  const media = totalEntregasValidas > 0
-    ? somaEntregasValidas / totalEntregasValidas
+  const media = entregasValidas.length > 0
+    ? somaEntregasValidas / entregasValidas.length
     : 0;
 
   const maiorEntrega = entregasValidas.reduce((maior, pedido) => {
     return Math.max(maior, numero(pedido.valorMotoboy, 0));
   }, 0);
 
-  const inicio = inicioSemana();
-  const fim = fimSemana();
-
   const ganhosSemana = entregasValidas
-    .filter((pedido) => {
-      const data = dataDoPedido(pedido);
-      return data && data >= inicio && data <= fim;
-    })
+    .filter(pedidoDentroDaSemanaAtual)
     .reduce((acc, pedido) => acc + numero(pedido.valorMotoboy, 0), 0);
 
   const percentual = maiorEntrega > 0
     ? Math.min(100, (ganhosSemana / Math.max(maiorEntrega * 10, 1)) * 100)
     : 0;
 
-  setText("valorAbertoMotoboy", dinheiro(valorAberto));
+  setText("valorAbertoMotoboy", dinheiro(valorAbertoSemana));
   setText("proximoPagamento", proximaSegundaTexto());
   setText("totalRecebidoMotoboy", dinheiro(totalRecebido));
   setText("mediaEntregaMotoboy", dinheiro(media));
-  setText("totalEntregasAbertas", entregasAbertas.length);
+  setText("totalEntregasAbertas", entregasAbertasSemana.length);
   setText("totalEntregasPagas", entregasPagas.length);
   setText("ritmoGanhosTexto", `${dinheiro(ganhosSemana)} esta semana`);
   setText("maiorEntregaTexto", dinheiro(maiorEntrega));
@@ -286,7 +314,7 @@ function renderizarEntregasAReceber() {
   if (!entregas.length) {
     setHtml(
       "listaEntregasAReceber",
-      `<div class="empty-state">Nenhuma entrega em aberto para receber.</div>`
+      `<div class="empty-state">Nenhuma entrega em aberto para receber nesta semana.</div>`
     );
     return;
   }
@@ -493,6 +521,32 @@ function escutarPagamentosMotoboy() {
   );
 }
 
+function escutarLedgerMotoboy() {
+  const q = query(
+    collection(db, "ledger_motoboy"),
+    where("motoboyId", "==", uid)
+  );
+
+  onSnapshot(
+    q,
+    (snapshot) => {
+      ledgerCache = [];
+
+      snapshot.forEach((docSnap) => {
+        ledgerCache.push({
+          id: docSnap.id,
+          ...docSnap.data()
+        });
+      });
+
+      renderizarTudo();
+    },
+    (erro) => {
+      console.error(erro);
+    }
+  );
+}
+
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
     window.location.href = "./index.html";
@@ -513,4 +567,5 @@ onAuthStateChanged(auth, async (user) => {
   renderizarTudo();
   escutarPedidosMotoboy();
   escutarPagamentosMotoboy();
+  escutarLedgerMotoboy();
 });
