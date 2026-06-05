@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>Mapa Operacional - Admin</title>
+  <title>Mapa - Admin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <link rel="stylesheet" href="../css/base.css">
@@ -14,16 +14,15 @@
   >
 
   <style>
-    #mapaAdminOperacional {
+    #mapaAdmin {
       width: 100%;
       height: 560px;
       border: 1px solid #e4e7ec;
-      border-radius: 22px;
+      border-radius: 18px;
       overflow: hidden;
       margin-top: 16px;
     }
 
-    .map-legend,
     .map-filters {
       display: flex;
       flex-wrap: wrap;
@@ -31,95 +30,125 @@
       margin-top: 16px;
     }
 
-    .legend-item,
-    .filter-item {
+    .map-filter {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      padding: 8px 10px;
+      min-height: 34px;
+      padding: 0 12px;
       border-radius: 999px;
-      background: #f5f6f8;
-      color: #15171c;
+      background: #f0f2f5;
       font-size: 13px;
       font-weight: 900;
+      cursor: pointer;
+      user-select: none;
     }
 
-    .filter-item input {
-      width: 16px;
-      height: 16px;
+    .map-filter input {
+      width: 15px;
+      height: 15px;
       accent-color: #ea1d2c;
     }
 
-    .legend-dot {
-      width: 11px;
-      height: 11px;
-      border-radius: 50%;
-      background: #9ca3af;
+    .map-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
     }
 
-    .legend-dot.green {
-      background: #16a34a;
-    }
-
-    .legend-dot.gray {
-      background: #6b7280;
-    }
-
-    .legend-dot.blue {
-      background: #2563eb;
-    }
-
-    .legend-dot.yellow {
-      background: #f59e0b;
-    }
-
-    .legend-dot.red {
-      background: #ea1d2c;
-    }
-
-    .map-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 14px;
-      margin-top: 16px;
-    }
-
-    .map-stat {
-      padding: 16px;
-      border: 1px solid #e4e7ec;
-      border-radius: 18px;
-      background: #fbfcfd;
-    }
-
-    .map-stat span {
-      display: block;
-      color: #6f7682;
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 30px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: #f7f8fa;
       font-size: 13px;
       font-weight: 900;
     }
 
-    .map-stat strong {
-      display: block;
-      margin-top: 6px;
-      font-size: 26px;
-      color: #15171c;
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
     }
 
-    .popup-map strong {
+    .dot-online {
+      background: #16a34a;
+    }
+
+    .dot-offline {
+      background: #6b7280;
+    }
+
+    .dot-corrida {
+      background: #2563eb;
+    }
+
+    .dot-pendente {
+      background: #f59e0b;
+    }
+
+    .dot-restaurante {
+      background: #e11d48;
+    }
+
+    .admin-map-marker {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-size: 13px;
+      font-weight: 900;
+      border: 3px solid #fff;
+      box-shadow: 0 8px 20px rgba(17, 24, 39, .24);
+    }
+
+    .admin-map-marker.online {
+      background: #16a34a;
+    }
+
+    .admin-map-marker.offline {
+      background: #6b7280;
+    }
+
+    .admin-map-marker.corrida {
+      background: #2563eb;
+    }
+
+    .admin-map-marker.pendente {
+      background: #f59e0b;
+    }
+
+    .admin-map-marker.restaurante {
+      background: #e11d48;
+    }
+
+    .map-popup strong {
       display: block;
       margin-bottom: 6px;
-      font-size: 15px;
+      font-size: 14px;
     }
 
-    .popup-map p {
+    .map-popup p {
       margin: 4px 0;
-      color: #4b5563;
+      font-size: 13px;
+      line-height: 1.35;
     }
 
-    @media (max-width: 760px) {
-      #mapaAdminOperacional {
-        height: 430px;
-      }
+    .map-popup .popup-badge {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 5px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 900;
+      background: #eef2ff;
+      color: #1d4ed8;
     }
   </style>
 </head>
@@ -137,83 +166,91 @@
         Acompanhe motoboys online/offline, pedidos pendentes, corridas em andamento e restaurantes cadastrados.
       </p>
 
-      <div class="map-grid">
-        <div class="map-stat">
-          <span>Motoboys online</span>
-          <strong id="totalMotoboysOnlineMapa">0</strong>
+      <div class="container" style="padding: 0; max-width: none;">
+        <div class="menu-card">
+          <div>
+            <small>Motoboys online</small>
+            <strong id="totalMotoboysOnline">0</strong>
+          </div>
         </div>
 
-        <div class="map-stat">
-          <span>Pedidos pendentes</span>
-          <strong id="totalPedidosPendentesMapa">0</strong>
+        <div class="menu-card">
+          <div>
+            <small>Pedidos pendentes</small>
+            <strong id="totalPedidosPendentes">0</strong>
+          </div>
         </div>
 
-        <div class="map-stat">
-          <span>Corridas em andamento</span>
-          <strong id="totalCorridasMapa">0</strong>
+        <div class="menu-card">
+          <div>
+            <small>Corridas em andamento</small>
+            <strong id="totalCorridasAndamento">0</strong>
+          </div>
         </div>
 
-        <div class="map-stat">
-          <span>Restaurantes</span>
-          <strong id="totalRestaurantesMapa">0</strong>
+        <div class="menu-card">
+          <div>
+            <small>Restaurantes</small>
+            <strong id="totalRestaurantes">0</strong>
+          </div>
         </div>
       </div>
 
       <div class="map-filters">
-        <label class="filter-item">
-          <input type="checkbox" data-map-filter="motoboysOnline" checked>
+        <label class="map-filter">
+          <input id="filtroOnline" type="checkbox" checked>
           Motoboys online
         </label>
 
-        <label class="filter-item">
-          <input type="checkbox" data-map-filter="motoboysOffline" checked>
+        <label class="map-filter">
+          <input id="filtroOffline" type="checkbox" checked>
           Motoboys offline
         </label>
 
-        <label class="filter-item">
-          <input type="checkbox" data-map-filter="pedidosPendentes" checked>
+        <label class="map-filter">
+          <input id="filtroPendentes" type="checkbox" checked>
           Pedidos pendentes
         </label>
 
-        <label class="filter-item">
-          <input type="checkbox" data-map-filter="corridasAndamento" checked>
+        <label class="map-filter">
+          <input id="filtroCorridas" type="checkbox" checked>
           Corridas em andamento
         </label>
 
-        <label class="filter-item">
-          <input type="checkbox" data-map-filter="restaurantes" checked>
+        <label class="map-filter">
+          <input id="filtroRestaurantes" type="checkbox" checked>
           Restaurantes
         </label>
       </div>
 
       <div class="map-legend">
-        <div class="legend-item">
-          <span class="legend-dot green"></span>
+        <span class="legend-item">
+          <span class="legend-dot dot-online"></span>
           Motoboy online
-        </div>
+        </span>
 
-        <div class="legend-item">
-          <span class="legend-dot gray"></span>
+        <span class="legend-item">
+          <span class="legend-dot dot-offline"></span>
           Motoboy offline
-        </div>
+        </span>
 
-        <div class="legend-item">
-          <span class="legend-dot blue"></span>
+        <span class="legend-item">
+          <span class="legend-dot dot-corrida"></span>
           Corrida em andamento
-        </div>
+        </span>
 
-        <div class="legend-item">
-          <span class="legend-dot yellow"></span>
+        <span class="legend-item">
+          <span class="legend-dot dot-pendente"></span>
           Pedido pendente
-        </div>
+        </span>
 
-        <div class="legend-item">
-          <span class="legend-dot red"></span>
+        <span class="legend-item">
+          <span class="legend-dot dot-restaurante"></span>
           Restaurante
-        </div>
+        </span>
       </div>
 
-      <div id="mapaAdminOperacional"></div>
+      <div id="mapaAdmin"></div>
     </section>
   </main>
 
@@ -221,10 +258,10 @@
 
   <script type="module">
     import { protegerPagina } from "../js/auth.js";
-    import { carregarMapaAdmin } from "../js/admin-mapa.js?v=260";
+    import { iniciarMapaAdmin } from "../js/mapa-admin.js?v=10";
 
     protegerPagina("admin");
-    carregarMapaAdmin();
+    iniciarMapaAdmin();
   </script>
 </body>
 </html>
