@@ -19,7 +19,7 @@
     <section class="panel">
       <h2>Pagamentos da semana</h2>
       <p class="hint">
-        Aqui os valores são agrupados por motoboy para evitar vários Pix para a mesma pessoa.
+        O valor principal vem do saldo atual do motoboy. Assim você paga um Pix por motoboy, sem duplicar operação.
       </p>
 
       <div class="form-grid">
@@ -37,13 +37,24 @@
     </section>
 
     <section class="panel">
-      <h2>Resumo a pagar</h2>
+      <h2>A pagar agora</h2>
       <p class="hint" id="resumoPagamentos">
-        Carregando pagamentos...
+        Carregando valores em aberto...
       </p>
 
       <div id="listaPagamentosMotoboy">
-        <div class="empty">Carregando entregas pendentes de pagamento...</div>
+        <div class="empty">Carregando motoboys com saldo em aberto...</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Entregas do período</h2>
+      <p class="hint">
+        Aqui aparecem os lançamentos encontrados no ledger dentro do período selecionado.
+      </p>
+
+      <div id="listaLedgerPeriodo">
+        <div class="empty">Carregando entregas do período...</div>
       </div>
     </section>
 
@@ -64,7 +75,7 @@
     import {
       iniciarPagamentosMotoboyAdmin,
       filtrarPagamentosMotoboyAdmin
-    } from "../js/pagamentos-motoboy.js?v=20";
+    } from "../js/pagamentos-motoboy.js?v=30";
 
     protegerPagina("admin");
 
