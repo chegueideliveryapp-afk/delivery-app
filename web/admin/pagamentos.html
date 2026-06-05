@@ -19,7 +19,7 @@
     <section class="panel">
       <h2>Pagamentos</h2>
       <p class="hint">
-        O bloco "A pagar agora" mostra entregas finalizadas ainda não pagas, agrupadas por motoboy.
+        O bloco "A pagar agora" mostra somente entregas finalizadas ainda não pagas, agrupadas por motoboy.
       </p>
 
       <div class="form-grid">
@@ -50,7 +50,7 @@
     <section class="panel">
       <h2>Entregas do período</h2>
       <p class="hint">
-        Lista de entregas finalizadas dentro do período selecionado.
+        Lista de entregas finalizadas dentro do período selecionado, separando pagas e pendentes.
       </p>
 
       <div id="listaEntregasPeriodo">
@@ -75,7 +75,7 @@
     import {
       iniciarPagamentosMotoboyAdmin,
       filtrarPagamentosMotoboyAdmin
-    } from "../js/pagamentos-motoboy.js?v=50";
+    } from "../js/pagamentos-motoboy.js?v=60";
 
     protegerPagina("admin");
 
