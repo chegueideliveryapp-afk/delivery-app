@@ -6,27 +6,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     :root {
       --red: #ea1d2c;
-      --dark-red: #b80f20;
+      --red-dark: #b80f20;
       --black: #121417;
       --muted: #667085;
       --bg: #f4f6f8;
-      --line: #e5e7eb;
-      --white: #ffffff;
-      --green: #11a36a;
+      --card: #ffffff;
+      --line: #e3e7ee;
+      --green: #12a86b;
       --yellow: #f59e0b;
-      --shadow: 0 22px 56px rgba(17, 24, 39, .10);
+      --blue: #2563eb;
+      --shadow: 0 22px 56px rgba(17, 24, 39, .11);
     }
 
     body {
       margin: 0;
       font-family: Inter, Arial, sans-serif;
-      background: var(--bg);
+      background:
+        radial-gradient(circle at 12% 8%, rgba(234, 29, 44, .10), transparent 30%),
+        radial-gradient(circle at 88% 14%, rgba(18, 168, 107, .10), transparent 28%),
+        var(--bg);
       color: var(--black);
     }
 
@@ -35,19 +37,15 @@
       text-decoration: none;
     }
 
-    .page {
-      min-height: 100vh;
-    }
-
     .topbar {
       position: sticky;
       top: 0;
       z-index: 20;
       min-height: 74px;
       padding: 0 26px;
-      background: rgba(255,255,255,.92);
+      background: rgba(255,255,255,.94);
       backdrop-filter: blur(18px);
-      border-bottom: 1px solid rgba(229,231,235,.8);
+      border-bottom: 1px solid rgba(227,231,238,.9);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -84,9 +82,9 @@
 
     .brand span {
       margin-top: 3px;
-      font-size: 12px;
       color: var(--muted);
-      font-weight: 800;
+      font-size: 12px;
+      font-weight: 850;
     }
 
     .top-actions {
@@ -100,11 +98,11 @@
       min-height: 44px;
       padding: 0 16px;
       border-radius: 14px;
-      font-weight: 950;
+      border: 0;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      border: 0;
+      font-weight: 950;
     }
 
     .ghost-btn {
@@ -115,16 +113,16 @@
     .primary-btn {
       background: var(--red);
       color: #fff;
-      box-shadow: 0 14px 26px rgba(234, 29, 44, .22);
+      box-shadow: 0 14px 26px rgba(234,29,44,.24);
     }
 
     .hero {
       max-width: 1180px;
       margin: 0 auto;
-      padding: 54px 26px 28px;
+      padding: 56px 26px 34px;
       display: grid;
       grid-template-columns: 1fr .95fr;
-      gap: 34px;
+      gap: 36px;
       align-items: center;
     }
 
@@ -134,7 +132,7 @@
       min-height: 34px;
       padding: 0 13px;
       border-radius: 999px;
-      background: rgba(234, 29, 44, .10);
+      background: rgba(234,29,44,.10);
       color: var(--red);
       font-size: 13px;
       font-weight: 950;
@@ -143,14 +141,14 @@
 
     h1 {
       margin: 0;
-      max-width: 640px;
-      font-size: clamp(40px, 6vw, 72px);
-      line-height: .96;
+      max-width: 720px;
+      font-size: clamp(40px, 6vw, 74px);
+      line-height: .95;
       letter-spacing: 0;
     }
 
     .lead {
-      max-width: 610px;
+      max-width: 630px;
       margin: 22px 0 0;
       color: #4f5663;
       font-size: 19px;
@@ -158,83 +156,246 @@
     }
 
     .hero-actions {
+      margin-top: 28px;
       display: flex;
       flex-wrap: wrap;
       gap: 12px;
-      margin-top: 28px;
     }
 
     .hero-actions .primary-btn,
-    .hero-actions .ghost-btn {
-      min-height: 54px;
+    .hero-actions .ghost-light {
+      min-height: 56px;
       padding: 0 22px;
-      border-radius: 17px;
+      border-radius: 18px;
       font-size: 15px;
     }
 
-    .hero-media {
-      border-radius: 32px;
-      overflow: hidden;
+    .ghost-light {
+      background: #fff;
+      color: var(--black);
+      border: 1px solid var(--line);
+      font-weight: 950;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .commerce-panel {
       min-height: 560px;
       position: relative;
+      overflow: hidden;
+      border-radius: 36px;
+      background:
+        linear-gradient(180deg, #fff7f8, #f2f5f8);
       box-shadow: var(--shadow);
-      background: #111;
+      border: 1px solid rgba(255,255,255,.8);
     }
 
-    .hero-media img {
-      width: 100%;
-      height: 100%;
-      min-height: 560px;
-      object-fit: cover;
-      display: block;
-    }
-
-    .floating-panel {
+    .store-illustration {
       position: absolute;
-      left: 22px;
-      right: 22px;
-      bottom: 22px;
-      background: rgba(255,255,255,.94);
-      backdrop-filter: blur(12px);
-      border-radius: 22px;
-      padding: 20px;
-      box-shadow: 0 18px 42px rgba(0,0,0,.18);
+      left: 32px;
+      right: 32px;
+      bottom: 44px;
+      height: 260px;
     }
 
-    .floating-panel span {
+    .store {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 180px;
+      border-radius: 28px 28px 22px 22px;
+      background: #fff;
+      border: 2px solid #dfe4ec;
+      box-shadow: 0 22px 42px rgba(17,24,39,.10);
+    }
+
+    .awning {
+      position: absolute;
+      left: -2px;
+      right: -2px;
+      top: -48px;
+      height: 56px;
+      border-radius: 28px 28px 12px 12px;
+      background: repeating-linear-gradient(
+        90deg,
+        var(--red) 0 42px,
+        #fff 42px 84px
+      );
+      border: 2px solid #dfe4ec;
+    }
+
+    .store-sign {
+      position: absolute;
+      left: 50%;
+      top: 24px;
+      transform: translateX(-50%);
+      min-width: 210px;
+      min-height: 46px;
+      padding: 0 18px;
+      border-radius: 999px;
+      background: #111318;
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-weight: 950;
+      box-shadow: 0 12px 24px rgba(17,24,39,.18);
+    }
+
+    .window {
+      position: absolute;
+      top: 88px;
+      width: 108px;
+      height: 68px;
+      border-radius: 18px;
+      background:
+        linear-gradient(135deg, #eaf2ff, #ffffff);
+      border: 2px solid #d7dde8;
+    }
+
+    .window.one { left: 28px; }
+    .window.two { right: 102px; }
+
+    .door {
+      position: absolute;
+      right: 28px;
+      bottom: 0;
+      width: 62px;
+      height: 104px;
+      border-radius: 18px 18px 0 0;
+      background: #ffe7ea;
+      border: 2px solid #d7dde8;
+    }
+
+    .delivery-bag {
+      position: absolute;
+      left: 44px;
+      top: 0;
+      width: 92px;
+      height: 84px;
+      border-radius: 20px;
+      background: var(--red);
+      box-shadow: 0 18px 32px rgba(234,29,44,.24);
+    }
+
+    .delivery-bag::before {
+      content: "";
+      position: absolute;
+      left: 26px;
+      top: -22px;
+      width: 40px;
+      height: 32px;
+      border: 8px solid var(--red);
+      border-bottom: 0;
+      border-radius: 22px 22px 0 0;
+    }
+
+    .delivery-bag::after {
+      content: "✓";
+      position: absolute;
+      right: -15px;
+      top: -14px;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: var(--green);
+      color: #fff;
+      font-weight: 950;
+      font-size: 20px;
+      border: 4px solid #fff;
+    }
+
+    .pill-stack {
+      position: absolute;
+      right: 46px;
+      top: 0;
+      display: grid;
+      gap: 10px;
+    }
+
+    .business-pill {
+      min-width: 132px;
+      min-height: 38px;
+      padding: 0 13px;
+      border-radius: 999px;
+      background: #fff;
+      border: 1px solid var(--line);
+      box-shadow: 0 12px 22px rgba(17,24,39,.08);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #303642;
+      font-size: 13px;
+      font-weight: 950;
+    }
+
+    .business-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--red);
+    }
+
+    .business-pill:nth-child(2) .business-dot {
+      background: var(--green);
+    }
+
+    .business-pill:nth-child(3) .business-dot {
+      background: var(--yellow);
+    }
+
+    .operation-card {
+      position: absolute;
+      left: 28px;
+      right: 28px;
+      top: 28px;
+      padding: 22px;
+      border-radius: 24px;
+      background: #fff;
+      box-shadow: 0 22px 46px rgba(17,24,39,.12);
+    }
+
+    .operation-card span {
       display: block;
       color: var(--muted);
       font-size: 13px;
-      font-weight: 900;
+      font-weight: 950;
     }
 
-    .floating-panel strong {
+    .operation-card strong {
       display: block;
-      margin-top: 6px;
-      font-size: 26px;
+      margin-top: 8px;
+      font-size: 31px;
+      line-height: 1.04;
     }
 
-    .floating-row {
+    .operation-row {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 10px;
-      margin-top: 16px;
+      margin-top: 18px;
     }
 
-    .mini-stat {
+    .operation-stat {
       padding: 12px;
       border-radius: 16px;
       background: #f4f6f8;
     }
 
-    .mini-stat b {
+    .operation-stat b {
       display: block;
-      font-size: 17px;
+      font-size: 16px;
     }
 
-    .mini-stat small {
+    .operation-stat small {
+      display: block;
+      margin-top: 3px;
       color: var(--muted);
-      font-weight: 800;
+      font-size: 11px;
+      font-weight: 850;
     }
 
     .section {
@@ -244,7 +405,7 @@
     }
 
     .section-title {
-      max-width: 760px;
+      max-width: 790px;
       margin-bottom: 22px;
     }
 
@@ -256,7 +417,7 @@
 
     .section-title h2 {
       margin: 8px 0 0;
-      font-size: clamp(30px, 4vw, 46px);
+      font-size: clamp(31px, 4vw, 48px);
       line-height: 1.02;
     }
 
@@ -267,10 +428,10 @@
       line-height: 1.52;
     }
 
-    .segment-grid {
+    .segments {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 14px;
+      gap: 16px;
     }
 
     .segment-card,
@@ -278,64 +439,66 @@
     .plan-card {
       background: #fff;
       border: 1px solid var(--line);
-      border-radius: 24px;
-      box-shadow: 0 10px 28px rgba(17, 24, 39, .06);
+      border-radius: 26px;
+      box-shadow: 0 10px 28px rgba(17,24,39,.06);
     }
 
     .segment-card {
-      padding: 22px;
-      min-height: 160px;
+      padding: 24px;
+      min-height: 190px;
     }
 
     .segment-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 16px;
+      width: 50px;
+      height: 50px;
+      border-radius: 17px;
       background: #fff1f2;
       color: var(--red);
       display: grid;
       place-items: center;
-      font-size: 25px;
+      font-size: 22px;
       font-weight: 950;
       margin-bottom: 16px;
     }
 
     .segment-card strong {
       display: block;
-      font-size: 20px;
+      font-size: 22px;
+      line-height: 1.1;
     }
 
     .segment-card p {
-      margin: 8px 0 0;
+      margin: 10px 0 0;
       color: var(--muted);
-      line-height: 1.4;
+      line-height: 1.5;
     }
 
-    .benefit-grid {
+    .benefits {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 16px;
     }
 
     .benefit-card {
-      padding: 24px;
+      padding: 26px;
     }
 
-    .benefit-card span {
-      width: 38px;
-      height: 38px;
-      border-radius: 14px;
-      display: grid;
-      place-items: center;
+    .benefit-number {
+      width: 42px;
+      height: 42px;
+      border-radius: 15px;
       background: #dcfce7;
       color: #166534;
+      display: grid;
+      place-items: center;
       font-weight: 950;
-      margin-bottom: 14px;
+      margin-bottom: 16px;
     }
 
     .benefit-card strong {
       display: block;
-      font-size: 22px;
+      font-size: 24px;
+      line-height: 1.08;
     }
 
     .benefit-card p {
@@ -344,37 +507,37 @@
       line-height: 1.5;
     }
 
-    .pricing {
+    .pricing-band {
+      margin-top: 34px;
+      padding: 56px 0;
       background: #111318;
       color: #fff;
-      margin-top: 34px;
-      padding: 54px 0;
     }
 
-    .pricing .section-title p {
+    .pricing-band .section-title p {
       color: rgba(255,255,255,.72);
     }
 
-    .plans-grid {
+    .plans {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 16px;
     }
 
     .plan-card {
-      padding: 26px;
+      padding: 28px;
       color: var(--black);
     }
 
     .plan-card.featured {
-      border-color: rgba(234, 29, 44, .7);
-      box-shadow: 0 20px 60px rgba(234, 29, 44, .18);
+      border-color: rgba(234,29,44,.70);
+      box-shadow: 0 22px 62px rgba(234,29,44,.18);
     }
 
-    .plan-card span {
+    .plan-card .tag {
       display: inline-flex;
-      min-height: 30px;
       align-items: center;
+      min-height: 30px;
       padding: 0 11px;
       border-radius: 999px;
       background: #fff1f2;
@@ -385,12 +548,12 @@
 
     .plan-card h3 {
       margin: 18px 0 0;
-      font-size: 26px;
+      font-size: 27px;
     }
 
     .price {
       margin-top: 12px;
-      font-size: 40px;
+      font-size: 42px;
       font-weight: 950;
       line-height: 1;
     }
@@ -402,77 +565,85 @@
 
     .fee {
       margin-top: 18px;
-      padding: 15px;
-      border-radius: 16px;
+      padding: 16px;
+      border-radius: 18px;
       background: #f4f6f8;
     }
 
     .fee strong {
       display: block;
-      font-size: 20px;
+      font-size: 22px;
     }
 
-    .fee p,
-    .plan-card ul {
+    .fee p {
+      margin: 6px 0 0;
       color: var(--muted);
     }
 
     .plan-card ul {
+      margin: 18px 0 0;
       padding-left: 18px;
+      color: var(--muted);
       line-height: 1.8;
-      margin-bottom: 0;
     }
 
-    .cta-band {
+    .cta {
       max-width: 1180px;
       margin: 44px auto;
       padding: 0 26px;
     }
 
     .cta-box {
-      border-radius: 30px;
-      padding: 34px;
-      color: #fff;
+      border-radius: 32px;
+      padding: 36px;
       background:
-        linear-gradient(135deg, rgba(234, 29, 44, .95), rgba(184, 15, 32, .98)),
-        url("https://images.unsplash.com/photo-1556745757-8d76bdb6984b?auto=format&fit=crop&w=1200&q=80");
-      background-size: cover;
-      background-position: center;
-      box-shadow: var(--shadow);
+        linear-gradient(135deg, #ea1d2c, #b80f20);
+      color: #fff;
+      box-shadow: 0 24px 60px rgba(234,29,44,.24);
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 22px;
+      align-items: center;
     }
 
     .cta-box h2 {
       margin: 0;
-      max-width: 720px;
-      font-size: clamp(30px, 4vw, 48px);
-      line-height: 1.02;
+      font-size: clamp(30px, 4vw, 46px);
+      line-height: 1.04;
     }
 
     .cta-box p {
-      max-width: 620px;
+      max-width: 660px;
+      margin: 12px 0 0;
       color: rgba(255,255,255,.86);
       font-size: 17px;
       line-height: 1.5;
     }
 
+    .cta-box .primary-btn {
+      background: #fff;
+      color: var(--red);
+      box-shadow: none;
+    }
+
     @media (max-width: 980px) {
       .hero,
-      .benefit-grid,
-      .plans-grid {
+      .cta-box {
         grid-template-columns: 1fr;
       }
 
-      .segment-grid {
+      .segments,
+      .benefits,
+      .plans {
         grid-template-columns: 1fr 1fr;
       }
 
-      .hero-media,
-      .hero-media img {
-        min-height: 440px;
+      .commerce-panel {
+        min-height: 540px;
       }
     }
 
-    @media (max-width: 620px) {
+    @media (max-width: 640px) {
       .topbar {
         padding: 12px 16px;
         align-items: flex-start;
@@ -488,35 +659,51 @@
       }
 
       .hero,
-      .section {
+      .section,
+      .cta {
         padding-left: 18px;
         padding-right: 18px;
       }
 
-      .segment-grid {
+      .segments,
+      .benefits,
+      .plans {
         grid-template-columns: 1fr;
       }
 
-      .floating-row {
+      .commerce-panel {
+        min-height: 520px;
+        border-radius: 28px;
+      }
+
+      .operation-row {
         grid-template-columns: 1fr;
       }
 
-      .hero-media,
-      .hero-media img {
-        min-height: 390px;
+      .store-illustration {
+        left: 18px;
+        right: 18px;
+      }
+
+      .store-sign {
+        min-width: 170px;
+      }
+
+      .pill-stack {
+        right: 18px;
       }
     }
   </style>
 </head>
 
 <body>
-  <main class="page">
+  <main>
     <header class="topbar">
       <a class="brand" href="./comercio.html">
         <div class="brand-mark">C</div>
         <div>
           <strong>Cheguei Delivery</strong>
-          <span>Solução para comércio</span>
+          <span>Comércio, delivery e logística local</span>
         </div>
       </a>
 
@@ -528,42 +715,57 @@
 
     <section class="hero">
       <div>
-        <div class="kicker">Para comércio local</div>
-        <h1>Entregue mais sem contratar motoboy fixo.</h1>
+        <div class="kicker">Para comércio que vende com entrega</div>
+        <h1>Venda mais sem manter motoboy fixo.</h1>
         <p class="lead">
-          O Cheguei Delivery ajuda restaurantes, lanchonetes, farmácias e pequenos negócios
-          a organizar entregas com motoboys próximos, controle pré-pago e menos dependência
-          de grandes plataformas.
+          O Cheguei Delivery ajuda restaurantes, lanchonetes, farmácias e pequenos comércios
+          a entregar pedidos com motoboys próximos, controle pré-pago e menos dependência de grandes plataformas.
         </p>
 
         <div class="hero-actions">
           <a class="primary-btn" href="./web/restaurante/login.html">Acessar painel do comércio</a>
-          <a class="ghost-btn" href="#planos">Ver planos</a>
+          <a class="ghost-light" href="#planos">Ver planos</a>
         </div>
       </div>
 
-      <div class="hero-media">
-        <img src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1200&q=80" alt="Restaurante preparando pedidos para delivery">
+      <div class="commerce-panel">
+        <div class="operation-card">
+          <span>Pedido recebido</span>
+          <strong>Acione um motoboy próximo em poucos cliques.</strong>
 
-        <div class="floating-panel">
-          <span>Operação mais leve</span>
-          <strong>Você vende. A entrega entra no fluxo.</strong>
-
-          <div class="floating-row">
-            <div class="mini-stat">
+          <div class="operation-row">
+            <div class="operation-stat">
               <b>Pré-pago</b>
               <small>controle de saldo</small>
             </div>
 
-            <div class="mini-stat">
+            <div class="operation-stat">
               <b>GPS</b>
-              <small>rastreamento</small>
+              <small>acompanhe a corrida</small>
             </div>
 
-            <div class="mini-stat">
-              <b>Taxa clara</b>
-              <small>sem surpresa</small>
+            <div class="operation-stat">
+              <b>Menos custo</b>
+              <small>sem fixo parado</small>
             </div>
+          </div>
+        </div>
+
+        <div class="store-illustration">
+          <div class="delivery-bag"></div>
+
+          <div class="pill-stack">
+            <div class="business-pill"><span class="business-dot"></span>Restaurante</div>
+            <div class="business-pill"><span class="business-dot"></span>Farmácia</div>
+            <div class="business-pill"><span class="business-dot"></span>Lanchonete</div>
+          </div>
+
+          <div class="store">
+            <div class="awning"></div>
+            <div class="store-sign">Delivery local</div>
+            <div class="window one"></div>
+            <div class="window two"></div>
+            <div class="door"></div>
           </div>
         </div>
       </div>
@@ -571,84 +773,93 @@
 
     <section class="section">
       <div class="section-title">
-        <span>Feito para delivery local</span>
-        <h2>Serve para quem vende comida, remédio, bebida, presente e conveniência.</h2>
+        <span>Feito para quem vende na cidade</span>
+        <h2>Restaurantes, lanchonetes, farmácias e pequenos negócios podem entregar melhor.</h2>
         <p>
-          O comércio não precisa depender de uma única plataforma para entregar.
-          Você continua vendendo pelos seus canais e usa o Cheguei para acionar entregadores.
+          Use seus próprios canais de venda, como WhatsApp, balcão, Instagram ou plataformas,
+          e acione entregadores quando precisar.
         </p>
       </div>
 
-      <div class="segment-grid">
+      <div class="segments">
         <div class="segment-card">
           <div class="segment-icon">R</div>
           <strong>Restaurantes</strong>
-          <p>Organize entregas próprias sem manter equipe parada.</p>
+          <p>Despache pedidos sem depender apenas de aplicativos grandes.</p>
         </div>
 
         <div class="segment-card">
           <div class="segment-icon">L</div>
           <strong>Lanchonetes</strong>
-          <p>Despache pedidos do WhatsApp, balcão ou plataformas.</p>
+          <p>Entregue lanches, bebidas e pedidos rápidos com mais controle.</p>
         </div>
 
         <div class="segment-card">
           <div class="segment-icon">F</div>
           <strong>Farmácias</strong>
-          <p>Entregas rápidas para clientes próximos com controle.</p>
+          <p>Agilize entregas locais de produtos e encomendas para clientes próximos.</p>
         </div>
 
         <div class="segment-card">
           <div class="segment-icon">C</div>
           <strong>Comércios locais</strong>
-          <p>Autônomos e lojas pequenas podem vender com entrega.</p>
+          <p>Autônomos, lojas e pequenos negócios também podem operar delivery.</p>
         </div>
       </div>
     </section>
 
     <section class="section">
       <div class="section-title">
-        <span>Por que usar</span>
-        <h2>Menos custo fixo, mais controle e entrega sob demanda.</h2>
+        <span>Por que faz sentido</span>
+        <h2>O comércio ganha quando reduz custo fixo e mantém controle da entrega.</h2>
       </div>
 
-      <div class="benefit-grid">
+      <div class="benefits">
         <div class="benefit-card">
-          <span>1</span>
-          <strong>Sem motoboy fixo</strong>
-          <p>Você não precisa manter entregador parado em horário fraco. Acione quando tiver pedido.</p>
+          <div class="benefit-number">1</div>
+          <strong>Sem motoboy parado</strong>
+          <p>
+            Você não precisa carregar custo fixo nos horários fracos. Solicite entrega quando tiver pedido.
+          </p>
         </div>
 
         <div class="benefit-card">
-          <span>2</span>
-          <strong>Menor dependência</strong>
-          <p>Use seu próprio atendimento, suas vendas e uma rede local de entregadores.</p>
+          <div class="benefit-number">2</div>
+          <strong>Mais margem por venda</strong>
+          <p>
+            Menos dependência de plataformas caras e mais controle sobre seu faturamento.
+          </p>
         </div>
 
         <div class="benefit-card">
-          <span>3</span>
-          <strong>Controle financeiro</strong>
-          <p>O modelo pré-pago ajuda a controlar gastos com entrega sem sustos no fechamento.</p>
+          <div class="benefit-number">3</div>
+          <strong>Operação pré-paga</strong>
+          <p>
+            Você adiciona saldo, acompanha o uso e evita surpresa financeira no fim do mês.
+          </p>
         </div>
       </div>
     </section>
 
-    <section class="pricing" id="planos">
+    <section class="pricing-band" id="planos">
       <div class="section">
         <div class="section-title">
-          <span>Planos pré-pagos</span>
-          <h2>Você escolhe o plano e paga a entrega conforme usa.</h2>
+          <span>Planos para comércio</span>
+          <h2>Quanto maior sua operação, menor sua taxa por entrega.</h2>
           <p>
-            A taxa Cheguei é somada ao valor do motoboy. Quanto maior o plano,
-            menor a taxa da plataforma por entrega.
+            O valor da entrega é formado por taxa Cheguei + valor do motoboy.
+            O motoboy recebe o valor dele e o comércio controla tudo no pré-pago.
           </p>
         </div>
 
-        <div class="plans-grid">
+        <div class="plans">
           <div class="plan-card">
-            <span>Começando</span>
+            <span class="tag">Começando</span>
             <h3>Essencial</h3>
-            <div class="price">R$ 19,99 <small>/ mês</small></div>
+
+            <div class="price">
+              R$ 19,99 <small>/ mês</small>
+            </div>
 
             <div class="fee">
               <strong>R$ 3,00 por entrega</strong>
@@ -657,15 +868,18 @@
 
             <ul>
               <li>Modelo pré-pago</li>
-              <li>Pedidos pelo painel</li>
-              <li>Rastreamento da corrida</li>
+              <li>Solicitação de entrega</li>
+              <li>Controle de saldo</li>
             </ul>
           </div>
 
           <div class="plan-card featured">
-            <span>Mais indicado</span>
+            <span class="tag">Mais indicado</span>
             <h3>Profissional</h3>
-            <div class="price">R$ 49,99 <small>/ mês</small></div>
+
+            <div class="price">
+              R$ 49,99 <small>/ mês</small>
+            </div>
 
             <div class="fee">
               <strong>R$ 1,75 por entrega</strong>
@@ -674,15 +888,18 @@
 
             <ul>
               <li>Taxa menor por pedido</li>
-              <li>Controle de saldo</li>
-              <li>Ideal para operação diária</li>
+              <li>Ideal para rotina diária</li>
+              <li>Mais margem na operação</li>
             </ul>
           </div>
 
           <div class="plan-card">
-            <span>Maior volume</span>
+            <span class="tag">Maior volume</span>
             <h3>Operação</h3>
-            <div class="price">R$ 89,99 <small>/ mês</small></div>
+
+            <div class="price">
+              R$ 89,99 <small>/ mês</small>
+            </div>
 
             <div class="fee">
               <strong>R$ 1,00 por entrega</strong>
@@ -690,26 +907,25 @@
             </div>
 
             <ul>
-              <li>Melhor taxa da plataforma</li>
-              <li>Indicado para alto giro</li>
-              <li>Mais margem por entrega</li>
+              <li>Melhor taxa Cheguei</li>
+              <li>Para alto giro de pedidos</li>
+              <li>Mais previsibilidade logística</li>
             </ul>
           </div>
         </div>
       </div>
     </section>
 
-    <section class="cta-band">
+    <section class="cta">
       <div class="cta-box">
-        <h2>Seu comércio pode vender mais sem carregar uma estrutura pesada.</h2>
-        <p>
-          Comece com saldo pré-pago, acompanhe pedidos em tempo real e use entregadores próximos
-          quando sua operação precisar.
-        </p>
-
-        <div class="hero-actions">
-          <a class="ghost-btn" href="./web/restaurante/login.html">Entrar no painel</a>
+        <div>
+          <h2>Seu comércio pode entregar mais sem aumentar sua estrutura.</h2>
+          <p>
+            Use o Cheguei para acionar motoboys próximos, acompanhar corridas e controlar seus gastos com saldo pré-pago.
+          </p>
         </div>
+
+        <a class="primary-btn" href="./web/restaurante/login.html">Entrar no painel</a>
       </div>
     </section>
   </main>
