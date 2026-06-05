@@ -5,7 +5,7 @@
   <title>Financeiro - Cheguei Motoboy</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <link rel="stylesheet" href="./css/app.css?v=140">
+  <link rel="stylesheet" href="./css/app.css?v=150">
 </head>
 
 <body>
@@ -70,11 +70,11 @@
     </section>
 
     <section class="feed-card">
-      <h2>Histórico de pagamentos</h2>
+      <h2>Histórico semanal</h2>
 
       <div class="finance-filter">
         <select id="filtroHistoricoPagamentos">
-          <option value="todos">Todos os pagamentos</option>
+          <option value="todos">Todas as semanas</option>
           <option value="semanaAtual">Semana atual</option>
           <option value="ultimos30">Últimos 30 dias</option>
           <option value="semanaSelecionada">Semana selecionada</option>
@@ -85,7 +85,7 @@
 
       <div id="listaPagamentosRecebidos">
         <div class="empty-state">
-          Carregando pagamentos...
+          Carregando histórico...
         </div>
       </div>
     </section>
@@ -101,6 +101,6 @@
     </section>
   </main>
 
-  <script type="module" src="./src/financeiro.js?v=140"></script>
+  <script type="module" src="./src/financeiro.js?v=150"></script>
 </body>
 </html>
