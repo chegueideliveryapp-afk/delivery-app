@@ -6,30 +6,37 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <style>
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
 
     :root {
       --red: #ea1d2c;
       --red-dark: #b80f20;
-      --black: #121417;
+      --black: #111318;
+      --ink: #171923;
       --muted: #667085;
       --bg: #f4f6f8;
       --card: #ffffff;
-      --line: #e3e7ee;
+      --line: #e4e7ec;
       --green: #12a86b;
       --yellow: #f59e0b;
       --blue: #2563eb;
-      --shadow: 0 22px 56px rgba(17, 24, 39, .11);
+      --shadow: 0 24px 70px rgba(17, 24, 39, .14);
+    }
+
+    html {
+      scroll-behavior: smooth;
     }
 
     body {
       margin: 0;
       font-family: Inter, Arial, sans-serif;
       background:
-        radial-gradient(circle at 12% 8%, rgba(234, 29, 44, .10), transparent 30%),
-        radial-gradient(circle at 88% 14%, rgba(18, 168, 107, .10), transparent 28%),
+        radial-gradient(circle at 8% 10%, rgba(234, 29, 44, .12), transparent 28%),
+        radial-gradient(circle at 92% 12%, rgba(18, 168, 107, .10), transparent 26%),
         var(--bg);
-      color: var(--black);
+      color: var(--ink);
     }
 
     a {
@@ -42,10 +49,10 @@
       top: 0;
       z-index: 20;
       min-height: 74px;
-      padding: 0 26px;
-      background: rgba(255,255,255,.94);
+      padding: 0 28px;
+      background: rgba(255, 255, 255, .94);
       backdrop-filter: blur(18px);
-      border-bottom: 1px solid rgba(227,231,238,.9);
+      border-bottom: 1px solid rgba(228,231,236,.92);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -59,15 +66,16 @@
     }
 
     .brand-mark {
-      width: 42px;
-      height: 42px;
-      border-radius: 14px;
+      width: 44px;
+      height: 44px;
+      border-radius: 15px;
       background: var(--red);
       color: #fff;
       display: grid;
       place-items: center;
+      font-size: 23px;
       font-weight: 950;
-      font-size: 22px;
+      box-shadow: 0 14px 26px rgba(234, 29, 44, .22);
     }
 
     .brand strong,
@@ -76,7 +84,7 @@
     }
 
     .brand strong {
-      font-size: 17px;
+      font-size: 18px;
       line-height: 1;
     }
 
@@ -93,36 +101,47 @@
       gap: 10px;
     }
 
-    .ghost-btn,
-    .primary-btn {
-      min-height: 44px;
-      padding: 0 16px;
-      border-radius: 14px;
+    .btn {
+      min-height: 46px;
+      padding: 0 17px;
       border: 0;
+      border-radius: 15px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       font-weight: 950;
+      cursor: pointer;
     }
 
-    .ghost-btn {
+    .btn-dark {
+      background: var(--black);
+      color: #fff;
+    }
+
+    .btn-red {
+      background: var(--red);
+      color: #fff;
+      box-shadow: 0 14px 26px rgba(234, 29, 44, .24);
+    }
+
+    .btn-light {
       background: #f1f3f6;
       color: var(--black);
     }
 
-    .primary-btn {
-      background: var(--red);
+    .btn-whatsapp {
+      background: #128c7e;
       color: #fff;
-      box-shadow: 0 14px 26px rgba(234,29,44,.24);
+      box-shadow: 0 14px 26px rgba(18, 140, 126, .22);
     }
 
     .hero {
-      max-width: 1180px;
+      max-width: 1220px;
       margin: 0 auto;
-      padding: 56px 26px 34px;
+      padding: 58px 28px 38px;
       display: grid;
       grid-template-columns: 1fr .95fr;
-      gap: 36px;
+      gap: 38px;
       align-items: center;
     }
 
@@ -132,7 +151,7 @@
       min-height: 34px;
       padding: 0 13px;
       border-radius: 999px;
-      background: rgba(234,29,44,.10);
+      background: rgba(234, 29, 44, .10);
       color: var(--red);
       font-size: 13px;
       font-weight: 950;
@@ -141,14 +160,14 @@
 
     h1 {
       margin: 0;
-      max-width: 720px;
-      font-size: clamp(40px, 6vw, 74px);
-      line-height: .95;
+      max-width: 740px;
+      font-size: clamp(40px, 6vw, 76px);
+      line-height: .94;
       letter-spacing: 0;
     }
 
     .lead {
-      max-width: 630px;
+      max-width: 650px;
       margin: 22px 0 0;
       color: #4f5663;
       font-size: 19px;
@@ -156,268 +175,123 @@
     }
 
     .hero-actions {
-      margin-top: 28px;
+      margin-top: 30px;
       display: flex;
       flex-wrap: wrap;
       gap: 12px;
     }
 
-    .hero-actions .primary-btn,
-    .hero-actions .ghost-light {
+    .hero-actions .btn {
       min-height: 56px;
       padding: 0 22px;
       border-radius: 18px;
       font-size: 15px;
     }
 
-    .ghost-light {
-      background: #fff;
-      color: var(--black);
-      border: 1px solid var(--line);
-      font-weight: 950;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .commerce-panel {
-      min-height: 560px;
+    .hero-card {
       position: relative;
+      min-height: 590px;
       overflow: hidden;
       border-radius: 36px;
-      background:
-        linear-gradient(180deg, #fff7f8, #f2f5f8);
+      background: #111;
       box-shadow: var(--shadow);
-      border: 1px solid rgba(255,255,255,.8);
+      isolation: isolate;
     }
 
-    .store-illustration {
+    .hero-card img {
       position: absolute;
-      left: 32px;
-      right: 32px;
-      bottom: 44px;
-      height: 260px;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: -2;
     }
 
-    .store {
-      position: absolute;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      height: 180px;
-      border-radius: 28px 28px 22px 22px;
-      background: #fff;
-      border: 2px solid #dfe4ec;
-      box-shadow: 0 22px 42px rgba(17,24,39,.10);
-    }
-
-    .awning {
-      position: absolute;
-      left: -2px;
-      right: -2px;
-      top: -48px;
-      height: 56px;
-      border-radius: 28px 28px 12px 12px;
-      background: repeating-linear-gradient(
-        90deg,
-        var(--red) 0 42px,
-        #fff 42px 84px
-      );
-      border: 2px solid #dfe4ec;
-    }
-
-    .store-sign {
-      position: absolute;
-      left: 50%;
-      top: 24px;
-      transform: translateX(-50%);
-      min-width: 210px;
-      min-height: 46px;
-      padding: 0 18px;
-      border-radius: 999px;
-      background: #111318;
-      color: #fff;
-      display: grid;
-      place-items: center;
-      font-weight: 950;
-      box-shadow: 0 12px 24px rgba(17,24,39,.18);
-    }
-
-    .window {
-      position: absolute;
-      top: 88px;
-      width: 108px;
-      height: 68px;
-      border-radius: 18px;
-      background:
-        linear-gradient(135deg, #eaf2ff, #ffffff);
-      border: 2px solid #d7dde8;
-    }
-
-    .window.one { left: 28px; }
-    .window.two { right: 102px; }
-
-    .door {
-      position: absolute;
-      right: 28px;
-      bottom: 0;
-      width: 62px;
-      height: 104px;
-      border-radius: 18px 18px 0 0;
-      background: #ffe7ea;
-      border: 2px solid #d7dde8;
-    }
-
-    .delivery-bag {
-      position: absolute;
-      left: 44px;
-      top: 0;
-      width: 92px;
-      height: 84px;
-      border-radius: 20px;
-      background: var(--red);
-      box-shadow: 0 18px 32px rgba(234,29,44,.24);
-    }
-
-    .delivery-bag::before {
+    .hero-card::after {
       content: "";
       position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(to bottom, rgba(0,0,0,.08), rgba(0,0,0,.68)),
+        linear-gradient(135deg, rgba(234, 29, 44, .38), transparent 52%);
+      z-index: -1;
+    }
+
+    .order-widget {
+      position: absolute;
       left: 26px;
-      top: -22px;
-      width: 40px;
-      height: 32px;
-      border: 8px solid var(--red);
-      border-bottom: 0;
-      border-radius: 22px 22px 0 0;
-    }
-
-    .delivery-bag::after {
-      content: "✓";
-      position: absolute;
-      right: -15px;
-      top: -14px;
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      display: grid;
-      place-items: center;
-      background: var(--green);
-      color: #fff;
-      font-weight: 950;
-      font-size: 20px;
-      border: 4px solid #fff;
-    }
-
-    .pill-stack {
-      position: absolute;
-      right: 46px;
-      top: 0;
-      display: grid;
-      gap: 10px;
-    }
-
-    .business-pill {
-      min-width: 132px;
-      min-height: 38px;
-      padding: 0 13px;
-      border-radius: 999px;
-      background: #fff;
-      border: 1px solid var(--line);
-      box-shadow: 0 12px 22px rgba(17,24,39,.08);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: #303642;
-      font-size: 13px;
-      font-weight: 950;
-    }
-
-    .business-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: var(--red);
-    }
-
-    .business-pill:nth-child(2) .business-dot {
-      background: var(--green);
-    }
-
-    .business-pill:nth-child(3) .business-dot {
-      background: var(--yellow);
-    }
-
-    .operation-card {
-      position: absolute;
-      left: 28px;
-      right: 28px;
-      top: 28px;
+      right: 26px;
+      bottom: 26px;
       padding: 22px;
-      border-radius: 24px;
-      background: #fff;
-      box-shadow: 0 22px 46px rgba(17,24,39,.12);
+      border-radius: 26px;
+      background: rgba(255, 255, 255, .95);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 24px 54px rgba(0,0,0,.22);
     }
 
-    .operation-card span {
+    .order-widget span {
       display: block;
       color: var(--muted);
       font-size: 13px;
       font-weight: 950;
     }
 
-    .operation-card strong {
+    .order-widget strong {
       display: block;
       margin-top: 8px;
-      font-size: 31px;
-      line-height: 1.04;
+      font-size: 30px;
+      line-height: 1.05;
     }
 
-    .operation-row {
+    .order-flow {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 10px;
       margin-top: 18px;
     }
 
-    .operation-stat {
-      padding: 12px;
-      border-radius: 16px;
-      background: #f4f6f8;
+    .flow-card {
+      min-height: 88px;
+      padding: 13px;
+      border-radius: 18px;
+      background: #f5f7fa;
+      border: 1px solid #e7ebf1;
     }
 
-    .operation-stat b {
+    .flow-card b {
       display: block;
       font-size: 16px;
     }
 
-    .operation-stat small {
+    .flow-card small {
       display: block;
-      margin-top: 3px;
+      margin-top: 4px;
       color: var(--muted);
       font-size: 11px;
       font-weight: 850;
+      line-height: 1.25;
     }
 
     .section {
-      max-width: 1180px;
+      max-width: 1220px;
       margin: 0 auto;
-      padding: 44px 26px;
+      padding: 48px 28px;
     }
 
     .section-title {
-      max-width: 790px;
-      margin-bottom: 22px;
+      max-width: 800px;
+      margin-bottom: 24px;
     }
 
     .section-title span {
       color: var(--red);
-      font-weight: 950;
       font-size: 13px;
+      font-weight: 950;
     }
 
     .section-title h2 {
       margin: 8px 0 0;
-      font-size: clamp(31px, 4vw, 48px);
+      font-size: clamp(31px, 4vw, 50px);
       line-height: 1.02;
     }
 
@@ -425,7 +299,7 @@
       margin: 14px 0 0;
       color: var(--muted);
       font-size: 17px;
-      line-height: 1.52;
+      line-height: 1.55;
     }
 
     .segments {
@@ -440,31 +314,44 @@
       background: #fff;
       border: 1px solid var(--line);
       border-radius: 26px;
-      box-shadow: 0 10px 28px rgba(17,24,39,.06);
+      box-shadow: 0 12px 30px rgba(17, 24, 39, .06);
     }
 
     .segment-card {
       padding: 24px;
-      min-height: 190px;
+      min-height: 210px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .segment-card::after {
+      content: "";
+      position: absolute;
+      right: -34px;
+      bottom: -34px;
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      background: rgba(234, 29, 44, .08);
     }
 
     .segment-icon {
-      width: 50px;
-      height: 50px;
-      border-radius: 17px;
+      width: 54px;
+      height: 54px;
+      border-radius: 18px;
       background: #fff1f2;
       color: var(--red);
       display: grid;
       place-items: center;
-      font-size: 22px;
+      font-size: 24px;
       font-weight: 950;
-      margin-bottom: 16px;
+      margin-bottom: 18px;
     }
 
     .segment-card strong {
       display: block;
-      font-size: 22px;
-      line-height: 1.1;
+      font-size: 23px;
+      line-height: 1.08;
     }
 
     .segment-card p {
@@ -480,13 +367,13 @@
     }
 
     .benefit-card {
-      padding: 26px;
+      padding: 28px;
     }
 
     .benefit-number {
-      width: 42px;
-      height: 42px;
-      border-radius: 15px;
+      width: 44px;
+      height: 44px;
+      border-radius: 16px;
       background: #dcfce7;
       color: #166534;
       display: grid;
@@ -497,19 +384,57 @@
 
     .benefit-card strong {
       display: block;
-      font-size: 24px;
+      font-size: 25px;
       line-height: 1.08;
     }
 
     .benefit-card p {
-      margin: 10px 0 0;
+      margin: 11px 0 0;
       color: var(--muted);
-      line-height: 1.5;
+      line-height: 1.52;
+    }
+
+    .comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .compare-card {
+      min-height: 280px;
+      padding: 28px;
+      border-radius: 30px;
+      border: 1px solid var(--line);
+      background: #fff;
+      box-shadow: 0 12px 30px rgba(17, 24, 39, .06);
+    }
+
+    .compare-card.danger {
+      background: #fff7f8;
+      border-color: #ffd4da;
+    }
+
+    .compare-card.good {
+      background: #f0fdf4;
+      border-color: #bbf7d0;
+    }
+
+    .compare-card h3 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    .compare-card ul {
+      margin: 18px 0 0;
+      padding-left: 20px;
+      color: #4f5663;
+      line-height: 1.9;
+      font-weight: 750;
     }
 
     .pricing-band {
       margin-top: 34px;
-      padding: 56px 0;
+      padding: 58px 0;
       background: #111318;
       color: #fff;
     }
@@ -521,22 +446,26 @@
     .plans {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
+      gap: 18px;
     }
 
     .plan-card {
       padding: 28px;
       color: var(--black);
+      display: flex;
+      flex-direction: column;
     }
 
     .plan-card.featured {
-      border-color: rgba(234,29,44,.70);
-      box-shadow: 0 22px 62px rgba(234,29,44,.18);
+      border-color: rgba(234, 29, 44, .72);
+      box-shadow: 0 26px 70px rgba(234, 29, 44, .20);
+      transform: translateY(-8px);
     }
 
-    .plan-card .tag {
+    .tag {
       display: inline-flex;
       align-items: center;
+      width: fit-content;
       min-height: 30px;
       padding: 0 11px;
       border-radius: 999px;
@@ -548,19 +477,19 @@
 
     .plan-card h3 {
       margin: 18px 0 0;
-      font-size: 27px;
+      font-size: 29px;
     }
 
     .price {
       margin-top: 12px;
-      font-size: 42px;
+      font-size: 44px;
       font-weight: 950;
       line-height: 1;
     }
 
     .price small {
-      font-size: 14px;
       color: var(--muted);
+      font-size: 14px;
     }
 
     .fee {
@@ -572,7 +501,7 @@
 
     .fee strong {
       display: block;
-      font-size: 22px;
+      font-size: 23px;
     }
 
     .fee p {
@@ -581,53 +510,64 @@
     }
 
     .plan-card ul {
-      margin: 18px 0 0;
+      margin: 18px 0 24px;
       padding-left: 18px;
       color: var(--muted);
       line-height: 1.8;
     }
 
+    .plan-card .btn {
+      margin-top: auto;
+      width: 100%;
+      min-height: 54px;
+      border-radius: 17px;
+    }
+
     .cta {
-      max-width: 1180px;
-      margin: 44px auto;
-      padding: 0 26px;
+      max-width: 1220px;
+      margin: 46px auto;
+      padding: 0 28px;
     }
 
     .cta-box {
-      border-radius: 32px;
-      padding: 36px;
+      border-radius: 34px;
+      padding: 38px;
       background:
-        linear-gradient(135deg, #ea1d2c, #b80f20);
+        linear-gradient(135deg, rgba(234,29,44,.96), rgba(184,15,32,.98));
       color: #fff;
-      box-shadow: 0 24px 60px rgba(234,29,44,.24);
+      box-shadow: 0 26px 70px rgba(234, 29, 44, .24);
       display: grid;
       grid-template-columns: 1fr auto;
-      gap: 22px;
+      gap: 24px;
       align-items: center;
     }
 
     .cta-box h2 {
       margin: 0;
-      font-size: clamp(30px, 4vw, 46px);
-      line-height: 1.04;
+      max-width: 760px;
+      font-size: clamp(31px, 4vw, 50px);
+      line-height: 1.02;
     }
 
     .cta-box p {
-      max-width: 660px;
-      margin: 12px 0 0;
+      max-width: 680px;
+      margin: 14px 0 0;
       color: rgba(255,255,255,.86);
       font-size: 17px;
       line-height: 1.5;
     }
 
-    .cta-box .primary-btn {
+    .cta-box .btn {
       background: #fff;
       color: var(--red);
-      box-shadow: none;
+      min-height: 56px;
+      border-radius: 18px;
+      padding: 0 22px;
     }
 
-    @media (max-width: 980px) {
+    @media (max-width: 1020px) {
       .hero,
+      .comparison,
       .cta-box {
         grid-template-columns: 1fr;
       }
@@ -638,23 +578,27 @@
         grid-template-columns: 1fr 1fr;
       }
 
-      .commerce-panel {
-        min-height: 540px;
+      .plan-card.featured {
+        transform: none;
+      }
+
+      .hero-card {
+        min-height: 520px;
       }
     }
 
-    @media (max-width: 640px) {
+    @media (max-width: 680px) {
       .topbar {
         padding: 12px 16px;
-        align-items: flex-start;
         flex-direction: column;
+        align-items: flex-start;
       }
 
       .top-actions {
         width: 100%;
       }
 
-      .top-actions a {
+      .top-actions .btn {
         flex: 1;
       }
 
@@ -671,26 +615,23 @@
         grid-template-columns: 1fr;
       }
 
-      .commerce-panel {
-        min-height: 520px;
+      .hero-card {
+        min-height: 500px;
         border-radius: 28px;
       }
 
-      .operation-row {
+      .order-widget {
+        left: 16px;
+        right: 16px;
+        bottom: 16px;
+      }
+
+      .order-flow {
         grid-template-columns: 1fr;
       }
 
-      .store-illustration {
-        left: 18px;
-        right: 18px;
-      }
-
-      .store-sign {
-        min-width: 170px;
-      }
-
-      .pill-stack {
-        right: 18px;
+      .price {
+        font-size: 38px;
       }
     }
   </style>
@@ -708,64 +649,51 @@
       </a>
 
       <div class="top-actions">
-        <a class="ghost-btn" href="./index.html" onclick="trocarPerfil()">Trocar perfil</a>
-        <a class="primary-btn" href="./web/restaurante/login.html">Entrar no painel</a>
+        <a class="btn btn-light" href="./index.html" onclick="trocarPerfil()">Trocar perfil</a>
+        <a class="btn btn-red" href="#planos">Contratar</a>
       </div>
     </header>
 
     <section class="hero">
       <div>
         <div class="kicker">Para comércio que vende com entrega</div>
-        <h1>Venda mais sem manter motoboy fixo.</h1>
+        <h1>Seu delivery sem motoboy fixo e sem depender só de aplicativo caro.</h1>
         <p class="lead">
-          O Cheguei Delivery ajuda restaurantes, lanchonetes, farmácias e pequenos comércios
-          a entregar pedidos com motoboys próximos, controle pré-pago e menos dependência de grandes plataformas.
+          Restaurantes, lanchonetes, farmácias e comércios locais podem acionar motoboys
+          próximos, controlar saldo pré-pago e proteger a margem de cada venda.
         </p>
 
         <div class="hero-actions">
-          <a class="primary-btn" href="./web/restaurante/login.html">Acessar painel do comércio</a>
-          <a class="ghost-light" href="#planos">Ver planos</a>
+          <a class="btn btn-red" href="#planos">Ver planos e contratar</a>
+          <a class="btn btn-light" href="./web/restaurante/login.html">Entrar no painel</a>
         </div>
       </div>
 
-      <div class="commerce-panel">
-        <div class="operation-card">
-          <span>Pedido recebido</span>
-          <strong>Acione um motoboy próximo em poucos cliques.</strong>
+      <div class="hero-card">
+        <img
+          src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1400&q=85"
+          alt="Restaurante com operação de delivery"
+        >
 
-          <div class="operation-row">
-            <div class="operation-stat">
-              <b>Pré-pago</b>
-              <small>controle de saldo</small>
+        <div class="order-widget">
+          <span>Pedido pronto para sair</span>
+          <strong>Acione um motoboy próximo sem carregar custo fixo.</strong>
+
+          <div class="order-flow">
+            <div class="flow-card">
+              <b>Pedido</b>
+              <small>Veio do WhatsApp, balcão, app ou telefone</small>
             </div>
 
-            <div class="operation-stat">
-              <b>GPS</b>
-              <small>acompanhe a corrida</small>
+            <div class="flow-card">
+              <b>Motoboy</b>
+              <small>Sistema busca entregador próximo</small>
             </div>
 
-            <div class="operation-stat">
-              <b>Menos custo</b>
-              <small>sem fixo parado</small>
+            <div class="flow-card">
+              <b>Entrega</b>
+              <small>Você acompanha o status da corrida</small>
             </div>
-          </div>
-        </div>
-
-        <div class="store-illustration">
-          <div class="delivery-bag"></div>
-
-          <div class="pill-stack">
-            <div class="business-pill"><span class="business-dot"></span>Restaurante</div>
-            <div class="business-pill"><span class="business-dot"></span>Farmácia</div>
-            <div class="business-pill"><span class="business-dot"></span>Lanchonete</div>
-          </div>
-
-          <div class="store">
-            <div class="awning"></div>
-            <div class="store-sign">Delivery local</div>
-            <div class="window one"></div>
-            <div class="window two"></div>
-            <div class="door"></div>
           </div>
         </div>
       </div>
@@ -773,11 +701,11 @@
 
     <section class="section">
       <div class="section-title">
-        <span>Feito para quem vende na cidade</span>
-        <h2>Restaurantes, lanchonetes, farmácias e pequenos negócios podem entregar melhor.</h2>
+        <span>Quem pode usar</span>
+        <h2>Feito para quem vende na cidade e precisa entregar rápido.</h2>
         <p>
-          Use seus próprios canais de venda, como WhatsApp, balcão, Instagram ou plataformas,
-          e acione entregadores quando precisar.
+          Não importa se o pedido veio do WhatsApp, Instagram, balcão, telefone ou plataforma.
+          O Cheguei ajuda a organizar a entrega.
         </p>
       </div>
 
@@ -785,58 +713,81 @@
         <div class="segment-card">
           <div class="segment-icon">R</div>
           <strong>Restaurantes</strong>
-          <p>Despache pedidos sem depender apenas de aplicativos grandes.</p>
+          <p>Despache marmitas, pratos e pedidos de delivery com mais controle.</p>
         </div>
 
         <div class="segment-card">
           <div class="segment-icon">L</div>
           <strong>Lanchonetes</strong>
-          <p>Entregue lanches, bebidas e pedidos rápidos com mais controle.</p>
+          <p>Ideal para lanches, bebidas, porções e pedidos rápidos.</p>
         </div>
 
         <div class="segment-card">
           <div class="segment-icon">F</div>
           <strong>Farmácias</strong>
-          <p>Agilize entregas locais de produtos e encomendas para clientes próximos.</p>
+          <p>Entregas locais de produtos, encomendas e itens urgentes.</p>
         </div>
 
         <div class="segment-card">
           <div class="segment-icon">C</div>
           <strong>Comércios locais</strong>
-          <p>Autônomos, lojas e pequenos negócios também podem operar delivery.</p>
+          <p>Lojas, autônomos e pequenos negócios também podem vender com entrega.</p>
         </div>
       </div>
     </section>
 
     <section class="section">
       <div class="section-title">
-        <span>Por que faz sentido</span>
-        <h2>O comércio ganha quando reduz custo fixo e mantém controle da entrega.</h2>
+        <span>Vantagem prática</span>
+        <h2>O comércio economiza quando não precisa manter estrutura parada.</h2>
       </div>
 
       <div class="benefits">
         <div class="benefit-card">
           <div class="benefit-number">1</div>
-          <strong>Sem motoboy parado</strong>
-          <p>
-            Você não precisa carregar custo fixo nos horários fracos. Solicite entrega quando tiver pedido.
-          </p>
+          <strong>Sem motoboy fixo</strong>
+          <p>Você não paga entregador parado em horário fraco. Solicite quando tiver pedido.</p>
         </div>
 
         <div class="benefit-card">
           <div class="benefit-number">2</div>
-          <strong>Mais margem por venda</strong>
-          <p>
-            Menos dependência de plataformas caras e mais controle sobre seu faturamento.
-          </p>
+          <strong>Pré-pago controlado</strong>
+          <p>Adicione saldo, acompanhe uso e saiba quanto sua operação está consumindo.</p>
         </div>
 
         <div class="benefit-card">
           <div class="benefit-number">3</div>
-          <strong>Operação pré-paga</strong>
-          <p>
-            Você adiciona saldo, acompanha o uso e evita surpresa financeira no fim do mês.
-          </p>
+          <strong>Mais margem</strong>
+          <p>Reduza dependência de plataformas caras e preserve melhor seu faturamento.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-title">
+        <span>Comparação simples</span>
+        <h2>O problema não é vender. O problema é entregar sem perder margem.</h2>
+      </div>
+
+      <div class="comparison">
+        <div class="compare-card danger">
+          <h3>Com motoboy fixo ou plataforma cara</h3>
+          <ul>
+            <li>Custo mesmo quando não tem pedido</li>
+            <li>Comissão alta consumindo a margem</li>
+            <li>Menos controle sobre a operação</li>
+            <li>Dependência de terceiros para vender e entregar</li>
+          </ul>
+        </div>
+
+        <div class="compare-card good">
+          <h3>Com Cheguei Delivery</h3>
+          <ul>
+            <li>Motoboy sob demanda</li>
+            <li>Saldo pré-pago com controle</li>
+            <li>Taxa clara por entrega</li>
+            <li>Mais autonomia para vender pelos seus canais</li>
+          </ul>
         </div>
       </div>
     </section>
@@ -845,10 +796,10 @@
       <div class="section">
         <div class="section-title">
           <span>Planos para comércio</span>
-          <h2>Quanto maior sua operação, menor sua taxa por entrega.</h2>
+          <h2>Escolha o plano e reduza a taxa da plataforma conforme sua operação cresce.</h2>
           <p>
-            O valor da entrega é formado por taxa Cheguei + valor do motoboy.
-            O motoboy recebe o valor dele e o comércio controla tudo no pré-pago.
+            O valor de cada entrega é formado por taxa Cheguei + valor do motoboy.
+            Tudo continua no modelo pré-pago.
           </p>
         </div>
 
@@ -857,9 +808,7 @@
             <span class="tag">Começando</span>
             <h3>Essencial</h3>
 
-            <div class="price">
-              R$ 19,99 <small>/ mês</small>
-            </div>
+            <div class="price">R$ 19,99 <small>/ mês</small></div>
 
             <div class="fee">
               <strong>R$ 3,00 por entrega</strong>
@@ -869,17 +818,20 @@
             <ul>
               <li>Modelo pré-pago</li>
               <li>Solicitação de entrega</li>
-              <li>Controle de saldo</li>
+              <li>Rastreamento básico</li>
+              <li>Ideal para começar</li>
             </ul>
+
+            <button class="btn btn-whatsapp" onclick="contratarPlano('Essencial', '19,99', '3,00')">
+              Contratar pelo WhatsApp
+            </button>
           </div>
 
           <div class="plan-card featured">
             <span class="tag">Mais indicado</span>
             <h3>Profissional</h3>
 
-            <div class="price">
-              R$ 49,99 <small>/ mês</small>
-            </div>
+            <div class="price">R$ 49,99 <small>/ mês</small></div>
 
             <div class="fee">
               <strong>R$ 1,75 por entrega</strong>
@@ -888,18 +840,21 @@
 
             <ul>
               <li>Taxa menor por pedido</li>
-              <li>Ideal para rotina diária</li>
-              <li>Mais margem na operação</li>
+              <li>Melhor para rotina diária</li>
+              <li>Mais margem por entrega</li>
+              <li>Plano ideal para delivery recorrente</li>
             </ul>
+
+            <button class="btn btn-whatsapp" onclick="contratarPlano('Profissional', '49,99', '1,75')">
+              Contratar pelo WhatsApp
+            </button>
           </div>
 
           <div class="plan-card">
             <span class="tag">Maior volume</span>
             <h3>Operação</h3>
 
-            <div class="price">
-              R$ 89,99 <small>/ mês</small>
-            </div>
+            <div class="price">R$ 89,99 <small>/ mês</small></div>
 
             <div class="fee">
               <strong>R$ 1,00 por entrega</strong>
@@ -907,10 +862,15 @@
             </div>
 
             <ul>
-              <li>Melhor taxa Cheguei</li>
+              <li>Menor taxa Cheguei</li>
               <li>Para alto giro de pedidos</li>
               <li>Mais previsibilidade logística</li>
+              <li>Indicado para operação intensa</li>
             </ul>
+
+            <button class="btn btn-whatsapp" onclick="contratarPlano('Operação', '89,99', '1,00')">
+              Contratar pelo WhatsApp
+            </button>
           </div>
         </div>
       </div>
@@ -921,11 +881,11 @@
         <div>
           <h2>Seu comércio pode entregar mais sem aumentar sua estrutura.</h2>
           <p>
-            Use o Cheguei para acionar motoboys próximos, acompanhar corridas e controlar seus gastos com saldo pré-pago.
+            Contrate um plano, adicione saldo pré-pago e comece a acionar motoboys próximos para seus pedidos.
           </p>
         </div>
 
-        <a class="primary-btn" href="./web/restaurante/login.html">Entrar no painel</a>
+        <a class="btn" href="#planos">Escolher plano</a>
       </div>
     </section>
   </main>
@@ -939,6 +899,20 @@
 
     function trocarPerfil() {
       localStorage.removeItem("chegueiPerfilSite");
+    }
+
+    const WHATSAPP_COMERCIAL = "5599999999999";
+
+    function contratarPlano(nomePlano, valorMensal, taxaEntrega) {
+      const texto = encodeURIComponent(
+        `Olá! Tenho interesse em contratar o plano ${nomePlano} do Cheguei Delivery.\n\n` +
+        `Plano: ${nomePlano}\n` +
+        `Mensalidade: R$ ${valorMensal}/mês\n` +
+        `Taxa Cheguei: R$ ${taxaEntrega} por entrega + valor do motoboy\n\n` +
+        `Quero saber como começar.`
+      );
+
+      window.open(`https://wa.me/${WHATSAPP_COMERCIAL}?text=${texto}`, "_blank");
     }
   </script>
 </body>
