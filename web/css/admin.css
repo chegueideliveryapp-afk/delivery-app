@@ -16,8 +16,10 @@
   box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
+  min-height: 100%;
   background: var(--admin-bg);
   color: var(--admin-ink);
   font-family: Inter, Arial, sans-serif;
@@ -101,6 +103,11 @@ button {
   background: var(--admin-red-dark);
 }
 
+.primary-btn:disabled {
+  opacity: .7;
+  cursor: wait;
+}
+
 #mensagem {
   margin-top: 12px;
   color: #c02626;
@@ -137,7 +144,7 @@ button {
   border-radius: 13px;
   padding: 0 16px;
   font-weight: 900;
-  box-shadow: 0 8px 18px rgba(0,0,0,.16);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, .16);
 }
 
 .container {
@@ -197,6 +204,11 @@ button {
 .panel h2 {
   margin: 0 0 6px;
   font-size: 24px;
+}
+
+.panel h3 {
+  margin: 0 0 14px;
+  font-size: 18px;
 }
 
 .section-kicker {
@@ -372,6 +384,24 @@ button {
   font-weight: 900;
 }
 
+.action-link {
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 12px;
+  background: #fff;
+  color: var(--admin-ink);
+  border: 1px solid var(--admin-line);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+}
+
+.action-link:hover {
+  border-color: var(--admin-red);
+}
+
 #mapaMotoboys {
   width: 100%;
   height: 460px;
@@ -415,6 +445,85 @@ button {
   color: var(--admin-muted);
 }
 
+.bi-card strong {
+  font-size: 22px;
+}
+
+.dashboard-menu {
+  max-width: none;
+  padding: 0;
+  margin: 18px 0 0;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-top: 20px;
+}
+
+.chart-card {
+  min-height: 320px;
+  padding: 18px;
+  border: 1px solid var(--admin-line);
+  border-radius: 18px;
+  background: #fbfcfd;
+}
+
+.chart-card h3 {
+  margin: 0 0 16px;
+  font-size: 18px;
+}
+
+.chart-card canvas {
+  width: 100% !important;
+  max-height: 260px;
+}
+
+.alert-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid var(--admin-line);
+  border-radius: 18px;
+  margin-bottom: 12px;
+  background: #fbfcfd;
+}
+
+.alert-card strong {
+  font-size: 17px;
+}
+
+.alert-card p {
+  margin: 7px 0 0;
+  color: var(--admin-muted);
+}
+
+.table-like {
+  display: grid;
+  gap: 10px;
+}
+
+.table-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--admin-line);
+  border-radius: 14px;
+  background: #fbfcfd;
+}
+
+.table-row strong {
+  font-size: 15px;
+}
+
+.table-row span {
+  color: var(--admin-muted);
+  font-size: 14px;
+}
+
 @media (max-width: 760px) {
   .topbar {
     padding: 0 16px;
@@ -434,7 +543,8 @@ button {
     display: block;
   }
 
-  .list-card {
+  .list-card,
+  .alert-card {
     display: block;
   }
 
@@ -445,5 +555,17 @@ button {
 
   #mapaMotoboys {
     height: 360px;
+  }
+
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-card {
+    min-height: 280px;
+  }
+
+  .table-row {
+    grid-template-columns: 1fr;
   }
 }
