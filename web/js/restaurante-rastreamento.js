@@ -14,26 +14,18 @@ import {
   where
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-let mapa = null;
-let markers = {};
-
-const estado = {
-  pedidos: [],
-  rastreamentos: []
-};
+let map = null;
+let restauranteMarker = null;
+let motoboyMarkers = {};
+let unsubscribeMotoboys = {};
 
 function setText(id, texto) {
   const el = document.getElementById(id);
   if (el) el.innerText = texto;
 }
 
-function setHtml(id, html) {
-  const el = document.getElementById(id);
-  if (el) el.innerHTML = html;
-}
-
 function dataTexto(timestamp) {
-  if (!timestamp?.toDate) return "Ainda sem atualização";
+  if (!timestamp?.toDate) return "Data não informada";
 
   return timestamp.toDate().toLocaleString("pt-BR", {
     dateStyle: "short",
@@ -41,27 +33,161 @@ function dataTexto(timestamp) {
   });
 }
 
-function statusTexto(status) {
-  if (status === "aceito") return "Em andamento";
-  return status || "Não informado";
+function iniciarMapa() {
+  map = L.map("mapaRastreamento").setView([-22.376, -46.942], 13);
+
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: "&copy; OpenStreetMap"
+  }).addTo(map);
+}
+
+function limparMotoboysSemPedido(pedidosAtivos) {
+  const idsAtivos = pedidosAtivos.map((pedido) => pedido.id);
+
+  Object.keys(motoboyMarkers).forEach((pedidoId) => {
+    if (!idsAtivos.includes(pedidoId)) {
+      map.removeLayer(motoboyMarkers[pedidoId]);
+      delete motoboyMarkers[pedidoId];
+    }
+  });
+
+  Object.keys(unsubscribeMotoboys).forEach((pedidoId) => {
+    if (!idsAtivos.includes(pedidoId)) {
+      unsubscribeMotoboys[pedidoId]();
+      delete unsubscribeMotoboys[pedidoId];
+    }
+  });
+}
+
+function atualizarRestauranteNoMapa(restauranteLocation) {
+  if (!restauranteLocation?.lat || !restauranteLocation?.lng) return;
+
+  const pos = [
+    Number(restauranteLocation.lat),
+    Number(restauranteLocation.lng)
+  ];
+
+  if (!restauranteMarker) {
+    restauranteMarker = L.marker(pos).addTo(map);
+    restauranteMarker.bindPopup("Restaurante");
+  } else {
+    restauranteMarker.setLatLng(pos);
+  }
+
+  map.setView(pos, 14);
+}
+
+function pegarLatLngMotoboy(motoboy) {
+  const lat = Number(
+    motoboy.location?.lat ??
+    motoboy.lat
+  );
+
+  const lng = Number(
+    motoboy.location?.lng ??
+    motoboy.lng
+  );
+
+  if (!lat || !lng) return null;
+
+  return [lat, lng];
+}
+
+function acompanharMotoboyDoPedido(pedido) {
+  if (!pedido.motoboyId) return;
+  if (unsubscribeMotoboys[pedido.id]) return;
+
+  const motoboyRef = doc(db, "motoboys", pedido.motoboyId);
+
+  unsubscribeMotoboys[pedido.id] = onSnapshot(
+    motoboyRef,
+    (snap) => {
+      if (!snap.exists()) return;
+
+      const motoboy = snap.data();
+      const pos = pegarLatLngMotoboy(motoboy);
+
+      if (!pos) return;
+
+      if (!motoboyMarkers[pedido.id]) {
+        motoboyMarkers[pedido.id] = L.marker(pos).addTo(map);
+      } else {
+        motoboyMarkers[pedido.id].setLatLng(pos);
+      }
+
+      motoboyMarkers[pedido.id].bindPopup(`
+        <strong>${motoboy.nome || pedido.motoboyNome || "Motoboy"}</strong><br>
+        Pedido: ${pedido.id}<br>
+        Entrega: ${pedido.enderecoEntrega || "Endereço não informado"}<br>
+        Última atualização: ${dataTexto(motoboy.ultimaLocalizacaoAt)}
+      `);
+
+      const bounds = [];
+
+      if (pedido.restauranteLocation?.lat && pedido.restauranteLocation?.lng) {
+        bounds.push([
+          Number(pedido.restauranteLocation.lat),
+          Number(pedido.restauranteLocation.lng)
+        ]);
+      }
+
+      bounds.push(pos);
+
+      if (bounds.length > 1) {
+        map.fitBounds(bounds, {
+          padding: [50, 50],
+          maxZoom: 16
+        });
+      } else {
+        map.setView(pos, 15);
+      }
+    },
+    (erro) => {
+      console.error("Erro ao acompanhar motoboy:", erro);
+    }
+  );
+}
+
+function renderizarLista(pedidos) {
+  const lista = document.getElementById("listaRastreamento");
+
+  if (!lista) return;
+
+  lista.innerHTML = "";
+
+  if (pedidos.length === 0) {
+    lista.innerHTML = `
+      <div class="empty-mini">
+        Nenhuma corrida em andamento no momento.
+      </div>
+    `;
+    return;
+  }
+
+  pedidos.forEach((pedido) => {
+    const item = document.createElement("div");
+    item.className = "tracking-item";
+
+    item.innerHTML = `
+      <strong>${pedido.motoboyNome || "Motoboy aceitou a corrida"}</strong>
+
+      <p>Pedido: ${pedido.id}</p>
+      <p>Entrega: ${pedido.enderecoEntrega || "Endereço não informado"}</p>
+      <p>Status: ${pedido.status || "aceito"}</p>
+      <p>Aceito em: ${dataTexto(pedido.aceitoAt)}</p>
+
+      <span class="tracking-status">Em andamento</span>
+    `;
+
+    lista.appendChild(item);
+  });
 }
 
 async function validarRestaurante(user) {
   const userSnap = await getDoc(doc(db, "users", user.uid));
 
-  if (!userSnap.exists()) {
-    await signOut(auth);
-    window.location.href = "./login.html";
-    return false;
-  }
-
-  const perfil = userSnap.data();
-
-  if (
-    perfil.role !== "restaurante" ||
-    perfil.ativo !== true ||
-    perfil.bloqueado === true
-  ) {
+  if (!userSnap.exists() || userSnap.data().role !== "restaurante") {
     await signOut(auth);
     window.location.href = "./login.html";
     return false;
@@ -70,122 +196,7 @@ async function validarRestaurante(user) {
   return true;
 }
 
-function iniciarMapa() {
-  if (mapa) return;
-
-  mapa = L.map("mapaRastreamento").setView([-22.376, -46.942], 13);
-
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    attribution: "&copy; OpenStreetMap"
-  }).addTo(mapa);
-}
-
-function limparMarkers() {
-  Object.values(markers).forEach((marker) => {
-    mapa.removeLayer(marker);
-  });
-
-  markers = {};
-}
-
-function obterCorridasEmAndamento() {
-  const pedidosAceitos = estado.pedidos.filter((pedido) => {
-    return pedido.status === "aceito";
-  });
-
-  return pedidosAceitos
-    .map((pedido) => {
-      const rastreamento = estado.rastreamentos.find((r) => {
-        return r.pedidoId === pedido.id;
-      });
-
-      if (!rastreamento) return null;
-
-      return {
-        ...rastreamento,
-        pedidoStatusReal: pedido.status,
-        pedidoId: pedido.id,
-        motoboyNome: pedido.motoboyNome || rastreamento.motoboyNome || "Motoboy",
-        restauranteNome: pedido.restauranteNome || rastreamento.restauranteNome || "",
-        enderecoEntrega: pedido.enderecoEntrega || rastreamento.enderecoEntrega || "",
-        aceitoAt: pedido.aceitoAt || null
-      };
-    })
-    .filter(Boolean);
-}
-
-function renderizarLista(corridas) {
-  if (!corridas.length) {
-    setHtml(
-      "listaRastreamento",
-      `<div class="empty-mini">Nenhuma corrida em andamento no momento.</div>`
-    );
-    return;
-  }
-
-  setHtml(
-    "listaRastreamento",
-    corridas.map((r) => {
-      return `
-        <div class="tracking-item">
-          <strong>${r.motoboyNome || "Motoboy"}</strong>
-          <p>Pedido: ${r.pedidoId}</p>
-          <p>Entrega: ${r.enderecoEntrega || "Endereço não informado"}</p>
-          <p>Aceito em: ${dataTexto(r.aceitoAt)}</p>
-          <p>Última atualização: ${dataTexto(r.ultimaAtualizacaoAt)}</p>
-
-          <span class="tracking-status aceito">
-            ${statusTexto(r.pedidoStatusReal)}
-          </span>
-        </div>
-      `;
-    }).join("")
-  );
-}
-
-function atualizarMapa(corridas) {
-  limparMarkers();
-
-  const bounds = [];
-
-  corridas.forEach((r) => {
-    const lat = Number(r.location?.lat);
-    const lng = Number(r.location?.lng);
-
-    if (!lat || !lng) return;
-
-    const marker = L.marker([lat, lng])
-      .addTo(mapa)
-      .bindPopup(`
-        <strong>${r.motoboyNome || "Motoboy"}</strong><br>
-        Status: Em andamento<br>
-        Pedido: ${r.pedidoId}<br>
-        Atualizado: ${dataTexto(r.ultimaAtualizacaoAt)}
-      `);
-
-    markers[r.pedidoId] = marker;
-    bounds.push([lat, lng]);
-  });
-
-  if (bounds.length) {
-    mapa.fitBounds(bounds, {
-      padding: [40, 40],
-      maxZoom: 16
-    });
-  }
-}
-
-function renderizarTela() {
-  const corridas = obterCorridasEmAndamento();
-
-  setText("totalRastreamento", `${corridas.length} corrida(s)`);
-
-  renderizarLista(corridas);
-  atualizarMapa(corridas);
-}
-
-export function carregarRastreamentoRestaurante() {
+export function iniciarRastreamentoRestaurante() {
   onAuthStateChanged(auth, async (user) => {
     if (!user) {
       window.location.href = "./login.html";
@@ -198,65 +209,57 @@ export function carregarRastreamentoRestaurante() {
 
     iniciarMapa();
 
-    const pedidosQuery = query(
-      collection(db, "pedidos"),
-      where("restauranteId", "==", user.uid)
-    );
+    const pedidosRef = collection(db, "pedidos");
 
-    const rastreamentoQuery = query(
-      collection(db, "rastreamento_pedidos"),
-      where("restauranteId", "==", user.uid)
-    );
-
-    onSnapshot(
-      pedidosQuery,
-      (snapshot) => {
-        estado.pedidos = [];
-
-        snapshot.forEach((docSnap) => {
-          estado.pedidos.push({
-            id: docSnap.id,
-            ...docSnap.data()
-          });
-        });
-
-        renderizarTela();
-      },
-      (erro) => {
-        console.error(erro);
-
-        setText("totalRastreamento", "Erro");
-
-        setHtml(
-          "listaRastreamento",
-          `<div class="empty-mini">Erro ao carregar pedidos da corrida.</div>`
-        );
-      }
+    const q = query(
+      pedidosRef,
+      where("restauranteId", "==", user.uid),
+      where("status", "==", "aceito")
     );
 
     onSnapshot(
-      rastreamentoQuery,
+      q,
       (snapshot) => {
-        estado.rastreamentos = [];
+        const pedidos = [];
 
         snapshot.forEach((docSnap) => {
-          estado.rastreamentos.push({
+          const pedido = {
             id: docSnap.id,
             ...docSnap.data()
-          });
+          };
+
+          if (pedido.motoboyId) {
+            pedidos.push(pedido);
+          }
         });
 
-        renderizarTela();
+        setText("totalCorridas", `${pedidos.length} corrida(s)`);
+
+        limparMotoboysSemPedido(pedidos);
+        renderizarLista(pedidos);
+
+        if (pedidos.length > 0) {
+          atualizarRestauranteNoMapa(pedidos[0].restauranteLocation);
+        }
+
+        pedidos.forEach((pedido) => {
+          acompanharMotoboyDoPedido(pedido);
+        });
       },
       (erro) => {
-        console.error(erro);
+        console.error("Erro ao carregar rastreamento:", erro);
 
-        setText("totalRastreamento", "Erro");
+        setText("totalCorridas", "Erro");
 
-        setHtml(
-          "listaRastreamento",
-          `<div class="empty-mini">Erro ao carregar rastreamento. Confira as regras do Firestore.</div>`
-        );
+        const lista = document.getElementById("listaRastreamento");
+
+        if (lista) {
+          lista.innerHTML = `
+            <div class="empty-mini">
+              Erro ao carregar rastreamento. Confira permissões do Firestore.
+            </div>
+          `;
+        }
       }
     );
   });
