@@ -5,7 +5,7 @@
   <title>Financeiro - Cheguei Motoboy</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <link rel="stylesheet" href="./css/app.css?v=173">
+  <link rel="stylesheet" href="./css/app.css?v=260">
 
   <style>
     .earn-hero {
@@ -185,6 +185,15 @@
       line-height: 1.35;
     }
 
+    .finance-item.refund {
+      border-color: #fecaca;
+      background: #fff7f7;
+    }
+
+    .finance-item.refund strong {
+      color: #991b1b;
+    }
+
     .status-pill {
       display: inline-block;
       margin-top: 8px;
@@ -202,6 +211,11 @@
     .status-pill.pendente {
       background: #fef3c7;
       color: #92400e;
+    }
+
+    .status-pill.estornada {
+      background: #fee2e2;
+      color: #991b1b;
     }
 
     .finance-total-box {
@@ -342,8 +356,18 @@
         </div>
       </div>
     </section>
+
+    <section class="feed-card">
+      <h2>Entregas estornadas</h2>
+
+      <div id="listaEntregasEstornadas">
+        <div class="empty-state">
+          Carregando entregas estornadas...
+        </div>
+      </div>
+    </section>
   </main>
 
-  <script type="module" src="./src/financeiro.js?v=190"></script>
+  <script type="module" src="./src/financeiro.js?v=260"></script>
 </body>
 </html>
