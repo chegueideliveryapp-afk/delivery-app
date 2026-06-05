@@ -6,12 +6,15 @@ import {
   query
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-let motoboys = [];
-let restaurantes = [];
-let pedidos = [];
-let recargas = [];
-let pagamentosMotoboy = [];
-let ledgerMotoboy = [];
+let motoboysCache = [];
+let restaurantesCache = [];
+let pedidosCache = [];
+let recargasCache = [];
+let pagamentosCache = [];
+let ledgerCache = [];
+
+let graficoFinanceiro = null;
+let graficoPedidos = null;
 
 function dinheiro(valor) {
   return Number(valor || 0).toLocaleString("pt-BR", {
@@ -25,78 +28,17 @@ function numero(valor, padrao = 0) {
   return Number.isFinite(n) ? n : padrao;
 }
 
-function texto(valor) {
-  return String(valor || "").toLowerCase().trim();
+function setText(id, texto) {
+  const el = document.getElementById(id);
+  if (el) el.innerText = texto;
 }
 
-function dataInputHojeMenosDias(dias) {
-  const data = new Date();
-  data.setDate(data.getDate() - dias);
-
-  return formatarDataInput(data);
-}
-
-function formatarDataInput(data) {
-  const ano = data.getFullYear();
-  const mes = String(data.getMonth() + 1).padStart(2, "0");
-  const dia = String(data.getDate()).padStart(2, "0");
-
-  return `${ano}-${mes}-${dia}`;
-}
-
-function parseDataInicio(valor) {
-  if (!valor) return null;
-
-  const data = new Date(`${valor}T00:00:00`);
-  return Number.isNaN(data.getTime()) ? null : data;
-}
-
-function parseDataFim(valor) {
-  if (!valor) return null;
-
-  const data = new Date(`${valor}T23:59:59`);
-  return Number.isNaN(data.getTime()) ? null : data;
-}
-
-function dataDoPedido(pedido) {
+function pedidoFoiEstornado(pedido) {
   return (
-    pedido.entregueAt?.toDate?.() ||
-    pedido.updatedAt?.toDate?.() ||
-    pedido.createdAt?.toDate?.() ||
-    null
-  );
-}
-
-function dataDoPagamento(pagamento) {
-  return (
-    pagamento.pagoAt?.toDate?.() ||
-    pagamento.createdAt?.toDate?.() ||
-    null
-  );
-}
-
-function dataDaRecarga(recarga) {
-  return (
-    recarga.aprovadoAt?.toDate?.() ||
-    recarga.solicitadoAt?.toDate?.() ||
-    recarga.createdAt?.toDate?.() ||
-    null
-  );
-}
-
-function dentroDoPeriodo(data, inicio, fim) {
-  if (!data) return true;
-  if (inicio && data < inicio) return false;
-  if (fim && data > fim) return false;
-
-  return true;
-}
-
-function pedidoTemPagamentoDireto(pedido) {
-  return (
-    pedido.pagamentoMotoboyPago === true ||
-    pedido.pagamentoMotoboyStatus === "pago" ||
-    Boolean(pedido.pagamentoMotoboyId)
+    pedido.estornado === true ||
+    pedido.pagamentoMotoboyEstornado === true ||
+    pedido.pagamentoMotoboyStatus === "estornado" ||
+    pedido.statusFinanceiroMotoboy === "estornado"
   );
 }
 
@@ -120,22 +62,22 @@ function ledgerFoiPago(ledger) {
   );
 }
 
-function ledgersDoPedido(pedidoId) {
-  return ledgerMotoboy.filter((ledger) => ledger.pedidoId === pedidoId);
+function ledgerDoPedido(pedidoId) {
+  return ledgerCache.filter((ledger) => ledger.pedidoId === pedidoId);
 }
 
 function pagamentoContemLedgerDoPedido(pagamento, pedidoId) {
   if (!Array.isArray(pagamento.ledgerIds)) return false;
 
-  const ledgers = ledgersDoPedido(pedidoId);
+  const ledgersDoPedido = ledgerDoPedido(pedidoId);
 
-  return ledgers.some((ledger) => {
+  return ledgersDoPedido.some((ledger) => {
     return pagamento.ledgerIds.includes(ledger.id);
   });
 }
 
 function pedidoFoiPagoPorPagamento(pedido) {
-  return pagamentosMotoboy.some((pagamento) => {
+  return pagamentosCache.some((pagamento) => {
     const pagamentoValido =
       pagamento.status === "pago" ||
       pagamento.pago === true ||
@@ -151,14 +93,15 @@ function pedidoFoiPagoPorPagamento(pedido) {
 }
 
 function pedidoFoiPagoPorLedger(pedido) {
-  const ledgers = ledgersDoPedido(pedido.id);
-
-  return ledgers.some((ledger) => ledgerFoiPago(ledger));
+  const ledgersDoPedido = ledgerDoPedido(pedido.id);
+  return ledgersDoPedido.some((ledger) => ledgerFoiPago(ledger));
 }
 
 function pedidoFoiPagoAoMotoboy(pedido) {
   return (
-    pedidoTemPagamentoDireto(pedido) ||
+    pedido.pagamentoMotoboyPago === true ||
+    pedido.pagamentoMotoboyStatus === "pago" ||
+    Boolean(pedido.pagamentoMotoboyId) ||
     pedidoFoiPagoPorPagamento(pedido) ||
     pedidoFoiPagoPorLedger(pedido)
   );
@@ -175,497 +118,418 @@ function pedidoEntregueComValorMotoboy(pedido) {
 function pedidoPendentePagamentoMotoboy(pedido) {
   return (
     pedidoEntregueComValorMotoboy(pedido) &&
+    !pedidoFoiEstornado(pedido) &&
     !pedidoFoiPagoAoMotoboy(pedido)
   );
 }
 
-function valorPagamentoHistorico(pagamento) {
-  return numero(
-    pagamento.valorTotal ??
-    pagamento.valorTotalSemana ??
-    pagamento.valorPago ??
-    pagamento.valor,
-    0
+function pedidoValidoParaBI(pedido) {
+  return (
+    pedido.status === "entregue" &&
+    !pedidoFoiEstornado(pedido)
   );
 }
 
-function calcularSaldoRestaurantes() {
-  return restaurantes.reduce((total, restaurante) => {
-    return total + numero(restaurante.saldoPrePago, 0);
-  }, 0);
+function pedidoContaComoOperacao(pedido) {
+  return [
+    "pendente",
+    "buscando_motoboy",
+    "sem_motoboy",
+    "aceito",
+    "no_restaurante",
+    "coletado",
+    "no_cliente",
+    "entregue"
+  ].includes(pedido.status);
 }
 
-function calcularAPagarMotoboys() {
-  return pedidos
-    .filter(pedidoPendentePagamentoMotoboy)
-    .reduce((total, pedido) => {
-      return total + numero(pedido.valorMotoboy, 0);
-    }, 0);
-}
+function calcularResumo() {
+  const totalMotoboys = motoboysCache.length;
 
-function renderizarResumo() {
-  const alvo = document.getElementById("resumoAdmin");
-  if (!alvo) return;
+  const motoboysOnline = motoboysCache.filter((m) => m.online === true).length;
 
-  const motoboysOnline = motoboys.filter((m) => m.online === true).length;
-
-  const motoboysPendentes = motoboys.filter((m) => {
-    return m.statusCadastro === "pendente" || m.aprovado !== true;
+  const motoboysPendentes = motoboysCache.filter((m) => {
+    return (
+      m.statusCadastro === "pendente" ||
+      m.aprovado === false
+    );
   }).length;
 
-  const restaurantesAtivos = restaurantes.filter((r) => {
+  const restaurantesAtivos = restaurantesCache.filter((r) => {
     return r.ativo !== false && r.bloqueado !== true;
   }).length;
 
-  const pedidosPendentes = pedidos.filter((p) => {
-    return p.status === "pendente" ||
-      p.status === "buscando_motoboy" ||
-      p.status === "sem_motoboy";
+  const saldoRestaurantes = restaurantesCache.reduce((acc, r) => {
+    return acc + numero(r.saldoPrePago, 0);
+  }, 0);
+
+  const pedidosPendentes = pedidosCache.filter((p) => {
+    return ["pendente", "buscando_motoboy", "sem_motoboy"].includes(p.status);
   }).length;
 
-  const pedidosAceitos = pedidos.filter((p) => p.status === "aceito").length;
-  const pedidosEntregues = pedidos.filter((p) => p.status === "entregue").length;
+  const pedidosAceitos = pedidosCache.filter((p) => {
+    return ["aceito", "no_restaurante", "coletado", "no_cliente"].includes(p.status);
+  }).length;
 
-  const recargasPendentes = recargas.filter((r) => r.status === "pendente").length;
+  const pedidosEntregues = pedidosCache.filter((p) => {
+    return p.status === "entregue" && !pedidoFoiEstornado(p);
+  }).length;
 
-  const saldoRestaurantes = calcularSaldoRestaurantes();
-  const aPagarMotoboys = calcularAPagarMotoboys();
+  const recargasPendentes = recargasCache.filter((r) => {
+    return r.status === "pendente";
+  }).length;
 
-  alvo.innerHTML = `
-    <div class="menu-card">
-      <div>
-        <strong>${motoboys.length}</strong>
-        <p>Motoboys cadastrados</p>
-        <span class="badge gray">Base de entregadores</span>
-      </div>
-    </div>
+  const valorPagarMotoboys = pedidosCache
+    .filter(pedidoPendentePagamentoMotoboy)
+    .reduce((acc, pedido) => acc + numero(pedido.valorMotoboy, 0), 0);
 
-    <div class="menu-card">
-      <div>
-        <strong>${motoboysOnline}</strong>
-        <p>Motoboys online</p>
-        <span class="badge green">Disponíveis agora</span>
-      </div>
-    </div>
+  const pedidosValidosBI = pedidosCache.filter(pedidoValidoParaBI);
+  const pedidosEstornados = pedidosCache.filter(pedidoFoiEstornado);
 
-    <div class="menu-card">
-      <div>
-        <strong>${motoboysPendentes}</strong>
-        <p>Motoboys pendentes</p>
-        <span class="badge green">Aguardando aprovação</span>
-      </div>
-    </div>
+  const biTotalCobrado = pedidosValidosBI.reduce((acc, pedido) => {
+    return acc + numero(pedido.valorTotal, 0);
+  }, 0);
 
-    <div class="menu-card">
-      <div>
-        <strong>${restaurantesAtivos}</strong>
-        <p>Restaurantes ativos</p>
-        <span class="badge green">Operando na plataforma</span>
-      </div>
-    </div>
+  const biReceitaPlataforma = pedidosValidosBI.reduce((acc, pedido) => {
+    return acc + numero(pedido.taxaSistema, 0);
+  }, 0);
 
-    <div class="menu-card">
-      <div>
-        <strong>${dinheiro(saldoRestaurantes)}</strong>
-        <p>Saldo dos restaurantes</p>
-        <span class="badge green">Pré-pago disponível</span>
-      </div>
-    </div>
+  const biValorMotoboys = pedidosValidosBI.reduce((acc, pedido) => {
+    return acc + numero(pedido.valorMotoboy, 0);
+  }, 0);
 
-    <div class="menu-card">
-      <div>
-        <strong>${pedidosPendentes}</strong>
-        <p>Pedidos pendentes</p>
-        <span class="badge gray">Buscando motoboy</span>
-      </div>
-    </div>
+  const biValorEstornado = pedidosEstornados.reduce((acc, pedido) => {
+    return acc + numero(pedido.valorTotal, 0);
+  }, 0);
 
-    <div class="menu-card">
-      <div>
-        <strong>${pedidosAceitos}</strong>
-        <p>Pedidos aceitos</p>
-        <span class="badge gray">Em andamento</span>
-      </div>
-    </div>
-
-    <div class="menu-card">
-      <div>
-        <strong>${pedidosEntregues}</strong>
-        <p>Pedidos entregues</p>
-        <span class="badge green">Finalizados</span>
-      </div>
-    </div>
-
-    <div class="menu-card">
-      <div>
-        <strong>${recargasPendentes}</strong>
-        <p>Recargas pendentes</p>
-        <span class="badge yellow">Precisam aprovação</span>
-      </div>
-    </div>
-
-    <div class="menu-card">
-      <div>
-        <strong>${dinheiro(aPagarMotoboys)}</strong>
-        <p>A pagar motoboys</p>
-        <span class="badge yellow">Entregas não pagas</span>
-      </div>
-    </div>
-  `;
-
-  renderizarAlertas(recargasPendentes, pedidosAceitos, aPagarMotoboys);
-}
-
-function renderizarAlertas(recargasPendentes, pedidosAceitos, aPagarMotoboys) {
-  const lista = document.getElementById("alertasAdmin");
-  if (!lista) return;
-
-  lista.innerHTML = "";
-
-  if (recargasPendentes > 0) {
-    lista.innerHTML += `
-      <div class="list-card">
-        <div>
-          <strong>${recargasPendentes} recarga(s) Pix pendente(s)</strong>
-          <p>Confira comprovantes e aprove manualmente.</p>
-          <span class="badge yellow">Financeiro</span>
-        </div>
-        <div class="actions">
-          <a class="topbar-link" href="./recargas.html">Ver</a>
-        </div>
-      </div>
-    `;
-  }
-
-  if (pedidosAceitos > 0) {
-    lista.innerHTML += `
-      <div class="list-card">
-        <div>
-          <strong>${pedidosAceitos} corrida(s) em andamento</strong>
-          <p>Acompanhe pedidos aceitos e motoboys em rota.</p>
-          <span class="badge green">Em rota</span>
-        </div>
-        <div class="actions">
-          <a class="topbar-link" href="./mapa.html">Ver</a>
-        </div>
-      </div>
-    `;
-  }
-
-  if (aPagarMotoboys > 0) {
-    lista.innerHTML += `
-      <div class="list-card">
-        <div>
-          <strong>${dinheiro(aPagarMotoboys)} em aberto para motoboys</strong>
-          <p>Valores acumulados para pagamento semanal.</p>
-          <span class="badge yellow">Pagamento segunda-feira</span>
-        </div>
-        <div class="actions">
-          <a class="topbar-link" href="./pagamentos.html">Ver</a>
-        </div>
-      </div>
-    `;
-  }
-
-  if (!lista.innerHTML) {
-    lista.innerHTML = `
-      <div class="empty">
-        Nenhum item crítico no momento.
-      </div>
-    `;
-  }
-}
-
-function filtrosRelatorio() {
   return {
-    inicio: parseDataInicio(document.getElementById("dataInicioRelatorio")?.value),
-    fim: parseDataFim(document.getElementById("dataFimRelatorio")?.value),
-
-    buscaRestaurante: texto(document.getElementById("buscaRestauranteRelatorio")?.value),
-    statusRestaurante: document.getElementById("statusRestauranteRelatorio")?.value || "todos",
-    ordenacaoRestaurante: document.getElementById("ordenacaoRestauranteRelatorio")?.value || "nome",
-
-    buscaMotoboy: texto(document.getElementById("buscaMotoboyRelatorio")?.value),
-    statusMotoboy: document.getElementById("statusMotoboyRelatorio")?.value || "todos",
-    ordenacaoMotoboy: document.getElementById("ordenacaoMotoboyRelatorio")?.value || "nome"
+    totalMotoboys,
+    motoboysOnline,
+    motoboysPendentes,
+    restaurantesAtivos,
+    saldoRestaurantes,
+    pedidosPendentes,
+    pedidosAceitos,
+    pedidosEntregues,
+    recargasPendentes,
+    valorPagarMotoboys,
+    biTotalCobrado,
+    biReceitaPlataforma,
+    biValorMotoboys,
+    biValorEstornado
   };
 }
 
-function restaurantePassaFiltro(restaurante, filtros) {
-  const busca = filtros.buscaRestaurante;
+function atualizarCards() {
+  const resumo = calcularResumo();
 
-  if (busca) {
-    const base = texto([
-      restaurante.nome,
-      restaurante.email,
-      restaurante.telefone,
-      restaurante.responsavel
-    ].join(" "));
+  setText("totalMotoboys", resumo.totalMotoboys);
+  setText("motoboysOnline", resumo.motoboysOnline);
+  setText("motoboysPendentes", resumo.motoboysPendentes);
+  setText("restaurantesAtivos", resumo.restaurantesAtivos);
+  setText("saldoRestaurantes", dinheiro(resumo.saldoRestaurantes));
+  setText("pedidosPendentes", resumo.pedidosPendentes);
+  setText("pedidosAceitos", resumo.pedidosAceitos);
+  setText("pedidosEntregues", resumo.pedidosEntregues);
+  setText("recargasPendentes", resumo.recargasPendentes);
+  setText("valorPagarMotoboys", dinheiro(resumo.valorPagarMotoboys));
 
-    if (!base.includes(busca)) return false;
-  }
+  setText("biTotalCobrado", dinheiro(resumo.biTotalCobrado));
+  setText("biReceitaPlataforma", dinheiro(resumo.biReceitaPlataforma));
+  setText("biValorMotoboys", dinheiro(resumo.biValorMotoboys));
+  setText("biValorEstornado", dinheiro(resumo.biValorEstornado));
 
-  if (filtros.statusRestaurante === "ativo" && restaurante.ativo === false) return false;
-  if (filtros.statusRestaurante === "inativo" && restaurante.ativo !== false) return false;
-  if (filtros.statusRestaurante === "bloqueado" && restaurante.bloqueado !== true) return false;
-  if (filtros.statusRestaurante === "liberado" && restaurante.bloqueado === true) return false;
-
-  return true;
+  atualizarAlertas(resumo);
+  atualizarGraficos(resumo);
 }
 
-function motoboyPassaFiltro(motoboy, filtros) {
-  const busca = filtros.buscaMotoboy;
+function atualizarAlertas(resumo) {
+  const lista = document.getElementById("listaAlertasAdmin");
+  if (!lista) return;
 
-  if (busca) {
-    const base = texto([
-      motoboy.nome,
-      motoboy.cpf,
-      motoboy.telefone
-    ].join(" "));
+  const alertas = [];
 
-    if (!base.includes(busca)) return false;
-  }
-
-  if (filtros.statusMotoboy === "online" && motoboy.online !== true) return false;
-  if (filtros.statusMotoboy === "offline" && motoboy.online === true) return false;
-  if (filtros.statusMotoboy === "aprovado" && motoboy.aprovado !== true) return false;
-  if (filtros.statusMotoboy === "pendente" && motoboy.aprovado === true) return false;
-  if (filtros.statusMotoboy === "bloqueado" && motoboy.bloqueado !== true) return false;
-  if (filtros.statusMotoboy === "liberado" && motoboy.bloqueado === true) return false;
-
-  return true;
-}
-
-function renderizarRelatorioRestaurantes() {
-  const alvo = document.getElementById("relatorioRestaurantes");
-  if (!alvo) return;
-
-  const filtros = filtrosRelatorio();
-
-  const linhas = restaurantes
-    .filter((restaurante) => restaurantePassaFiltro(restaurante, filtros))
-    .map((restaurante) => {
-      const pedidosPeriodo = pedidos.filter((pedido) => {
-        return pedido.restauranteId === restaurante.id &&
-          dentroDoPeriodo(dataDoPedido(pedido), filtros.inicio, filtros.fim);
-      });
-
-      const recargasPeriodo = recargas.filter((recarga) => {
-        return recarga.restauranteId === restaurante.id &&
-          recarga.status === "aprovada" &&
-          dentroDoPeriodo(dataDaRecarga(recarga), filtros.inicio, filtros.fim);
-      });
-
-      const creditoUsado = pedidosPeriodo.reduce((total, pedido) => {
-        return total + numero(pedido.valorTotal, 0);
-      }, 0);
-
-      const valorRecargas = recargasPeriodo.reduce((total, recarga) => {
-        return total + numero(recarga.valor, 0);
-      }, 0);
-
-      return {
-        restaurante,
-        pedidos: pedidosPeriodo.length,
-        creditoUsado,
-        recargas: valorRecargas,
-        saldoAtual: numero(restaurante.saldoPrePago, 0)
-      };
+  if (resumo.recargasPendentes > 0) {
+    alertas.push({
+      titulo: `${resumo.recargasPendentes} recarga(s) Pix pendente(s)`,
+      texto: "Confira comprovantes e aprove manualmente.",
+      badge: "Financeiro",
+      classe: "yellow",
+      link: "./recargas.html"
     });
+  }
 
-  linhas.sort((a, b) => {
-    if (filtros.ordenacaoRestaurante === "creditoUsado") return b.creditoUsado - a.creditoUsado;
-    if (filtros.ordenacaoRestaurante === "recargas") return b.recargas - a.recargas;
-    if (filtros.ordenacaoRestaurante === "saldoAtual") return b.saldoAtual - a.saldoAtual;
-    if (filtros.ordenacaoRestaurante === "pedidos") return b.pedidos - a.pedidos;
+  if (resumo.pedidosAceitos > 0) {
+    alertas.push({
+      titulo: `${resumo.pedidosAceitos} corrida(s) em andamento`,
+      texto: "Acompanhe pedidos aceitos e motoboys em rota.",
+      badge: "Em rota",
+      classe: "green",
+      link: "./mapa.html"
+    });
+  }
 
-    return String(a.restaurante.nome || "").localeCompare(String(b.restaurante.nome || ""));
-  });
+  if (resumo.valorPagarMotoboys > 0) {
+    alertas.push({
+      titulo: `${dinheiro(resumo.valorPagarMotoboys)} em aberto para motoboys`,
+      texto: "Valores acumulados para pagamento semanal, ja descontando estornos.",
+      badge: "Pagamento segunda-feira",
+      classe: "yellow",
+      link: "./pagamentos.html"
+    });
+  }
 
-  if (linhas.length === 0) {
-    alvo.innerHTML = `<div class="empty">Nenhum restaurante encontrado.</div>`;
+  if (resumo.biValorEstornado > 0) {
+    alertas.push({
+      titulo: `${dinheiro(resumo.biValorEstornado)} em entregas estornadas`,
+      texto: "Valores devolvidos a restaurantes e removidos de pagamentos dos motoboys.",
+      badge: "Estornos",
+      classe: "red",
+      link: "./pagamentos.html"
+    });
+  }
+
+  if (alertas.length === 0) {
+    lista.innerHTML = `<div class="empty">Nenhum alerta operacional no momento.</div>`;
     return;
   }
 
-  alvo.innerHTML = linhas.map((linha) => {
-    const r = linha.restaurante;
-
+  lista.innerHTML = alertas.map((alerta) => {
     return `
       <div class="list-card">
         <div>
-          <strong>${r.nome || "Restaurante sem nome"}</strong>
-          <p>Restaurante ID: ${r.id}</p>
-          <p>Telefone: ${r.telefone || "Não informado"}</p>
-          <p>Pedidos no período: ${linha.pedidos}</p>
-          <p>Crédito usado no período: <b>${dinheiro(linha.creditoUsado)}</b></p>
-          <p>Recargas aprovadas no período: ${dinheiro(linha.recargas)}</p>
-          <p>Saldo atual: ${dinheiro(linha.saldoAtual)}</p>
+          <strong>${alerta.titulo}</strong>
+          <p>${alerta.texto}</p>
           <div class="status-row">
-            <span class="badge ${r.ativo === false ? "red" : "green"}">${r.ativo === false ? "Inativo" : "Ativo"}</span>
-            <span class="badge ${r.bloqueado === true ? "red" : "green"}">${r.bloqueado === true ? "Bloqueado" : "Liberado"}</span>
+            <span class="badge ${alerta.classe}">${alerta.badge}</span>
           </div>
+        </div>
+
+        <div class="actions">
+          <a class="action-link" href="${alerta.link}">Ver</a>
         </div>
       </div>
     `;
   }).join("");
 }
 
-function renderizarRelatorioMotoboys() {
-  const alvo = document.getElementById("relatorioMotoboys");
-  if (!alvo) return;
+function destruirGrafico(grafico) {
+  if (grafico) {
+    grafico.destroy();
+  }
+}
 
-  const filtros = filtrosRelatorio();
+function atualizarGraficos(resumo) {
+  if (!window.Chart) return;
 
-  const linhas = motoboys
-    .filter((motoboy) => motoboyPassaFiltro(motoboy, filtros))
-    .map((motoboy) => {
-      const entregasPeriodo = pedidos.filter((pedido) => {
-        return pedido.motoboyId === motoboy.id &&
-          pedido.status === "entregue" &&
-          dentroDoPeriodo(dataDoPedido(pedido), filtros.inicio, filtros.fim);
+  const financeiroCanvas = document.getElementById("graficoFinanceiro");
+  const pedidosCanvas = document.getElementById("graficoPedidos");
+
+  if (financeiroCanvas) {
+    destruirGrafico(graficoFinanceiro);
+
+    graficoFinanceiro = new Chart(financeiroCanvas, {
+      type: "bar",
+      data: {
+        labels: [
+          "Cobrado",
+          "Plataforma",
+          "Motoboys",
+          "Estornado"
+        ],
+        datasets: [{
+          label: "Valores",
+          data: [
+            resumo.biTotalCobrado,
+            resumo.biReceitaPlataforma,
+            resumo.biValorMotoboys,
+            resumo.biValorEstornado
+          ],
+          backgroundColor: [
+            "#dbeafe",
+            "#dcfce7",
+            "#fef3c7",
+            "#fee2e2"
+          ],
+          borderColor: [
+            "#2563eb",
+            "#166534",
+            "#92400e",
+            "#991b1b"
+          ],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true
+          }
+        }
+      }
+    });
+  }
+
+  if (pedidosCanvas) {
+    destruirGrafico(graficoPedidos);
+
+    const pendentes = pedidosCache.filter((p) => {
+      return ["pendente", "buscando_motoboy", "sem_motoboy"].includes(p.status);
+    }).length;
+
+    const andamento = pedidosCache.filter((p) => {
+      return ["aceito", "no_restaurante", "coletado", "no_cliente"].includes(p.status);
+    }).length;
+
+    const entreguesValidos = pedidosCache.filter((p) => {
+      return p.status === "entregue" && !pedidoFoiEstornado(p);
+    }).length;
+
+    const estornados = pedidosCache.filter(pedidoFoiEstornado).length;
+
+    graficoPedidos = new Chart(pedidosCanvas, {
+      type: "doughnut",
+      data: {
+        labels: [
+          "Pendentes",
+          "Em andamento",
+          "Entregues",
+          "Estornados"
+        ],
+        datasets: [{
+          data: [
+            pendentes,
+            andamento,
+            entreguesValidos,
+            estornados
+          ],
+          backgroundColor: [
+            "#fef3c7",
+            "#dbeafe",
+            "#dcfce7",
+            "#fee2e2"
+          ],
+          borderColor: [
+            "#92400e",
+            "#2563eb",
+            "#166534",
+            "#991b1b"
+          ],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true
+      }
+    });
+  }
+}
+
+function escutarMotoboys() {
+  onSnapshot(query(collection(db, "motoboys")), (snapshot) => {
+    motoboysCache = [];
+
+    snapshot.forEach((docSnap) => {
+      motoboysCache.push({
+        id: docSnap.id,
+        ...docSnap.data()
       });
-
-      const pagamentosPeriodo = pagamentosMotoboy.filter((pagamento) => {
-        return pagamento.motoboyId === motoboy.id &&
-          dentroDoPeriodo(dataDoPagamento(pagamento), filtros.inicio, filtros.fim);
-      });
-
-      const valorGerado = entregasPeriodo.reduce((total, pedido) => {
-        return total + numero(pedido.valorMotoboy, 0);
-      }, 0);
-
-      const valorPago = pagamentosPeriodo.reduce((total, pagamento) => {
-        return total + valorPagamentoHistorico(pagamento);
-      }, 0);
-
-      const valorAberto = pedidos
-        .filter((pedido) => pedido.motoboyId === motoboy.id)
-        .filter(pedidoPendentePagamentoMotoboy)
-        .reduce((total, pedido) => {
-          return total + numero(pedido.valorMotoboy, 0);
-        }, 0);
-
-      return {
-        motoboy,
-        entregas: entregasPeriodo.length,
-        valorGerado,
-        valorPago,
-        valorAberto
-      };
     });
 
-  linhas.sort((a, b) => {
-    if (filtros.ordenacaoMotoboy === "valorGerado") return b.valorGerado - a.valorGerado;
-    if (filtros.ordenacaoMotoboy === "valorPago") return b.valorPago - a.valorPago;
-    if (filtros.ordenacaoMotoboy === "valorAberto") return b.valorAberto - a.valorAberto;
-    if (filtros.ordenacaoMotoboy === "entregas") return b.entregas - a.entregas;
-
-    return String(a.motoboy.nome || "").localeCompare(String(b.motoboy.nome || ""));
+    atualizarCards();
   });
-
-  if (linhas.length === 0) {
-    alvo.innerHTML = `<div class="empty">Nenhum motoboy encontrado.</div>`;
-    return;
-  }
-
-  alvo.innerHTML = linhas.map((linha) => {
-    const m = linha.motoboy;
-
-    return `
-      <div class="list-card">
-        <div>
-          <strong>${m.nome || "Motoboy sem nome"}</strong>
-          <p>Motoboy ID: ${m.id}</p>
-          <p>Telefone: ${m.telefone || "Não informado"}</p>
-          <p>Entregas no período: ${linha.entregas}</p>
-          <p>Valor gerado no período: <b>${dinheiro(linha.valorGerado)}</b></p>
-          <p>Valor pago no período: ${dinheiro(linha.valorPago)}</p>
-          <p>Valor em aberto: ${dinheiro(linha.valorAberto)}</p>
-          <p>Saldo atual no cadastro: ${dinheiro(m.saldo)}</p>
-          <div class="status-row">
-            <span class="badge ${m.online === true ? "green" : "gray"}">${m.online === true ? "Online" : "Offline"}</span>
-            <span class="badge ${m.aprovado === true ? "green" : "yellow"}">${m.aprovado === true ? "Aprovado" : "Pendente"}</span>
-            <span class="badge ${m.bloqueado === true ? "red" : "green"}">${m.bloqueado === true ? "Bloqueado" : "Liberado"}</span>
-          </div>
-        </div>
-      </div>
-    `;
-  }).join("");
 }
 
-function renderizarTudo() {
-  renderizarResumo();
-  renderizarRelatorioRestaurantes();
-  renderizarRelatorioMotoboys();
-}
+function escutarRestaurantes() {
+  onSnapshot(query(collection(db, "restaurantes")), (snapshot) => {
+    restaurantesCache = [];
 
-function escutarColecao(nome, callback) {
-  onSnapshot(
-    query(collection(db, nome)),
-    (snapshot) => {
-      const itens = [];
-
-      snapshot.forEach((docSnap) => {
-        itens.push({
-          id: docSnap.id,
-          ...docSnap.data()
-        });
+    snapshot.forEach((docSnap) => {
+      restaurantesCache.push({
+        id: docSnap.id,
+        ...docSnap.data()
       });
+    });
 
-      callback(itens);
-      renderizarTudo();
-    },
-    (erro) => {
-      console.error(`Erro ao carregar ${nome}:`, erro);
-    }
-  );
+    atualizarCards();
+  });
 }
 
-function configurarRelatorio() {
-  const dataInicio = document.getElementById("dataInicioRelatorio");
-  const dataFim = document.getElementById("dataFimRelatorio");
-  const btn = document.getElementById("btnAplicarRelatorio");
+function escutarPedidos() {
+  onSnapshot(query(collection(db, "pedidos")), (snapshot) => {
+    pedidosCache = [];
 
-  if (dataInicio && !dataInicio.value) {
-    dataInicio.value = dataInputHojeMenosDias(7);
-  }
+    snapshot.forEach((docSnap) => {
+      const pedido = {
+        id: docSnap.id,
+        ...docSnap.data()
+      };
 
-  if (dataFim && !dataFim.value) {
-    dataFim.value = formatarDataInput(new Date());
-  }
-
-  if (btn) {
-    btn.addEventListener("click", () => {
-      renderizarRelatorioRestaurantes();
-      renderizarRelatorioMotoboys();
+      if (pedidoContaComoOperacao(pedido)) {
+        pedidosCache.push(pedido);
+      }
     });
-  }
+
+    atualizarCards();
+  });
+}
+
+function escutarRecargas() {
+  onSnapshot(query(collection(db, "recargas_restaurante")), (snapshot) => {
+    recargasCache = [];
+
+    snapshot.forEach((docSnap) => {
+      recargasCache.push({
+        id: docSnap.id,
+        ...docSnap.data()
+      });
+    });
+
+    atualizarCards();
+  });
+}
+
+function escutarPagamentos() {
+  onSnapshot(query(collection(db, "pagamentos_motoboy")), (snapshot) => {
+    pagamentosCache = [];
+
+    snapshot.forEach((docSnap) => {
+      pagamentosCache.push({
+        id: docSnap.id,
+        ...docSnap.data()
+      });
+    });
+
+    atualizarCards();
+  });
+}
+
+function escutarLedgerMotoboy() {
+  onSnapshot(query(collection(db, "ledger_motoboy")), (snapshot) => {
+    ledgerCache = [];
+
+    snapshot.forEach((docSnap) => {
+      ledgerCache.push({
+        id: docSnap.id,
+        ...docSnap.data()
+      });
+    });
+
+    atualizarCards();
+  });
 }
 
 export function carregarDashboardAdmin() {
-  configurarRelatorio();
-
-  escutarColecao("motoboys", (itens) => {
-    motoboys = itens;
-  });
-
-  escutarColecao("restaurantes", (itens) => {
-    restaurantes = itens;
-  });
-
-  escutarColecao("pedidos", (itens) => {
-    pedidos = itens;
-  });
-
-  escutarColecao("recargas_restaurante", (itens) => {
-    recargas = itens;
-  });
-
-  escutarColecao("pagamentos_motoboy", (itens) => {
-    pagamentosMotoboy = itens;
-  });
-
-  escutarColecao("ledger_motoboy", (itens) => {
-    ledgerMotoboy = itens;
-  });
+  escutarMotoboys();
+  escutarRestaurantes();
+  escutarPedidos();
+  escutarRecargas();
+  escutarPagamentos();
+  escutarLedgerMotoboy();
 }
