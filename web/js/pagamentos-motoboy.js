@@ -158,11 +158,66 @@ function atualizarSelectMotoboys() {
   select.value = valorAtual;
 }
 
+function pagamentoTemPedido(pagamento, pedidoId) {
+  if (Array.isArray(pagamento.pedidoIds) && pagamento.pedidoIds.includes(pedidoId)) {
+    return true;
+  }
+
+  if (pagamento.pedidoId === pedidoId) {
+    return true;
+  }
+
+  return false;
+}
+
+function ledgerFoiPago(ledger) {
+  return (
+    ledger.statusPagamento === "pago" ||
+    ledger.pago === true ||
+    Boolean(ledger.pagamentoId)
+  );
+}
+
+function ledgerDoPedido(pedidoId) {
+  return ledgerCache.filter((ledger) => ledger.pedidoId === pedidoId);
+}
+
+function pagamentoContemLedgerDoPedido(pagamento, pedidoId) {
+  if (!Array.isArray(pagamento.ledgerIds)) return false;
+
+  const ledgersDoPedido = ledgerDoPedido(pedidoId);
+
+  return ledgersDoPedido.some((ledger) => {
+    return pagamento.ledgerIds.includes(ledger.id);
+  });
+}
+
+function pedidoFoiPagoPorPagamento(pedido) {
+  return pagamentosCache.some((pagamento) => {
+    return (
+      pagamento.status === "pago" ||
+      pagamento.pago === true ||
+      pagamento.pagoAt
+    ) && (
+      pagamentoTemPedido(pagamento, pedido.id) ||
+      pagamentoContemLedgerDoPedido(pagamento, pedido.id)
+    );
+  });
+}
+
+function pedidoFoiPagoPorLedger(pedido) {
+  const ledgersDoPedido = ledgerDoPedido(pedido.id);
+
+  return ledgersDoPedido.some((ledger) => ledgerFoiPago(ledger));
+}
+
 function pedidoFoiPagoAoMotoboy(pedido) {
   return (
     pedido.pagamentoMotoboyPago === true ||
     pedido.pagamentoMotoboyStatus === "pago" ||
-    Boolean(pedido.pagamentoMotoboyId)
+    Boolean(pedido.pagamentoMotoboyId) ||
+    pedidoFoiPagoPorPagamento(pedido) ||
+    pedidoFoiPagoPorLedger(pedido)
   );
 }
 
