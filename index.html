@@ -6,30 +6,36 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <style>
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
 
     :root {
       --red: #ea1d2c;
       --red-dark: #b80f20;
-      --black: #121417;
+      --black: #111318;
+      --text: #171923;
       --muted: #667085;
       --bg: #eef1f5;
-      --card: #ffffff;
-      --line: #e3e7ee;
+      --white: #ffffff;
+      --line: #e4e7ec;
       --green: #12a86b;
       --yellow: #f59e0b;
-      --blue: #2563eb;
-      --shadow: 0 24px 70px rgba(17, 24, 39, .14);
+      --shadow: 0 28px 80px rgba(17, 24, 39, .16);
+    }
+
+    html {
+      scroll-behavior: smooth;
     }
 
     body {
       margin: 0;
       font-family: Inter, Arial, sans-serif;
       background:
-        radial-gradient(circle at 12% 8%, rgba(234, 29, 44, .10), transparent 30%),
-        radial-gradient(circle at 90% 18%, rgba(18, 168, 107, .10), transparent 28%),
-        linear-gradient(145deg, #f5f7fa 0%, #e7ebf1 100%);
-      color: var(--black);
+        radial-gradient(circle at 10% 6%, rgba(234, 29, 44, .10), transparent 30%),
+        radial-gradient(circle at 90% 12%, rgba(18, 168, 107, .10), transparent 28%),
+        linear-gradient(145deg, #f8fafc 0%, #e7ebf1 100%);
+      color: var(--text);
     }
 
     a {
@@ -37,36 +43,44 @@
       text-decoration: none;
     }
 
-    .choice-page {
+    .page {
       min-height: 100vh;
       padding: 28px;
-      display: grid;
-      place-items: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .shell {
       width: 100%;
-      max-width: 1180px;
+      max-width: 1220px;
+    }
+
+    .brand-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 28px;
     }
 
     .brand {
       display: flex;
       align-items: center;
       gap: 14px;
-      margin-bottom: 30px;
     }
 
     .brand-mark {
-      width: 54px;
-      height: 54px;
+      width: 56px;
+      height: 56px;
       border-radius: 18px;
       background: var(--red);
       color: #fff;
       display: grid;
       place-items: center;
-      font-size: 29px;
+      font-size: 30px;
       font-weight: 950;
-      box-shadow: 0 18px 36px rgba(234, 29, 44, .28);
+      box-shadow: 0 18px 34px rgba(234, 29, 44, .28);
     }
 
     .brand strong,
@@ -86,12 +100,26 @@
       font-weight: 850;
     }
 
-    .intro {
-      max-width: 760px;
-      margin-bottom: 28px;
+    .brand-badge {
+      min-height: 38px;
+      padding: 0 14px;
+      border-radius: 999px;
+      background: #fff;
+      border: 1px solid var(--line);
+      display: inline-flex;
+      align-items: center;
+      color: #384152;
+      font-size: 13px;
+      font-weight: 900;
+      box-shadow: 0 8px 20px rgba(17, 24, 39, .05);
     }
 
-    .intro-pill {
+    .intro {
+      max-width: 780px;
+      margin-bottom: 30px;
+    }
+
+    .kicker {
       display: inline-flex;
       align-items: center;
       min-height: 34px;
@@ -106,317 +134,142 @@
 
     h1 {
       margin: 0;
-      font-size: clamp(38px, 6vw, 68px);
-      line-height: .96;
+      font-size: clamp(38px, 6vw, 72px);
+      line-height: .95;
       letter-spacing: 0;
     }
 
     .intro p {
-      max-width: 620px;
-      margin: 18px 0 0;
+      margin: 20px 0 0;
+      max-width: 660px;
       color: #4f5663;
-      font-size: 18px;
+      font-size: 19px;
       line-height: 1.55;
     }
 
     .choice-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 22px;
+      gap: 24px;
+      align-items: stretch;
     }
 
     .choice-card {
-      min-height: 560px;
       position: relative;
+      min-height: 620px;
       overflow: hidden;
       border-radius: 34px;
-      background: var(--card);
-      border: 1px solid rgba(255,255,255,.78);
+      background: #fff;
       box-shadow: var(--shadow);
+      border: 1px solid rgba(255, 255, 255, .78);
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
-      padding: 28px;
       transition: transform .18s ease, box-shadow .18s ease;
     }
 
     .choice-card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 32px 86px rgba(17, 24, 39, .18);
+      transform: translateY(-5px);
+      box-shadow: 0 36px 92px rgba(17, 24, 39, .20);
     }
 
-    .visual-area {
-      min-height: 255px;
-      border-radius: 28px;
+    .photo {
       position: relative;
+      height: 340px;
       overflow: hidden;
-      background: #f4f6f8;
-      border: 1px solid var(--line);
+      background: #111;
     }
 
-    .commerce-visual {
-      background:
-        linear-gradient(180deg, #fff7f8, #f3f5f8);
+    .photo img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+      transform: scale(1.02);
+      transition: transform .35s ease;
     }
 
-    .store-front {
-      position: absolute;
-      left: 34px;
-      right: 34px;
-      bottom: 34px;
-      height: 132px;
-      border-radius: 22px 22px 16px 16px;
-      background: #fff;
-      border: 2px solid #dfe4ec;
-      box-shadow: 0 18px 32px rgba(17, 24, 39, .10);
+    .choice-card:hover .photo img {
+      transform: scale(1.07);
     }
 
-    .awning {
-      position: absolute;
-      left: -2px;
-      right: -2px;
-      top: -36px;
-      height: 42px;
-      border-radius: 20px 20px 10px 10px;
-      background: repeating-linear-gradient(
-        90deg,
-        var(--red) 0 34px,
-        #fff 34px 68px
-      );
-      border: 2px solid #dfe4ec;
-    }
-
-    .store-window {
-      position: absolute;
-      left: 18px;
-      top: 28px;
-      width: 92px;
-      height: 64px;
-      border-radius: 14px;
-      background: #eaf2ff;
-      border: 2px solid #d7dde8;
-    }
-
-    .store-door {
-      position: absolute;
-      right: 22px;
-      bottom: 0;
-      width: 58px;
-      height: 92px;
-      border-radius: 16px 16px 0 0;
-      background: #ffe7ea;
-      border: 2px solid #d7dde8;
-    }
-
-    .delivery-bag {
-      position: absolute;
-      left: 128px;
-      top: 58px;
-      width: 82px;
-      height: 78px;
-      border-radius: 18px;
-      background: var(--red);
-      box-shadow: 0 18px 28px rgba(234,29,44,.24);
-    }
-
-    .delivery-bag::before {
+    .photo::after {
       content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(to bottom, rgba(0,0,0,.08), rgba(0,0,0,.52)),
+        linear-gradient(135deg, rgba(234, 29, 44, .20), transparent 46%);
+    }
+
+    .photo-label {
       position: absolute;
       left: 22px;
-      top: -20px;
-      width: 38px;
-      height: 30px;
-      border: 7px solid var(--red);
-      border-bottom: 0;
-      border-radius: 20px 20px 0 0;
-    }
-
-    .delivery-bag::after {
-      content: "+";
-      position: absolute;
-      right: -14px;
-      top: -13px;
-      width: 34px;
-      height: 34px;
-      border-radius: 50%;
-      display: grid;
-      place-items: center;
-      background: #12a86b;
-      color: #fff;
-      font-weight: 950;
-      font-size: 23px;
-    }
-
-    .driver-visual {
-      background:
-        radial-gradient(circle at 30% 20%, rgba(234,29,44,.22), transparent 26%),
-        linear-gradient(180deg, #15171c, #242832);
-    }
-
-    .road {
-      position: absolute;
-      left: -20%;
-      right: -20%;
-      bottom: 0;
-      height: 86px;
-      background: #0f1115;
-      transform: skewY(-4deg);
-    }
-
-    .road::after {
-      content: "";
-      position: absolute;
-      left: 8%;
-      right: 8%;
-      top: 40px;
-      height: 5px;
-      border-radius: 999px;
-      background: repeating-linear-gradient(
-        90deg,
-        rgba(255,255,255,.9) 0 48px,
-        transparent 48px 88px
-      );
-    }
-
-    .moto {
-      position: absolute;
-      left: 38px;
-      bottom: 64px;
-      width: 220px;
-      height: 130px;
-    }
-
-    .wheel {
-      position: absolute;
-      bottom: 0;
-      width: 58px;
-      height: 58px;
-      border-radius: 50%;
-      border: 9px solid #fff;
-      background: #232733;
-      box-shadow: inset 0 0 0 7px #15171c;
-    }
-
-    .wheel.front { right: 10px; }
-    .wheel.back { left: 18px; }
-
-    .bike-body {
-      position: absolute;
-      left: 52px;
-      bottom: 40px;
-      width: 112px;
-      height: 38px;
-      border-radius: 18px;
-      background: var(--red);
-      transform: skewX(-12deg);
-    }
-
-    .bike-seat {
-      position: absolute;
-      left: 88px;
-      bottom: 82px;
-      width: 70px;
-      height: 16px;
-      border-radius: 999px;
-      background: #fff;
-    }
-
-    .rider-head {
-      position: absolute;
-      left: 118px;
-      bottom: 126px;
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background: #fff;
-    }
-
-    .rider-body {
-      position: absolute;
-      left: 104px;
-      bottom: 84px;
-      width: 52px;
-      height: 54px;
-      border-radius: 18px 18px 10px 10px;
-      background: #2563eb;
-      transform: rotate(-10deg);
-    }
-
-    .box {
-      position: absolute;
-      left: 42px;
-      bottom: 88px;
-      width: 60px;
-      height: 54px;
-      border-radius: 14px;
-      background: #ffb703;
-      border: 4px solid #fff;
-    }
-
-    .money-badge {
-      position: absolute;
-      right: 28px;
-      top: 28px;
-      min-width: 104px;
-      min-height: 52px;
-      padding: 9px 12px;
-      border-radius: 18px;
-      background: #fff;
-      color: var(--black);
-      box-shadow: 0 16px 30px rgba(0,0,0,.24);
-      font-weight: 950;
-    }
-
-    .money-badge small {
-      display: block;
-      color: var(--muted);
-      font-size: 11px;
-    }
-
-    .profile-pill {
+      bottom: 22px;
+      z-index: 2;
+      max-width: calc(100% - 44px);
       display: inline-flex;
-      min-height: 34px;
       align-items: center;
-      padding: 0 12px;
+      min-height: 40px;
+      padding: 0 15px;
       border-radius: 999px;
-      background: #f1f3f6;
-      color: #303642;
+      background: rgba(255,255,255,.94);
+      backdrop-filter: blur(12px);
+      color: var(--black);
+      font-size: 14px;
+      font-weight: 950;
+      box-shadow: 0 12px 26px rgba(0,0,0,.18);
+    }
+
+    .content {
+      flex: 1;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .profile {
+      color: var(--red);
       font-size: 13px;
       font-weight: 950;
-      margin-bottom: 14px;
+      margin-bottom: 10px;
     }
 
-    .choice-content h2 {
+    .content h2 {
       margin: 0;
-      font-size: 36px;
-      line-height: 1.02;
+      font-size: clamp(34px, 4vw, 48px);
+      line-height: .98;
+      letter-spacing: 0;
     }
 
-    .choice-content p {
-      margin: 14px 0 0;
+    .content p {
+      margin: 16px 0 0;
       color: var(--muted);
-      font-size: 16px;
+      font-size: 17px;
       line-height: 1.5;
     }
 
     .benefits {
       display: grid;
-      gap: 9px;
-      margin-top: 18px;
+      gap: 10px;
+      margin-top: 22px;
     }
 
     .benefit {
+      min-height: 42px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: #f5f7fa;
       display: flex;
       align-items: center;
-      gap: 9px;
+      gap: 10px;
+      color: #303846;
       font-size: 14px;
-      color: #394150;
       font-weight: 850;
     }
 
     .dot {
-      width: 9px;
-      height: 9px;
+      width: 10px;
+      height: 10px;
       border-radius: 50%;
       background: var(--red);
       flex: 0 0 auto;
@@ -425,28 +278,53 @@
     .choice-button {
       width: 100%;
       min-height: 58px;
-      margin-top: 24px;
-      border-radius: 18px;
+      margin-top: auto;
       border: 0;
-      background: var(--black);
+      border-radius: 18px;
       color: #fff;
-      display: grid;
-      place-items: center;
       font-size: 16px;
       font-weight: 950;
+      display: grid;
+      place-items: center;
     }
 
     .commerce .choice-button {
       background: var(--red);
-      box-shadow: 0 16px 28px rgba(234,29,44,.24);
+      box-shadow: 0 16px 30px rgba(234, 29, 44, .24);
     }
 
     .driver .choice-button {
-      background: #111318;
-      box-shadow: 0 16px 28px rgba(17,24,39,.24);
+      background: var(--black);
+      box-shadow: 0 16px 30px rgba(17, 24, 39, .24);
     }
 
-    @media (max-width: 960px) {
+    .commerce .photo-label {
+      color: var(--red);
+    }
+
+    .driver .profile {
+      color: var(--black);
+    }
+
+    .driver .dot {
+      background: var(--black);
+    }
+
+    .driver .photo::after {
+      background:
+        linear-gradient(to bottom, rgba(0,0,0,.08), rgba(0,0,0,.58)),
+        linear-gradient(135deg, rgba(17, 19, 24, .35), rgba(234, 29, 44, .12));
+    }
+
+    .note {
+      margin-top: 24px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 850;
+    }
+
+    @media (max-width: 980px) {
       .choice-grid {
         grid-template-columns: 1fr;
       }
@@ -454,121 +332,136 @@
       .choice-card {
         min-height: auto;
       }
+
+      .photo {
+        height: 330px;
+      }
     }
 
-    @media (max-width: 560px) {
-      .choice-page {
+    @media (max-width: 620px) {
+      .page {
         padding: 18px;
+      }
+
+      .brand-row {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .brand-badge {
+        width: 100%;
+        justify-content: center;
       }
 
       .choice-card {
         border-radius: 26px;
-        padding: 20px;
       }
 
-      .visual-area {
-        min-height: 235px;
+      .photo {
+        height: 260px;
       }
 
-      .choice-content h2 {
-        font-size: 31px;
+      .content {
+        padding: 22px;
       }
 
-      .moto {
-        transform: scale(.86);
-        transform-origin: left bottom;
+      .content h2 {
+        font-size: 34px;
+      }
+
+      .intro p,
+      .content p {
+        font-size: 16px;
       }
     }
   </style>
 </head>
 
 <body>
-  <main class="choice-page">
+  <main class="page">
     <div class="shell">
-      <div class="brand">
-        <div class="brand-mark">C</div>
-        <div>
-          <strong>Cheguei Delivery</strong>
-          <span>Entrega local para comércio e motoboy</span>
+      <div class="brand-row">
+        <div class="brand">
+          <div class="brand-mark">C</div>
+          <div>
+            <strong>Cheguei Delivery</strong>
+            <span>Entrega local para comércio e motoboy</span>
+          </div>
+        </div>
+
+        <div class="brand-badge">
+          Plataforma local de delivery sob demanda
         </div>
       </div>
 
       <section class="intro">
-        <div class="intro-pill">Escolha seu caminho</div>
-        <h1>Delivery local com mais controle e menos dependência.</h1>
+        <div class="kicker">Escolha seu perfil</div>
+        <h1>Delivery local com mais controle, menos custo e mais agilidade.</h1>
         <p>
-          O Cheguei conecta comércios que precisam entregar com motoboys que querem rodar
-          com liberdade, valor claro e pagamento organizado.
+          Para comércios que precisam entregar melhor e para motoboys que querem receber
+          corridas próximas com valor claro.
         </p>
       </section>
 
       <section class="choice-grid">
         <a class="choice-card commerce" href="./comercio.html" onclick="escolherPerfil('comercio')">
-          <div class="visual-area commerce-visual">
-            <div class="store-front">
-              <div class="awning"></div>
-              <div class="store-window"></div>
-              <div class="store-door"></div>
-            </div>
-            <div class="delivery-bag"></div>
+          <div class="photo">
+            <img
+              src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1200&q=85"
+              alt="Restaurante preparando pedido delivery"
+            >
+            <div class="photo-label">Restaurantes, lanchonetes, farmácias e lojas</div>
           </div>
 
-          <div class="choice-content">
-            <div class="profile-pill">Restaurantes, lanchonetes, farmácias e lojas</div>
-            <h2>Sou comércio</h2>
+          <div class="content">
+            <div class="profile">Para comércio</div>
+            <h2>Venda mais sem manter motoboy fixo.</h2>
             <p>
-              Preciso entregar meus pedidos sem depender de grandes plataformas
-              e sem manter motoboy fixo parado.
+              Acione entregadores quando tiver pedido, acompanhe a corrida e controle seus gastos
+              com saldo pré-pago.
             </p>
 
             <div class="benefits">
-              <div class="benefit"><span class="dot"></span>Entrega sob demanda</div>
-              <div class="benefit"><span class="dot"></span>Controle pré-pago</div>
-              <div class="benefit"><span class="dot"></span>Mais margem por pedido</div>
+              <div class="benefit"><span class="dot"></span>Ideal para delivery, farmácia, lanchonete e loja local</div>
+              <div class="benefit"><span class="dot"></span>Menos dependência de grandes plataformas</div>
+              <div class="benefit"><span class="dot"></span>Taxa clara + valor do motoboy</div>
             </div>
 
-            <div class="choice-button">Ver solução para comércio</div>
+            <div class="choice-button">Sou comércio</div>
           </div>
         </a>
 
         <a class="choice-card driver" href="./motoboy.html" onclick="escolherPerfil('motoboy')">
-          <div class="visual-area driver-visual">
-            <div class="money-badge">
-              <small>Corrida</small>
-              R$ claro
-            </div>
-
-            <div class="moto">
-              <div class="box"></div>
-              <div class="rider-head"></div>
-              <div class="rider-body"></div>
-              <div class="bike-seat"></div>
-              <div class="bike-body"></div>
-              <div class="wheel back"></div>
-              <div class="wheel front"></div>
-            </div>
-
-            <div class="road"></div>
+          <div class="photo">
+            <img
+              src="https://images.unsplash.com/photo-1617347454431-f49d7ff5c3b1?auto=format&fit=crop&w=1200&q=85"
+              alt="Motoboy realizando entrega"
+            >
+            <div class="photo-label">Entregador delivery de moto</div>
           </div>
 
-          <div class="choice-content">
-            <div class="profile-pill">Entregador delivery de moto</div>
-            <h2>Sou motoboy</h2>
+          <div class="content">
+            <div class="profile">Para motoboy</div>
+            <h2>Rode com liberdade e veja o valor antes de aceitar.</h2>
             <p>
-              Quero receber corridas próximas, saber o valor antes de aceitar
-              e acompanhar meus ganhos no app.
+              Fique online quando quiser, receba corridas próximas e acompanhe seus ganhos
+              pelo app.
             </p>
 
             <div class="benefits">
-              <div class="benefit"><span class="dot"></span>100% do valor da corrida para você</div>
-              <div class="benefit"><span class="dot"></span>Liberdade para ficar online</div>
-              <div class="benefit"><span class="dot"></span>Pagamento toda segunda-feira</div>
+              <div class="benefit"><span class="dot"></span>100% do valor da corrida é seu</div>
+              <div class="benefit"><span class="dot"></span>Corridas próximas usando GPS</div>
+              <div class="benefit"><span class="dot"></span>Pagamento organizado toda segunda-feira</div>
             </div>
 
-            <div class="choice-button">Ver área do motoboy</div>
+            <div class="choice-button">Sou motoboy</div>
           </div>
         </a>
       </section>
+
+      <p class="note">
+        Escolha o perfil para acessar uma experiência feita para sua operação.
+      </p>
     </div>
   </main>
 
