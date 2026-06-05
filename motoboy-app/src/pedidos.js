@@ -27,6 +27,10 @@ let corridaAtual = null;
 let pedidoModalAtual = null;
 let idsJaNotificados = new Set();
 
+let alertaNovaCorridaAtivo = false;
+let alertaNovaCorridaTimer = null;
+let alertaNovaCorridaPedidoId = null;
+
 function dinheiro(valor) {
   return Number(valor || 0).toLocaleString("pt-BR", {
     style: "currency",
@@ -197,6 +201,46 @@ function vibrarNovaCorrida() {
   }
 }
 
+function iniciarAlertaNovaCorrida(pedidoId) {
+  if (!pedidoId) return;
+
+  if (
+    alertaNovaCorridaAtivo === true &&
+    alertaNovaCorridaPedidoId === pedidoId
+  ) {
+    return;
+  }
+
+  pararAlertaNovaCorrida();
+
+  alertaNovaCorridaAtivo = true;
+  alertaNovaCorridaPedidoId = pedidoId;
+
+  tocarSomNovaCorrida();
+  vibrarNovaCorrida();
+
+  alertaNovaCorridaTimer = setInterval(() => {
+    if (!alertaNovaCorridaAtivo) return;
+
+    tocarSomNovaCorrida();
+    vibrarNovaCorrida();
+  }, 2100);
+}
+
+function pararAlertaNovaCorrida() {
+  alertaNovaCorridaAtivo = false;
+  alertaNovaCorridaPedidoId = null;
+
+  if (alertaNovaCorridaTimer) {
+    clearInterval(alertaNovaCorridaTimer);
+    alertaNovaCorridaTimer = null;
+  }
+
+  if (navigator.vibrate) {
+    navigator.vibrate(0);
+  }
+}
+
 function abrirUrlNavegacao(url) {
   window.open(url, "_blank", "noopener,noreferrer");
 }
@@ -301,15 +345,13 @@ function mostrarModalNovaCorrida(pedido) {
 
   document.getElementById("novaCorridaOverlay").classList.remove("hidden");
 
-  if (!idsJaNotificados.has(pedido.id)) {
-    idsJaNotificados.add(pedido.id);
-    tocarSomNovaCorrida();
-    vibrarNovaCorrida();
-  }
+  idsJaNotificados.add(pedido.id);
+  iniciarAlertaNovaCorrida(pedido.id);
 }
 
 function fecharModalNovaCorrida() {
   pedidoModalAtual = null;
+  pararAlertaNovaCorrida();
   document.getElementById("novaCorridaOverlay")?.classList.add("hidden");
 }
 
@@ -394,7 +436,7 @@ function renderizarCorridaAtual() {
       }
 
       if (tipo === "google-cliente") {
-        abrirGoogleMapsParaCliente(corrAtual);
+        abrirGoogleMapsParaCliente(corridaAtual);
       }
 
       if (tipo === "waze-cliente") {
@@ -501,6 +543,8 @@ function renderizarPedidosDisponiveis() {
 async function aceitarPedido(pedidoId) {
   if (!uid || !pedidoId) return;
 
+  pararAlertaNovaCorrida();
+
   const pedidoRef = doc(db, "pedidos", pedidoId);
   const motoboyRef = doc(db, "motoboys", uid);
 
@@ -549,6 +593,8 @@ async function aceitarPedido(pedidoId) {
 
 async function recusarPedido(pedidoId) {
   if (!uid || !pedidoId) return;
+
+  pararAlertaNovaCorrida();
 
   await updateDoc(doc(db, "pedidos", pedidoId), {
     recusadoPor: arrayUnion(uid),
