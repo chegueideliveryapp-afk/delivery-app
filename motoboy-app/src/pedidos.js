@@ -19,11 +19,11 @@ import {
 
 let uid = null;
 let motoboyAtual = null;
+let todosPedidos = [];
 let pedidosDisponiveis = [];
 let corridaAtual = null;
 let pedidoModalAtual = null;
 let idsJaNotificados = new Set();
-let audioLiberado = false;
 
 function dinheiro(valor) {
   return Number(valor || 0).toLocaleString("pt-BR", {
@@ -39,16 +39,28 @@ function textoPagamento(valor) {
 }
 
 function calcularDistanciaKm(lat1, lng1, lat2, lng2) {
-  if (!lat1 || !lng1 || !lat2 || !lng2) return null;
+  const nLat1 = Number(lat1);
+  const nLng1 = Number(lng1);
+  const nLat2 = Number(lat2);
+  const nLng2 = Number(lng2);
+
+  if (
+    !Number.isFinite(nLat1) ||
+    !Number.isFinite(nLng1) ||
+    !Number.isFinite(nLat2) ||
+    !Number.isFinite(nLng2)
+  ) {
+    return null;
+  }
 
   const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const dLat = (nLat2 - nLat1) * Math.PI / 180;
+  const dLng = (nLng2 - nLng1) * Math.PI / 180;
 
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) *
-    Math.cos(lat2 * Math.PI / 180) *
+    Math.cos(nLat1 * Math.PI / 180) *
+    Math.cos(nLat2 * Math.PI / 180) *
     Math.sin(dLng / 2) *
     Math.sin(dLng / 2);
 
@@ -76,6 +88,20 @@ function obterLocationPedido(pedido) {
   };
 }
 
+function maiorRaioDoPedido(pedido) {
+  const raios = Array.isArray(pedido.raiosBuscaKm)
+    ? pedido.raiosBuscaKm.map(Number).filter(Number.isFinite)
+    : [];
+
+  const raioAtual = Number(pedido.raioAtualKm || 0);
+
+  if (raios.length === 0) {
+    return raioAtual || 15;
+  }
+
+  return Math.max(raioAtual || 0, ...raios);
+}
+
 function podeReceberPedidos() {
   return (
     uid &&
@@ -84,8 +110,9 @@ function podeReceberPedidos() {
     motoboyAtual.aprovado === true &&
     motoboyAtual.ativo !== false &&
     motoboyAtual.bloqueado !== true &&
-    motoboyAtual.location?.lat &&
-    motoboyAtual.location?.lng
+    motoboyAtual.location &&
+    Number.isFinite(Number(motoboyAtual.location.lat)) &&
+    Number.isFinite(Number(motoboyAtual.location.lng))
   );
 }
 
@@ -105,17 +132,17 @@ function pedidoEstaDisponivel(pedido) {
   const origemPedido = obterLocationPedido(pedido);
 
   const distancia = calcularDistanciaKm(
-    Number(motoboyAtual.location.lat),
-    Number(motoboyAtual.location.lng),
+    motoboyAtual.location.lat,
+    motoboyAtual.location.lng,
     origemPedido.lat,
     origemPedido.lng
   );
 
   if (distancia === null) return false;
 
-  const raioAtual = Number(pedido.raioAtualKm || 15);
+  const raioPermitido = maiorRaioDoPedido(pedido);
 
-  return distancia <= raioAtual;
+  return distancia <= raioPermitido;
 }
 
 function tocarSomNovaCorrida() {
@@ -151,17 +178,67 @@ function vibrarNovaCorrida() {
   }
 }
 
-function liberarAudioNaPrimeiraInteracao() {
-  if (audioLiberado) return;
-
-  audioLiberado = true;
-
-  document.removeEventListener("click", liberarAudioNaPrimeiraInteracao);
-  document.removeEventListener("touchstart", liberarAudioNaPrimeiraInteracao);
+function abrirUrlNavegacao(url) {
+  window.open(url, "_blank", "noopener,noreferrer");
 }
 
-document.addEventListener("click", liberarAudioNaPrimeiraInteracao);
-document.addEventListener("touchstart", liberarAudioNaPrimeiraInteracao);
+function abrirGoogleMapsParaRestaurante(pedido) {
+  const destino = obterLocationPedido(pedido);
+
+  if (!destino.lat || !destino.lng) {
+    alert("Localização do restaurante não encontrada.");
+    return;
+  }
+
+  const url =
+    `https://www.google.com/maps/dir/?api=1` +
+    `&destination=${encodeURIComponent(`${destino.lat},${destino.lng}`)}` +
+    `&travelmode=driving`;
+
+  abrirUrlNavegacao(url);
+}
+
+function abrirWazeParaRestaurante(pedido) {
+  const destino = obterLocationPedido(pedido);
+
+  if (!destino.lat || !destino.lng) {
+    alert("Localização do restaurante não encontrada.");
+    return;
+  }
+
+  const url =
+    `https://waze.com/ul?ll=${encodeURIComponent(`${destino.lat},${destino.lng}`)}` +
+    `&navigate=yes`;
+
+  abrirUrlNavegacao(url);
+}
+
+function abrirGoogleMapsParaCliente(pedido) {
+  if (!pedido.enderecoEntrega) {
+    alert("Endereço de entrega não encontrado.");
+    return;
+  }
+
+  const url =
+    `https://www.google.com/maps/dir/?api=1` +
+    `&destination=${encodeURIComponent(pedido.enderecoEntrega)}` +
+    `&travelmode=driving`;
+
+  abrirUrlNavegacao(url);
+}
+
+function abrirWazeParaCliente(pedido) {
+  if (!pedido.enderecoEntrega) {
+    alert("Endereço de entrega não encontrado.");
+    return;
+  }
+
+  const url =
+    `https://waze.com/ul?q=${encodeURIComponent(pedido.enderecoEntrega)}` +
+    `&navigate=yes`;
+
+  abrirUrlNavegacao(url);
+}
 
 function mostrarModalNovaCorrida(pedido) {
   if (!pedido) return;
@@ -172,8 +249,8 @@ function mostrarModalNovaCorrida(pedido) {
   const origemPedido = obterLocationPedido(pedido);
 
   const distanciaAteRestaurante = calcularDistanciaKm(
-    Number(motoboyAtual.location.lat),
-    Number(motoboyAtual.location.lng),
+    motoboyAtual.location.lat,
+    motoboyAtual.location.lng,
     origemPedido.lat,
     origemPedido.lng
   );
@@ -241,16 +318,71 @@ function renderizarCorridaAtual() {
       <p><b>Pagamento:</b> ${textoPagamento(corridaAtual.formaPagamento)}</p>
       <p><b>Retorno:</b> ${corridaAtual.precisaRetorno ? "Sim" : "Não"}</p>
 
+      <div class="navigation-panel">
+        <span>Navegação</span>
+        <strong>Escolha seu GPS</strong>
+
+        <div class="navigation-group">
+          <p>Ir até o restaurante</p>
+
+          <div class="navigation-buttons">
+            <button type="button" class="nav-btn google" data-nav="google-restaurante">
+              Google Maps
+            </button>
+
+            <button type="button" class="nav-btn waze" data-nav="waze-restaurante">
+              Waze
+            </button>
+          </div>
+        </div>
+
+        <div class="navigation-group">
+          <p>Ir até o cliente</p>
+
+          <div class="navigation-buttons">
+            <button type="button" class="nav-btn google" data-nav="google-cliente">
+              Google Maps
+            </button>
+
+            <button type="button" class="nav-btn waze" data-nav="waze-cliente">
+              Waze
+            </button>
+          </div>
+        </div>
+      </div>
+
       <button class="finish-btn" type="button" data-finalizar="${corridaAtual.id}">
         Finalizar entrega
       </button>
     </div>
   `;
 
-  const btn = box.querySelector("button[data-finalizar]");
-  if (btn) {
-    btn.addEventListener("click", () => finalizarEntrega(corridaAtual.id));
+  const btnFinalizar = box.querySelector("button[data-finalizar]");
+  if (btnFinalizar) {
+    btnFinalizar.addEventListener("click", () => finalizarEntrega(corridaAtual.id));
   }
+
+  box.querySelectorAll("button[data-nav]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const tipo = button.dataset.nav;
+
+      if (tipo === "google-restaurante") {
+        abrirGoogleMapsParaRestaurante(corridaAtual);
+      }
+
+      if (tipo === "waze-restaurante") {
+        abrirWazeParaRestaurante(corridaAtual);
+      }
+
+      if (tipo === "google-cliente") {
+        abrirGoogleMapsParaCliente(corridaAtual);
+      }
+
+      if (tipo === "waze-cliente") {
+        abrirWazeParaCliente(corridaAtual);
+      }
+    });
+  });
 }
 
 function renderizarPedidosDisponiveis() {
@@ -293,8 +425,8 @@ function renderizarPedidosDisponiveis() {
     const origemPedido = obterLocationPedido(pedido);
 
     const distanciaAteRestaurante = calcularDistanciaKm(
-      Number(motoboyAtual.location.lat),
-      Number(motoboyAtual.location.lng),
+      motoboyAtual.location.lat,
+      motoboyAtual.location.lng,
       origemPedido.lat,
       origemPedido.lng
     );
@@ -482,16 +614,11 @@ async function finalizarEntrega(pedidoId) {
   });
 }
 
-function escolherPedidosDisponiveis(snapshot) {
+function recalcularPedidosDisponiveis() {
   const disponiveis = [];
   let atual = null;
 
-  snapshot.forEach((docSnap) => {
-    const pedido = {
-      id: docSnap.id,
-      ...docSnap.data()
-    };
-
+  todosPedidos.forEach((pedido) => {
     if (pedido.status === "aceito" && pedido.motoboyId === uid) {
       atual = pedido;
       return;
@@ -501,8 +628,8 @@ function escolherPedidosDisponiveis(snapshot) {
       const origemPedido = obterLocationPedido(pedido);
 
       const distanciaAteRestaurante = calcularDistanciaKm(
-        Number(motoboyAtual.location.lat),
-        Number(motoboyAtual.location.lng),
+        motoboyAtual.location.lat,
+        motoboyAtual.location.lng,
         origemPedido.lat,
         origemPedido.lng
       );
@@ -529,7 +656,16 @@ function escutarPedidos() {
   const q = query(collection(db, "pedidos"));
 
   onSnapshot(q, (snapshot) => {
-    escolherPedidosDisponiveis(snapshot);
+    todosPedidos = [];
+
+    snapshot.forEach((docSnap) => {
+      todosPedidos.push({
+        id: docSnap.id,
+        ...docSnap.data()
+      });
+    });
+
+    recalcularPedidosDisponiveis();
   });
 }
 
@@ -542,7 +678,7 @@ function escutarMotoboy() {
       ...snap.data()
     };
 
-    renderizarPedidosDisponiveis();
+    recalcularPedidosDisponiveis();
   });
 }
 
