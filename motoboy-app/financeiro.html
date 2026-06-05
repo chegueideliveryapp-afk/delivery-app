@@ -5,7 +5,235 @@
   <title>Financeiro - Cheguei Motoboy</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <link rel="stylesheet" href="./css/app.css?v=160">
+  <link rel="stylesheet" href="./css/app.css?v=170">
+
+  <style>
+    .earn-hero {
+      margin-top: 14px;
+      padding: 22px;
+      border-radius: 28px;
+      background: linear-gradient(145deg, #ea1d2c 0%, #c81022 52%, #8f0d19 100%);
+      color: #fff;
+      box-shadow: 0 22px 44px rgba(234, 29, 44, .26);
+    }
+
+    .earn-hero span {
+      display: block;
+      font-size: 13px;
+      font-weight: 900;
+      opacity: .82;
+    }
+
+    .earn-hero strong {
+      display: block;
+      margin-top: 8px;
+      font-size: 44px;
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .earn-hero p {
+      margin: 12px 0 0;
+      font-size: 14px;
+      line-height: 1.35;
+      opacity: .9;
+    }
+
+    .earn-next-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-top: 18px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255,255,255,.24);
+    }
+
+    .earn-next-row b {
+      font-size: 14px;
+    }
+
+    .gain-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .gain-card {
+      background: #fff;
+      border: 1px solid #e6e8ee;
+      border-radius: 20px;
+      padding: 16px;
+      box-shadow: 0 10px 24px rgba(17, 24, 39, .05);
+    }
+
+    .gain-card span {
+      display: block;
+      color: #747985;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .gain-card strong {
+      display: block;
+      margin-top: 6px;
+      font-size: 24px;
+      line-height: 1.1;
+    }
+
+    .gain-card p {
+      margin: 7px 0 0;
+      color: #747985;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .gain-card.highlight {
+      background: #101216;
+      color: #fff;
+      border-color: #101216;
+    }
+
+    .gain-card.highlight span,
+    .gain-card.highlight p {
+      color: rgba(255,255,255,.72);
+    }
+
+    .progress-box {
+      margin-top: 14px;
+      background: #fff;
+      border: 1px solid #e6e8ee;
+      border-radius: 22px;
+      padding: 18px;
+      box-shadow: 0 10px 24px rgba(17, 24, 39, .05);
+    }
+
+    .progress-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-end;
+    }
+
+    .progress-top span {
+      color: #747985;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .progress-top strong {
+      display: block;
+      margin-top: 4px;
+      font-size: 20px;
+    }
+
+    .progress-track {
+      height: 12px;
+      margin-top: 14px;
+      border-radius: 999px;
+      background: #edf0f5;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #11c76f, #00a650);
+      transition: width .25s ease;
+    }
+
+    .finance-filter {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 12px 0;
+    }
+
+    .finance-filter select,
+    .finance-filter input {
+      width: 100%;
+      min-height: 46px;
+      border: 1px solid #e6e8ee;
+      border-radius: 14px;
+      padding: 0 12px;
+      background: #fff;
+      color: #16181d;
+      font-weight: 800;
+      outline: none;
+    }
+
+    .finance-item {
+      padding: 15px;
+      border: 1px solid #e6e8ee;
+      border-radius: 16px;
+      background: #fbfcfd;
+      margin-bottom: 10px;
+    }
+
+    .finance-item strong {
+      display: block;
+      font-size: 18px;
+      margin-bottom: 7px;
+    }
+
+    .finance-item p {
+      margin: 5px 0;
+      color: #5d6472;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .status-pill {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .status-pill.aprovada {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .status-pill.pendente {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .finance-total-box {
+      padding: 16px;
+      border: 1px solid #e6e8ee;
+      border-radius: 18px;
+      background: #fbfcfd;
+    }
+
+    .finance-total-box strong {
+      display: block;
+      font-size: 30px;
+      line-height: 1;
+    }
+
+    .finance-total-box p {
+      margin: 8px 0 0;
+      color: #5d6472;
+      line-height: 1.35;
+    }
+
+    @media (max-width: 380px) {
+      .earn-hero strong {
+        font-size: 38px;
+      }
+
+      .gain-grid,
+      .finance-filter {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
 
 <body>
@@ -19,35 +247,58 @@
       <a class="icon-btn link-btn" href="./dashboard.html">Voltar</a>
     </header>
 
-    <section class="balance-card">
-      <span>A receber</span>
+    <section class="earn-hero">
+      <span>A receber na próxima rodada</span>
       <strong id="valorAbertoMotoboy">R$ 0,00</strong>
+      <p>Esse é o valor das entregas finalizadas que ainda não foram pagas.</p>
 
-      <div class="payday-row">
+      <div class="earn-next-row">
         <span>Próximo pagamento</span>
         <b id="proximoPagamento">Carregando...</b>
       </div>
     </section>
 
-    <section class="quick-grid">
-      <div class="quick-card">
-        <span>Entregas abertas</span>
-        <strong id="totalEntregasAbertas">0</strong>
+    <section class="gain-grid">
+      <div class="gain-card highlight">
+        <span>Total já recebido</span>
+        <strong id="totalRecebidoMotoboy">R$ 0,00</strong>
+        <p>Ganhos já marcados como pagos.</p>
       </div>
 
-      <div class="quick-card">
-        <span>Já pagas</span>
+      <div class="gain-card">
+        <span>Média por entrega</span>
+        <strong id="mediaEntregaMotoboy">R$ 0,00</strong>
+        <p>Considerando entregas pagas e abertas.</p>
+      </div>
+
+      <div class="gain-card">
+        <span>Entregas abertas</span>
+        <strong id="totalEntregasAbertas">0</strong>
+        <p>Aguardando pagamento.</p>
+      </div>
+
+      <div class="gain-card">
+        <span>Entregas pagas</span>
         <strong id="totalEntregasPagas">0</strong>
+        <p>Já liquidadas pela operação.</p>
       </div>
     </section>
 
-    <section class="feed-card">
-      <h2>Total já recebido</h2>
-
-      <div id="boxTotalRecebido">
-        <div class="empty-state">
-          Carregando total recebido...
+    <section class="progress-box">
+      <div class="progress-top">
+        <div>
+          <span>Ritmo de ganhos</span>
+          <strong id="ritmoGanhosTexto">R$ 0,00 esta semana</strong>
         </div>
+
+        <div>
+          <span>Maior entrega</span>
+          <strong id="maiorEntregaTexto">R$ 0,00</strong>
+        </div>
+      </div>
+
+      <div class="progress-track">
+        <div id="barraGanhosSemana" class="progress-fill"></div>
       </div>
     </section>
 
@@ -93,6 +344,6 @@
     </section>
   </main>
 
-  <script type="module" src="./src/financeiro.js?v=160"></script>
+  <script type="module" src="./src/financeiro.js?v=170"></script>
 </body>
 </html>
