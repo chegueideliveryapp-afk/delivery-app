@@ -365,10 +365,10 @@ function renderizarEntregasAReceber() {
 
     card.innerHTML = `
       <strong>${dinheiro(pedido.valorMotoboy)}</strong>
-      <p>Pedido: ${pedido.id}</p>
       <p>Restaurante: ${pedido.restauranteNome || "Não informado"}</p>
       <p>Entrega: ${pedido.enderecoEntrega || "Endereço não informado"}</p>
-      <p>Finalizada em: ${dataTexto(pedido.entregueAt || pedido.updatedAt || pedido.createdAt)}</p>
+      <p>Aceitou em: ${dataTexto(pedido.aceitoAt)}</p>
+      <p>Finalizou em: ${dataTexto(pedido.entregueAt || pedido.updatedAt)}</p>
       <span class="status-pill pendente">A receber</span>
     `;
 
@@ -431,11 +431,10 @@ function renderizarEntregasPagas() {
     card.className = "finance-item";
 
     card.innerHTML = `
-      <strong>${dinheiro(pedido.valorMotoboy)}</strong>
-      <p>Pedido: ${pedido.id}</p>
-      <p>Restaurante: ${pedido.restauranteNome || "Não informado"}</p>
-      <p>Entrega: ${pedido.enderecoEntrega || "Endereço não informado"}</p>
-      <p>Finalizada em: ${dataTexto(pedido.entregueAt || pedido.updatedAt || pedido.createdAt)}</p>
+      <strong>${pedido.restauranteNome || "Restaurante não informado"}</strong>
+      <p>Valor pago: ${dinheiro(pedido.valorMotoboy)}</p>
+      <p>Aceitou em: ${dataTexto(pedido.aceitoAt)}</p>
+      <p>Finalizou em: ${dataTexto(pedido.entregueAt || pedido.updatedAt)}</p>
       <span class="status-pill aprovada">Pago</span>
     `;
 
