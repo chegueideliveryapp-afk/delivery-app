@@ -15,7 +15,6 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 let uid = null;
-let motoboyAtual = null;
 let pedidos = [];
 let pagamentos = [];
 let ledger = [];
@@ -59,6 +58,13 @@ function formatarDataInput(data) {
   return `${ano}-${mes}-${dia}`;
 }
 
+function parseDataInput(valor) {
+  if (!valor) return null;
+
+  const data = new Date(`${valor}T00:00:00`);
+  return Number.isNaN(data.getTime()) ? null : data;
+}
+
 function inicioDaSemana(dataReferencia) {
   const data = new Date(dataReferencia);
   const dia = data.getDay();
@@ -83,6 +89,7 @@ function fimDaSemana(dataReferencia) {
 function proximaSegunda() {
   const hoje = new Date();
   const dia = hoje.getDay();
+
   const diasAteSegunda = dia === 1 ? 7 : (8 - dia) % 7 || 7;
 
   const data = new Date(hoje);
@@ -90,13 +97,6 @@ function proximaSegunda() {
   data.setHours(0, 0, 0, 0);
 
   return data;
-}
-
-function parseDataInput(valor) {
-  if (!valor) return null;
-
-  const data = new Date(`${valor}T00:00:00`);
-  return Number.isNaN(data.getTime()) ? null : data;
 }
 
 function dataDoPedido(pedido) {
@@ -108,20 +108,27 @@ function dataDoPedido(pedido) {
   );
 }
 
-function dataDoPagamento(pagamento) {
-  return (
-    pagamento.pagoAt?.toDate?.() ||
-    pagamento.createdAt?.toDate?.() ||
-    null
-  );
-}
-
 function dentroDoPeriodo(data, inicio, fim) {
   if (!data) return true;
   if (inicio && data < inicio) return false;
   if (fim && data > fim) return false;
-
   return true;
+}
+
+function pedidoEntregueDoMotoboy(pedido) {
+  return (
+    pedido.status === "entregue" &&
+    pedido.motoboyId === uid &&
+    numero(pedido.valorMotoboy, 0) > 0
+  );
+}
+
+function pagamentoValido(pagamento) {
+  return (
+    pagamento.status === "pago" ||
+    pagamento.pago === true ||
+    Boolean(pagamento.pagoAt)
+  );
 }
 
 function pagamentoTemPedido(pagamento, pedidoId) {
@@ -160,12 +167,7 @@ function pagamentoContemLedgerDoPedido(pagamento, pedidoId) {
 
 function pedidoFoiPagoPorPagamento(pedido) {
   return pagamentos.some((pagamento) => {
-    const pagamentoValido =
-      pagamento.status === "pago" ||
-      pagamento.pago === true ||
-      pagamento.pagoAt;
-
-    if (!pagamentoValido) return false;
+    if (!pagamentoValido(pagamento)) return false;
 
     return (
       pagamentoTemPedido(pagamento, pedido.id) ||
@@ -175,9 +177,7 @@ function pedidoFoiPagoPorPagamento(pedido) {
 }
 
 function pedidoFoiPagoPorLedger(pedido) {
-  const ledgersDoPedido = ledgerDoPedido(pedido.id);
-
-  return ledgersDoPedido.some((item) => ledgerFoiPago(item));
+  return ledgerDoPedido(pedido.id).some((item) => ledgerFoiPago(item));
 }
 
 function pedidoFoiPagoAoMotoboy(pedido) {
@@ -187,14 +187,6 @@ function pedidoFoiPagoAoMotoboy(pedido) {
     Boolean(pedido.pagamentoMotoboyId) ||
     pedidoFoiPagoPorPagamento(pedido) ||
     pedidoFoiPagoPorLedger(pedido)
-  );
-}
-
-function pedidoEntregueDoMotoboy(pedido) {
-  return (
-    pedido.status === "entregue" &&
-    pedido.motoboyId === uid &&
-    numero(pedido.valorMotoboy, 0) > 0
   );
 }
 
@@ -220,35 +212,22 @@ function entregasPagas() {
     });
 }
 
-function pagamentosDoMotoboy() {
-  return pagamentos
-    .filter((pagamento) => {
-      return pagamento.status === "pago" || pagamento.pago === true || pagamento.pagoAt;
-    })
-    .sort((a, b) => {
-      const dataA = dataDoPagamento(a)?.getTime?.() || 0;
-      const dataB = dataDoPagamento(b)?.getTime?.() || 0;
-      return dataB - dataA;
-    });
+function totalRecebidoPorEntregasPagas() {
+  return entregasPagas().reduce((total, pedido) => {
+    return total + numero(pedido.valorMotoboy, 0);
+  }, 0);
 }
 
-function valorPagamentoHistorico(pagamento) {
-  return numero(
-    pagamento.valorTotal ??
-    pagamento.valorTotalSemana ??
-    pagamento.valorPago ??
-    pagamento.valor,
-    0
-  );
+function filtroHistorico() {
+  return document.getElementById("filtroHistoricoPagamentos")?.value || "todos";
 }
 
-function pagamentosFiltrados() {
-  const filtro = document.getElementById("filtroHistoricoPagamentos")?.value || "todos";
-  const dataSelecionada = parseDataInput(document.getElementById("semanaHistorico")?.value);
-  const todos = pagamentosDoMotoboy();
+function entregasPagasFiltradas() {
+  const filtro = filtroHistorico();
+  const todas = entregasPagas();
 
   if (filtro === "todos") {
-    return todos;
+    return todas;
   }
 
   if (filtro === "ultimos30") {
@@ -259,33 +238,51 @@ function pagamentosFiltrados() {
     inicio.setHours(0, 0, 0, 0);
     fim.setHours(23, 59, 59, 999);
 
-    return todos.filter((pagamento) => {
-      return dentroDoPeriodo(dataDoPagamento(pagamento), inicio, fim);
+    return todas.filter((pedido) => {
+      return dentroDoPeriodo(dataDoPedido(pedido), inicio, fim);
     });
   }
 
-  const referencia = filtro === "semanaSelecionada" && dataSelecionada
-    ? dataSelecionada
-    : new Date();
+  const dataSelecionada = parseDataInput(
+    document.getElementById("semanaHistorico")?.value
+  );
+
+  const referencia =
+    filtro === "semanaSelecionada" && dataSelecionada
+      ? dataSelecionada
+      : new Date();
 
   const inicio = inicioDaSemana(referencia);
   const fim = fimDaSemana(referencia);
 
-  return todos.filter((pagamento) => {
-    return dentroDoPeriodo(dataDoPagamento(pagamento), inicio, fim);
+  return todas.filter((pedido) => {
+    return dentroDoPeriodo(dataDoPedido(pedido), inicio, fim);
   });
 }
 
-function totalRecebido() {
-  return pagamentosDoMotoboy().reduce((total, pagamento) => {
-    return total + valorPagamentoHistorico(pagamento);
-  }, 0);
-}
+function agruparEntregasPagasPorSemana() {
+  const grupos = {};
 
-function totalEntregasPagasHistorico() {
-  return pagamentosDoMotoboy().reduce((total, pagamento) => {
-    return total + numero(pagamento.totalEntregas ?? pagamento.entregas, 0);
-  }, 0);
+  entregasPagasFiltradas().forEach((pedido) => {
+    const data = dataDoPedido(pedido) || new Date();
+    const inicio = inicioDaSemana(data);
+    const fim = fimDaSemana(data);
+    const chave = formatarDataInput(inicio);
+
+    if (!grupos[chave]) {
+      grupos[chave] = {
+        inicio,
+        fim,
+        total: 0,
+        entregas: 0
+      };
+    }
+
+    grupos[chave].total += numero(pedido.valorMotoboy, 0);
+    grupos[chave].entregas += 1;
+  });
+
+  return Object.values(grupos).sort((a, b) => b.inicio - a.inicio);
 }
 
 function renderizarResumo() {
@@ -306,19 +303,15 @@ function renderizarTotalRecebido() {
   const box = document.getElementById("boxTotalRecebido");
   if (!box) return;
 
-  const valor = totalRecebido();
-  const entregas = totalEntregasPagasHistorico();
+  const total = totalRecebidoPorEntregasPagas();
+  const pagas = entregasPagas();
 
   box.innerHTML = `
-    <div class="finance-item">
-      <div>
-        <strong>${dinheiro(valor)}</strong>
-        <p>Total já pago a você pela Cheguei Delivery.</p>
-        <p>Pagamentos recebidos: ${pagamentosDoMotoboy().length}</p>
-        <p>Entregas pagas nesses pagamentos: ${entregas}</p>
-      </div>
-
-      <span class="finance-status paid">Recebido</span>
+    <div class="finance-total-box">
+      <strong>${dinheiro(total)}</strong>
+      <p>Total já pago a você pela Cheguei Delivery.</p>
+      <p>Entregas pagas: ${pagas.length}</p>
+      <span class="status-pill aprovada">Recebido</span>
     </div>
   `;
 }
@@ -345,30 +338,27 @@ function renderizarEntregasAReceber() {
     card.className = "finance-item";
 
     card.innerHTML = `
-      <div>
-        <strong>${dinheiro(pedido.valorMotoboy)}</strong>
-        <p>Pedido: ${pedido.id}</p>
-        <p>Restaurante: ${pedido.restauranteNome || "Não informado"}</p>
-        <p>Entrega: ${pedido.enderecoEntrega || "Endereço não informado"}</p>
-        <p>Finalizada em: ${dataTexto(pedido.entregueAt || pedido.updatedAt || pedido.createdAt)}</p>
-      </div>
-
-      <span class="finance-status open">A receber</span>
+      <strong>${dinheiro(pedido.valorMotoboy)}</strong>
+      <p>Pedido: ${pedido.id}</p>
+      <p>Restaurante: ${pedido.restauranteNome || "Não informado"}</p>
+      <p>Entrega: ${pedido.enderecoEntrega || "Endereço não informado"}</p>
+      <p>Finalizada em: ${dataTexto(pedido.entregueAt || pedido.updatedAt || pedido.createdAt)}</p>
+      <span class="status-pill pendente">A receber</span>
     `;
 
     lista.appendChild(card);
   });
 }
 
-function renderizarPagamentosRecebidos() {
+function renderizarHistoricoSemanal() {
   const lista = document.getElementById("listaPagamentosRecebidos");
   if (!lista) return;
 
-  const historico = pagamentosFiltrados();
+  const grupos = agruparEntregasPagasPorSemana();
 
   lista.innerHTML = "";
 
-  if (historico.length === 0) {
+  if (grupos.length === 0) {
     lista.innerHTML = `
       <div class="empty-state">
         Nenhum pagamento encontrado neste filtro.
@@ -377,32 +367,16 @@ function renderizarPagamentosRecebidos() {
     return;
   }
 
-  historico.forEach((pagamento) => {
-    const valor = valorPagamentoHistorico(pagamento);
-
-    const periodoInicio =
-      pagamento.periodoInicio ||
-      pagamento.inicioSemanaTexto ||
-      "Não informado";
-
-    const periodoFim =
-      pagamento.periodoFim ||
-      pagamento.fimSemanaTexto ||
-      "Não informado";
-
+  grupos.forEach((grupo) => {
     const card = document.createElement("div");
     card.className = "finance-item";
 
     card.innerHTML = `
-      <div>
-        <strong>${dinheiro(valor)}</strong>
-        <p>Pagamento: ${pagamento.id}</p>
-        <p>Entregas pagas: ${pagamento.totalEntregas || pagamento.entregas || 0}</p>
-        <p>Período: ${periodoInicio} até ${periodoFim}</p>
-        <p>Pago em: ${dataTexto(pagamento.pagoAt || pagamento.createdAt)}</p>
-      </div>
-
-      <span class="finance-status paid">Pago</span>
+      <strong>${dinheiro(grupo.total)}</strong>
+      <p>Semana: ${dataCurta(grupo.inicio)} até ${dataCurta(grupo.fim)}</p>
+      <p>Entregas pagas: ${grupo.entregas}</p>
+      <p>Histórico calculado pelas entregas já pagas.</p>
+      <span class="status-pill aprovada">Pago</span>
     `;
 
     lista.appendChild(card);
@@ -431,15 +405,12 @@ function renderizarEntregasPagas() {
     card.className = "finance-item";
 
     card.innerHTML = `
-      <div>
-        <strong>${dinheiro(pedido.valorMotoboy)}</strong>
-        <p>Pedido: ${pedido.id}</p>
-        <p>Restaurante: ${pedido.restauranteNome || "Não informado"}</p>
-        <p>Entrega: ${pedido.enderecoEntrega || "Endereço não informado"}</p>
-        <p>Finalizada em: ${dataTexto(pedido.entregueAt || pedido.updatedAt || pedido.createdAt)}</p>
-      </div>
-
-      <span class="finance-status paid">Pago</span>
+      <strong>${dinheiro(pedido.valorMotoboy)}</strong>
+      <p>Pedido: ${pedido.id}</p>
+      <p>Restaurante: ${pedido.restauranteNome || "Não informado"}</p>
+      <p>Entrega: ${pedido.enderecoEntrega || "Endereço não informado"}</p>
+      <p>Finalizada em: ${dataTexto(pedido.entregueAt || pedido.updatedAt || pedido.createdAt)}</p>
+      <span class="status-pill aprovada">Pago</span>
     `;
 
     lista.appendChild(card);
@@ -450,7 +421,7 @@ function renderizarTudo() {
   renderizarResumo();
   renderizarTotalRecebido();
   renderizarEntregasAReceber();
-  renderizarPagamentosRecebidos();
+  renderizarHistoricoSemanal();
   renderizarEntregasPagas();
 }
 
@@ -463,27 +434,16 @@ function configurarFiltros() {
   }
 
   if (filtro) {
-    filtro.addEventListener("change", () => {
-      renderizarPagamentosRecebidos();
-    });
+    filtro.addEventListener("change", renderizarTudo);
   }
 
   if (semana) {
-    semana.addEventListener("change", () => {
-      renderizarPagamentosRecebidos();
-    });
+    semana.addEventListener("change", renderizarTudo);
   }
 }
 
 function escutarMotoboy() {
-  onSnapshot(doc(db, "motoboys", uid), (snap) => {
-    if (!snap.exists()) return;
-
-    motoboyAtual = {
-      id: snap.id,
-      ...snap.data()
-    };
-
+  onSnapshot(doc(db, "motoboys", uid), () => {
     renderizarTudo();
   });
 }
@@ -590,7 +550,6 @@ onAuthStateChanged(auth, async (user) => {
   if (!valido) return;
 
   configurarFiltros();
-
   escutarMotoboy();
   escutarPedidos();
   escutarPagamentos();
