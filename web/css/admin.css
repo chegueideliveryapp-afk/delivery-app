@@ -8,12 +8,30 @@
   --admin-red-dark: #b91521;
   --admin-green: #12a86b;
   --admin-yellow: #f59e0b;
+  --admin-blue: #2563eb;
   --admin-shadow: 0 16px 36px rgba(17, 24, 39, .07);
 }
 
+* {
+  box-sizing: border-box;
+}
+
 body {
+  margin: 0;
   background: var(--admin-bg);
   color: var(--admin-ink);
+  font-family: Inter, Arial, sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
 }
 
 .login-page {
@@ -152,8 +170,7 @@ body {
   border-color: rgba(234, 29, 44, .45);
 }
 
-.page,
-.admin-app {
+.page {
   max-width: 1180px;
   margin: 0 auto;
   padding: 28px;
@@ -161,40 +178,7 @@ body {
   gap: 22px;
 }
 
-.admin-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.admin-header span {
-  color: var(--admin-muted);
-  font-size: 13px;
-  font-weight: 900;
-}
-
-.admin-header h1 {
-  margin: 4px 0 0;
-  font-size: 30px;
-}
-
-.back-link {
-  min-width: 78px;
-  height: 42px;
-  border: 0;
-  border-radius: 14px;
-  background: #fff;
-  color: var(--admin-ink);
-  font-weight: 900;
-  text-decoration: none;
-  display: grid;
-  place-items: center;
-  box-shadow: 0 8px 22px rgba(17, 24, 39, .08);
-}
-
-.panel,
-.admin-card {
+.panel {
   background: var(--admin-surface);
   border: 1px solid var(--admin-line);
   border-radius: 24px;
@@ -202,10 +186,25 @@ body {
   box-shadow: var(--admin-shadow);
 }
 
-.panel h2,
-.admin-card h2 {
+.panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.panel h2 {
   margin: 0 0 6px;
-  font-size: 22px;
+  font-size: 24px;
+}
+
+.section-kicker {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--admin-muted);
+  font-size: 13px;
+  font-weight: 900;
 }
 
 .hint {
@@ -269,7 +268,7 @@ body {
 }
 
 .actions {
-  min-width: 150px;
+  min-width: 190px;
   display: grid;
   gap: 8px;
   align-content: start;
@@ -289,6 +288,29 @@ body {
   border-color: var(--admin-red);
 }
 
+.danger-btn,
+.actions .danger-btn {
+  min-height: 42px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 12px;
+  background: #fee2e2;
+  color: #991b1b;
+  font-weight: 900;
+}
+
+.danger-btn:hover,
+.actions .danger-btn:hover {
+  background: #ef4444;
+  color: #fff;
+}
+
+.danger-btn:disabled,
+.actions button:disabled {
+  opacity: .65;
+  cursor: wait;
+}
+
 .empty {
   padding: 18px;
   background: #f5f6f8;
@@ -305,11 +327,8 @@ body {
 }
 
 .badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 26px;
-  padding: 5px 10px;
+  display: inline-block;
+  padding: 5px 9px;
   border-radius: 999px;
   background: #e5e7eb;
   color: #111;
@@ -339,7 +358,7 @@ body {
 
 .badge.blue {
   background: #dbeafe;
-  color: #1e40af;
+  color: #1d4ed8;
 }
 
 .whatsapp-link {
@@ -371,65 +390,29 @@ body {
   margin: 4px 0;
 }
 
-.section-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 18px;
-}
-
-.section-head span {
-  color: var(--admin-muted);
-  font-size: 13px;
-  font-weight: 900;
-}
-
-.section-head h2 {
-  margin: 4px 0 0;
-}
-
-.section-head > strong {
-  flex: 0 0 auto;
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: #f5f6f8;
-  color: var(--admin-ink);
-  font-size: 13px;
-}
-
-.admin-list {
+.report-grid,
+.stats-grid {
   display: grid;
   gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
 }
 
-.list-title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 10px;
+.stat-card {
+  padding: 18px;
+  border: 1px solid var(--admin-line);
+  border-radius: 18px;
+  background: #fbfcfd;
 }
 
-.list-card details {
-  margin-top: 12px;
+.stat-card strong {
+  display: block;
+  font-size: 20px;
 }
 
-.list-card summary {
-  cursor: pointer;
-  font-weight: 900;
-  color: var(--admin-ink);
-}
-
-.list-card pre {
-  white-space: pre-wrap;
-  margin: 10px 0 0;
-  padding: 12px;
-  border-radius: 14px;
-  background: #f5f6f8;
-  color: #363b45;
-  font-size: 13px;
-  line-height: 1.4;
+.stat-card span {
+  display: block;
+  margin-top: 6px;
+  color: var(--admin-muted);
 }
 
 @media (max-width: 760px) {
@@ -438,24 +421,17 @@ body {
   }
 
   .container,
-  .page,
-  .admin-app {
+  .page {
     padding: 18px;
   }
 
-  .admin-header,
-  .section-head,
-  .list-title-row {
-    align-items: flex-start;
+  .panel {
+    padding: 18px;
+    border-radius: 20px;
   }
 
-  .admin-header,
-  .section-head {
-    flex-direction: column;
-  }
-
-  .list-title-row {
-    flex-direction: column;
+  .panel-header {
+    display: block;
   }
 
   .list-card {
@@ -463,6 +439,7 @@ body {
   }
 
   .actions {
+    min-width: 0;
     margin-top: 14px;
   }
 
