@@ -5,7 +5,7 @@
   <title>Financeiro - Cheguei Motoboy</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <link rel="stylesheet" href="./css/app.css?v=130">
+  <link rel="stylesheet" href="./css/app.css?v=132">
 </head>
 
 <body>
@@ -50,6 +50,16 @@
     </section>
 
     <section class="feed-card">
+      <h2>Total já recebido</h2>
+
+      <div id="boxTotalRecebido">
+        <div class="empty-state">
+          Carregando total recebido...
+        </div>
+      </div>
+    </section>
+
+    <section class="feed-card">
       <h2>Entregas a receber</h2>
 
       <div id="listaEntregasAReceber">
@@ -78,18 +88,8 @@
         </div>
       </div>
     </section>
-
-    <section class="feed-card">
-      <h2>Conferência</h2>
-
-      <div id="boxConferenciaFinanceira">
-        <div class="empty-state">
-          Conferindo saldo...
-        </div>
-      </div>
-    </section>
   </main>
 
-  <script type="module" src="./src/financeiro.js?v=130"></script>
+  <script type="module" src="./src/financeiro.js?v=132"></script>
 </body>
 </html>
