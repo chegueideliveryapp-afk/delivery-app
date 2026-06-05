@@ -16,11 +16,11 @@
   <style>
     #mapaRastreamento {
       width: 100%;
-      height: 520px;
-      margin-top: 16px;
-      border-radius: 22px;
+      height: 440px;
+      border-radius: 18px;
       border: 1px solid #e6e8ee;
       overflow: hidden;
+      margin-top: 14px;
     }
 
     .tracking-list {
@@ -30,49 +30,33 @@
     }
 
     .tracking-item {
-      padding: 15px;
-      border-radius: 16px;
+      padding: 16px;
       border: 1px solid #e6e8ee;
+      border-radius: 18px;
       background: #fbfcfd;
     }
 
     .tracking-item strong {
       display: block;
-      font-size: 18px;
-      color: #16181d;
+      font-size: 17px;
+      margin-bottom: 8px;
     }
 
     .tracking-item p {
-      margin: 6px 0 0;
-      color: #747985;
+      margin: 5px 0;
+      color: #5d6472;
       line-height: 1.35;
     }
 
     .tracking-status {
       display: inline-block;
-      margin-top: 10px;
+      margin-top: 8px;
       padding: 7px 10px;
       border-radius: 999px;
       font-size: 12px;
       font-weight: 900;
-      background: #fef3c7;
-      color: #92400e;
-    }
-
-    .tracking-status.entregue {
-      background: #dcfce7;
-      color: #166534;
-    }
-
-    .tracking-status.aceito {
       background: #dbeafe;
-      color: #1e40af;
-    }
-
-    @media (max-width: 760px) {
-      #mapaRastreamento {
-        height: 420px;
-      }
+      color: #1d4ed8;
     }
   </style>
 </head>
@@ -85,25 +69,23 @@
         <h1>Rastreamento</h1>
       </div>
 
-      <a class="back-link" href="./pedidos.html">Voltar</a>
+      <a class="back-link" href="./dashboard.html">Voltar</a>
     </header>
 
     <section class="wallet-card">
       <span>Entregas em tempo real</span>
-      <strong id="totalRastreamento">Carregando...</strong>
-      <p>Acompanhe no mapa as corridas aceitas pelos motoboys.</p>
+      <strong id="totalCorridas">Carregando...</strong>
+      <p>Acompanhe no mapa somente as corridas aceitas e ainda não finalizadas.</p>
     </section>
 
-    <section class="history-card info-card">
+    <section class="info-card history-card">
       <span>Mapa</span>
-      <strong>Localização dos motoboys</strong>
+      <strong>Localização do motoboy</strong>
 
       <div id="mapaRastreamento"></div>
 
       <div id="listaRastreamento" class="tracking-list">
-        <div class="empty-mini">
-          Carregando rastreamento...
-        </div>
+        <div class="empty-mini">Carregando entregas em andamento...</div>
       </div>
     </section>
   </main>
@@ -112,15 +94,10 @@
 
   <script type="module">
     import {
-      protegerRestaurante
-    } from "../js/restaurante.js?v=160";
+      iniciarRastreamentoRestaurante
+    } from "../js/rastreamento-restaurante.js?v=3";
 
-    import {
-      carregarRastreamentoRestaurante
-    } from "../js/restaurante-rastreamento.js?v=160";
-
-    protegerRestaurante();
-    carregarRastreamentoRestaurante();
+    iniciarRastreamentoRestaurante();
   </script>
 </body>
 </html>
