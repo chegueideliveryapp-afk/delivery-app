@@ -17,10 +17,16 @@
 
   <main class="page">
     <section class="panel">
-      <h2>Pedidos criados</h2>
-      <p class="hint">
-        Acompanhe pedidos pendentes, em andamento, entregues e faça correções operacionais quando necessário.
-      </p>
+      <div class="panel-header">
+        <div>
+          <h2>Pedidos criados</h2>
+          <p class="hint">
+            Acompanhe pedidos pendentes, aceitos, entregues e estornados.
+          </p>
+        </div>
+
+        <span id="totalPedidosAdmin" class="badge gray">Carregando...</span>
+      </div>
 
       <div id="listaPedidosAdmin">
         <div class="empty">Carregando pedidos...</div>
@@ -30,7 +36,7 @@
 
   <script type="module">
     import { protegerPagina } from "../js/auth.js";
-    import { carregarPedidosAdmin } from "../js/admin-pedidos.js?v=100";
+    import { carregarPedidosAdmin } from "../js/pedidos.js";
 
     protegerPagina("admin");
     carregarPedidosAdmin();
