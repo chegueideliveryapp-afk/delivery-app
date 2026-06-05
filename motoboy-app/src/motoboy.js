@@ -6,18 +6,20 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 import {
+  collection,
   doc,
   getDoc,
   onSnapshot,
+  query,
+  serverTimestamp,
   updateDoc,
-  serverTimestamp
+  where
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 let uid = null;
 let motoboyAtual = null;
 let watchId = null;
 let onlineSolicitado = false;
-let gpsAutoIniciado = false;
 
 function dinheiro(valor) {
   return Number(valor || 0).toLocaleString("pt-BR", {
@@ -40,22 +42,20 @@ function podeFicarOnline(motoboy) {
   );
 }
 
-function definirBotaoOnlineDesabilitado(btnOnline) {
-  if (!btnOnline) return;
-
-  btnOnline.disabled = true;
-  btnOnline.classList.add("is-disabled");
-  btnOnline.classList.remove("is-online", "is-offline");
-}
-
-function definirBotaoOnlineAtivo(btnOnline, online) {
+function atualizarBotaoOnline(motoboy) {
+  const btnOnline = document.getElementById("btnOnline");
   if (!btnOnline) return;
 
   btnOnline.disabled = false;
-  btnOnline.innerText = online ? "Ficar offline" : "Ficar online";
-  btnOnline.classList.remove("is-disabled");
-  btnOnline.classList.toggle("is-online", online === true);
-  btnOnline.classList.toggle("is-offline", online !== true);
+  btnOnline.classList.remove("online-mode", "offline-mode");
+
+  if (motoboy.online) {
+    btnOnline.innerText = "Ficar offline";
+    btnOnline.classList.add("offline-mode");
+  } else {
+    btnOnline.innerText = "Ficar online";
+    btnOnline.classList.add("online-mode");
+  }
 }
 
 function atualizarTela(motoboy) {
@@ -72,30 +72,30 @@ function atualizarTela(motoboy) {
   if (motoboy.bloqueado) {
     setText("statusConta", "Conta bloqueada");
     setText("statusDescricao", "Entre em contato com a administração.");
-    definirBotaoOnlineDesabilitado(btnOnline);
+    if (btnOnline) btnOnline.disabled = true;
     return;
   }
 
   if (motoboy.ativo === false) {
     setText("statusConta", "Conta inativa");
     setText("statusDescricao", "Sua conta está inativa no momento.");
-    definirBotaoOnlineDesabilitado(btnOnline);
+    if (btnOnline) btnOnline.disabled = true;
     return;
   }
 
   if (motoboy.aprovado !== true) {
     setText("statusConta", "Aguardando aprovação");
     setText("statusDescricao", "Assim que a administração aprovar, você poderá ficar online.");
-    definirBotaoOnlineDesabilitado(btnOnline);
+    if (btnOnline) btnOnline.disabled = true;
     return;
   }
 
   setText("statusConta", "Conta aprovada");
   setText("statusDescricao", "Você já pode ficar online para receber corridas próximas.");
-  definirBotaoOnlineAtivo(btnOnline, motoboy.online === true);
 
-  if (motoboy.online === true && watchId === null && gpsAutoIniciado === false) {
-    gpsAutoIniciado = true;
+  atualizarBotaoOnline(motoboy);
+
+  if (motoboy.online === true && onlineSolicitado === false) {
     iniciarGpsOnline();
   }
 }
@@ -104,7 +104,6 @@ async function marcarOffline() {
   if (!uid) return;
 
   onlineSolicitado = false;
-  gpsAutoIniciado = false;
 
   if (watchId !== null) {
     navigator.geolocation.clearWatch(watchId);
@@ -122,8 +121,6 @@ async function marcarOffline() {
 async function iniciarGpsOnline() {
   if (!uid || !motoboyAtual) return;
 
-  if (watchId !== null) return;
-
   if (!podeFicarOnline(motoboyAtual)) {
     setText("gpsTexto", "Sua conta ainda não pode ficar online.");
     return;
@@ -134,8 +131,13 @@ async function iniciarGpsOnline() {
     return;
   }
 
+  if (watchId !== null) {
+    navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+  }
+
   onlineSolicitado = true;
-  setText("gpsTexto", "Atualizando localização...");
+  setText("gpsTexto", "Solicitando localização...");
 
   watchId = navigator.geolocation.watchPosition(
     async (pos) => {
@@ -161,25 +163,88 @@ async function iniciarGpsOnline() {
     async (erro) => {
       console.error(erro);
 
-      onlineSolicitado = false;
-      gpsAutoIniciado = false;
-
-      if (watchId !== null) {
-        navigator.geolocation.clearWatch(watchId);
-        watchId = null;
-      }
-
       await updateDoc(doc(db, "motoboys", uid), {
         online: false,
         updatedAt: serverTimestamp()
       });
 
+      onlineSolicitado = false;
       setText("gpsTexto", "Permita a localização para ficar online.");
     },
     {
       enableHighAccuracy: true,
       maximumAge: 5000,
       timeout: 15000
+    }
+  );
+}
+
+function tocarSomNotificacao() {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = "square";
+    osc.frequency.setValueAtTime(620, ctx.currentTime);
+    osc.frequency.setValueAtTime(420, ctx.currentTime + 0.18);
+
+    gain.gain.setValueAtTime(0.001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.7, ctx.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.7);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start();
+    osc.stop(ctx.currentTime + 0.75);
+
+    setTimeout(() => {
+      ctx.close().catch(() => {});
+    }, 1000);
+  } catch (erro) {
+    console.warn("Som de notificação não liberado.", erro);
+  }
+}
+
+function mostrarNotificacaoEstorno(notificacao) {
+  tocarSomNotificacao();
+
+  if (navigator.vibrate) {
+    navigator.vibrate([250, 100, 250]);
+  }
+
+  alert(`${notificacao.titulo}\n\n${notificacao.mensagem}`);
+}
+
+function escutarNotificacoesMotoboy() {
+  if (!uid) return;
+
+  const q = query(
+    collection(db, "notificacoes_motoboy"),
+    where("motoboyId", "==", uid),
+    where("lida", "==", false)
+  );
+
+  onSnapshot(
+    q,
+    (snapshot) => {
+      snapshot.forEach(async (docSnap) => {
+        const notificacao = docSnap.data();
+
+        mostrarNotificacaoEstorno(notificacao);
+
+        await updateDoc(doc(db, "notificacoes_motoboy", docSnap.id), {
+          lida: true,
+          lidaAt: serverTimestamp()
+        });
+      });
+    },
+    (erro) => {
+      console.error("Erro ao carregar notificações:", erro);
     }
   );
 }
@@ -195,7 +260,6 @@ function configurarBotoes() {
       if (motoboyAtual.online) {
         await marcarOffline();
       } else {
-        gpsAutoIniciado = true;
         await iniciarGpsOnline();
       }
     });
@@ -245,4 +309,5 @@ onAuthStateChanged(auth, async (user) => {
   });
 
   configurarBotoes();
+  escutarNotificacoesMotoboy();
 });
