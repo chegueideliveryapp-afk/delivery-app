@@ -6,38 +6,33 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     :root {
       --red: #ea1d2c;
-      --dark-red: #b80f20;
+      --red-dark: #b80f20;
       --black: #111318;
       --muted: #667085;
       --bg: #f3f5f8;
+      --card: #ffffff;
       --line: #e5e7eb;
-      --white: #ffffff;
-      --green: #11a36a;
+      --green: #12a86b;
       --blue: #2563eb;
-      --shadow: 0 22px 56px rgba(17, 24, 39, .11);
+      --yellow: #f59e0b;
+      --shadow: 0 22px 56px rgba(17, 24, 39, .12);
     }
 
     body {
       margin: 0;
       font-family: Inter, Arial, sans-serif;
-      background: var(--bg);
+      background:
+        radial-gradient(circle at 10% 12%, rgba(234,29,44,.11), transparent 28%),
+        radial-gradient(circle at 92% 18%, rgba(37,99,235,.10), transparent 28%),
+        var(--bg);
       color: var(--black);
     }
 
-    a {
-      color: inherit;
-      text-decoration: none;
-    }
-
-    .page {
-      min-height: 100vh;
-    }
+    a { color: inherit; text-decoration: none; }
 
     .topbar {
       position: sticky;
@@ -45,14 +40,13 @@
       z-index: 20;
       min-height: 74px;
       padding: 0 26px;
-      background: rgba(17, 19, 24, .94);
-      backdrop-filter: blur(18px);
+      background: rgba(17, 19, 24, .95);
       color: #fff;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 18px;
-      box-shadow: 0 12px 28px rgba(17, 24, 39, .16);
+      box-shadow: 0 12px 28px rgba(17, 24, 39, .18);
     }
 
     .brand {
@@ -66,7 +60,6 @@
       height: 42px;
       border-radius: 14px;
       background: var(--red);
-      color: #fff;
       display: grid;
       place-items: center;
       font-weight: 950;
@@ -85,15 +78,15 @@
 
     .brand span {
       margin-top: 3px;
-      font-size: 12px;
       color: rgba(255,255,255,.72);
-      font-weight: 800;
+      font-size: 12px;
+      font-weight: 850;
     }
 
     .top-actions {
       display: flex;
-      align-items: center;
       gap: 10px;
+      align-items: center;
     }
 
     .ghost-btn,
@@ -101,11 +94,11 @@
       min-height: 44px;
       padding: 0 16px;
       border-radius: 14px;
-      font-weight: 950;
+      border: 0;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      border: 0;
+      font-weight: 950;
     }
 
     .ghost-btn {
@@ -116,16 +109,16 @@
     .primary-btn {
       background: var(--red);
       color: #fff;
-      box-shadow: 0 14px 26px rgba(234, 29, 44, .24);
+      box-shadow: 0 14px 26px rgba(234,29,44,.26);
     }
 
     .hero {
       max-width: 1180px;
       margin: 0 auto;
-      padding: 54px 26px 28px;
+      padding: 56px 26px 34px;
       display: grid;
       grid-template-columns: 1fr .95fr;
-      gap: 34px;
+      gap: 36px;
       align-items: center;
     }
 
@@ -135,7 +128,7 @@
       min-height: 34px;
       padding: 0 13px;
       border-radius: 999px;
-      background: rgba(234, 29, 44, .10);
+      background: rgba(234,29,44,.10);
       color: var(--red);
       font-size: 13px;
       font-weight: 950;
@@ -144,8 +137,8 @@
 
     h1 {
       margin: 0;
-      max-width: 680px;
-      font-size: clamp(42px, 6vw, 76px);
+      max-width: 720px;
+      font-size: clamp(42px, 6vw, 78px);
       line-height: .94;
       letter-spacing: 0;
     }
@@ -159,90 +152,228 @@
     }
 
     .hero-actions {
+      margin-top: 28px;
       display: flex;
       flex-wrap: wrap;
       gap: 12px;
-      margin-top: 28px;
     }
 
     .hero-actions .primary-btn,
-    .hero-actions .ghost-btn {
-      min-height: 54px;
+    .hero-actions .ghost-light {
+      min-height: 56px;
       padding: 0 22px;
-      border-radius: 17px;
+      border-radius: 18px;
       font-size: 15px;
     }
 
-    .hero-actions .ghost-btn {
+    .ghost-light {
       background: #fff;
       color: var(--black);
       border: 1px solid var(--line);
+      font-weight: 950;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
-    .hero-media {
-      border-radius: 32px;
-      overflow: hidden;
+    .rider-panel {
       min-height: 560px;
       position: relative;
+      overflow: hidden;
+      border-radius: 36px;
+      background:
+        linear-gradient(180deg, #171a22, #252a35);
       box-shadow: var(--shadow);
-      background: #111;
+      border: 1px solid rgba(255,255,255,.10);
     }
 
-    .hero-media img {
-      width: 100%;
-      height: 100%;
-      min-height: 560px;
-      object-fit: cover;
+    .city-lines {
+      position: absolute;
+      inset: 0;
+      opacity: .18;
+      background:
+        linear-gradient(90deg, transparent 0 18%, rgba(255,255,255,.45) 18% 18.5%, transparent 18.5% 100%),
+        linear-gradient(0deg, transparent 0 34%, rgba(255,255,255,.38) 34% 34.4%, transparent 34.4% 100%),
+        linear-gradient(90deg, transparent 0 62%, rgba(255,255,255,.35) 62% 62.4%, transparent 62.4% 100%);
+    }
+
+    .app-card {
+      position: absolute;
+      left: 28px;
+      right: 28px;
+      top: 28px;
+      padding: 22px;
+      border-radius: 24px;
+      background: #fff;
+      box-shadow: 0 22px 46px rgba(0,0,0,.24);
+    }
+
+    .app-card span {
       display: block;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 950;
     }
 
-    .rider-card {
+    .app-card strong {
+      display: block;
+      margin-top: 8px;
+      font-size: 34px;
+      color: var(--red);
+      line-height: 1;
+    }
+
+    .app-card p {
+      margin: 10px 0 0;
+      color: #4f5663;
+      font-weight: 850;
+    }
+
+    .delivery-map {
+      margin-top: 18px;
+      height: 98px;
+      border-radius: 18px;
+      background:
+        linear-gradient(135deg, #f3f5f8 0 24%, #e7ebf1 24% 28%, #f3f5f8 28% 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .delivery-map::before {
+      content: "";
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      top: 46px;
+      height: 5px;
+      border-radius: 999px;
+      background: var(--red);
+    }
+
+    .pin {
+      position: absolute;
+      top: 31px;
+      width: 28px;
+      height: 28px;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      background: var(--green);
+      border: 4px solid #fff;
+      box-shadow: 0 10px 18px rgba(17,24,39,.16);
+    }
+
+    .pin.one { left: 28px; }
+    .pin.two { right: 28px; background: var(--red); }
+
+    .moto-scene {
       position: absolute;
       left: 22px;
       right: 22px;
-      bottom: 22px;
-      padding: 22px;
-      border-radius: 24px;
-      color: #fff;
-      background: linear-gradient(135deg, rgba(17,19,24,.92), rgba(234,29,44,.92));
-      box-shadow: 0 18px 42px rgba(0,0,0,.22);
+      bottom: 34px;
+      height: 210px;
     }
 
-    .rider-card span {
-      display: block;
-      opacity: .78;
-      font-size: 13px;
-      font-weight: 900;
+    .road {
+      position: absolute;
+      left: -40px;
+      right: -40px;
+      bottom: 0;
+      height: 86px;
+      background: #0f1115;
+      transform: skewY(-4deg);
+      border-radius: 30px;
     }
 
-    .rider-card strong {
-      display: block;
-      margin-top: 6px;
-      font-size: 30px;
-      line-height: 1.05;
+    .road::after {
+      content: "";
+      position: absolute;
+      left: 8%;
+      right: 8%;
+      top: 40px;
+      height: 5px;
+      border-radius: 999px;
+      background: repeating-linear-gradient(
+        90deg,
+        rgba(255,255,255,.9) 0 48px,
+        transparent 48px 88px
+      );
     }
 
-    .rider-stats {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      margin-top: 16px;
+    .moto {
+      position: absolute;
+      left: 50%;
+      bottom: 54px;
+      width: 250px;
+      height: 145px;
+      transform: translateX(-50%);
     }
 
-    .rider-stat {
-      padding: 12px;
+    .wheel {
+      position: absolute;
+      bottom: 0;
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      border: 10px solid #fff;
+      background: #232733;
+      box-shadow: inset 0 0 0 8px #15171c;
+    }
+
+    .wheel.back { left: 24px; }
+    .wheel.front { right: 18px; }
+
+    .bike-body {
+      position: absolute;
+      left: 62px;
+      bottom: 44px;
+      width: 128px;
+      height: 42px;
+      border-radius: 22px;
+      background: var(--red);
+      transform: skewX(-12deg);
+    }
+
+    .bike-seat {
+      position: absolute;
+      left: 102px;
+      bottom: 90px;
+      width: 78px;
+      height: 17px;
+      border-radius: 999px;
+      background: #fff;
+    }
+
+    .rider-head {
+      position: absolute;
+      left: 135px;
+      bottom: 138px;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #fff;
+    }
+
+    .rider-body {
+      position: absolute;
+      left: 118px;
+      bottom: 94px;
+      width: 58px;
+      height: 56px;
+      border-radius: 18px 18px 10px 10px;
+      background: #2563eb;
+      transform: rotate(-10deg);
+    }
+
+    .delivery-box {
+      position: absolute;
+      left: 42px;
+      bottom: 96px;
+      width: 68px;
+      height: 58px;
       border-radius: 16px;
-      background: rgba(255,255,255,.13);
-    }
-
-    .rider-stat b {
-      display: block;
-      font-size: 17px;
-    }
-
-    .rider-stat small {
-      color: rgba(255,255,255,.75);
-      font-weight: 800;
+      background: var(--yellow);
+      border: 4px solid #fff;
+      box-shadow: 0 16px 28px rgba(0,0,0,.22);
     }
 
     .section {
@@ -275,44 +406,39 @@
       line-height: 1.52;
     }
 
-    .promise-grid {
+    .cards {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 16px;
     }
 
-    .promise-card,
-    .how-card,
-    .money-card {
+    .card {
       background: #fff;
       border: 1px solid var(--line);
-      border-radius: 24px;
-      box-shadow: 0 10px 28px rgba(17, 24, 39, .06);
+      border-radius: 26px;
+      padding: 26px;
+      box-shadow: 0 10px 28px rgba(17,24,39,.06);
     }
 
-    .promise-card {
-      padding: 24px;
-    }
-
-    .promise-icon {
-      width: 44px;
-      height: 44px;
+    .card-icon {
+      width: 46px;
+      height: 46px;
       border-radius: 16px;
       background: #fff1f2;
       color: var(--red);
       display: grid;
       place-items: center;
       font-weight: 950;
-      margin-bottom: 14px;
+      margin-bottom: 16px;
     }
 
-    .promise-card strong {
+    .card strong {
       display: block;
-      font-size: 23px;
-      line-height: 1.1;
+      font-size: 24px;
+      line-height: 1.08;
     }
 
-    .promise-card p {
+    .card p {
       margin: 10px 0 0;
       color: var(--muted);
       line-height: 1.5;
@@ -329,18 +455,20 @@
       color: rgba(255,255,255,.72);
     }
 
-    .how-grid {
+    .steps {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 14px;
     }
 
-    .how-card {
-      padding: 22px;
+    .step-card {
+      background: #fff;
       color: var(--black);
+      border-radius: 24px;
+      padding: 22px;
     }
 
-    .step {
+    .step-number {
       width: 38px;
       height: 38px;
       border-radius: 14px;
@@ -352,60 +480,14 @@
       margin-bottom: 14px;
     }
 
-    .how-card strong {
+    .step-card strong {
       display: block;
       font-size: 20px;
     }
 
-    .how-card p {
-      margin: 8px 0 0;
+    .step-card p {
       color: var(--muted);
       line-height: 1.45;
-    }
-
-    .money-layout {
-      display: grid;
-      grid-template-columns: .9fr 1.1fr;
-      gap: 18px;
-      align-items: stretch;
-    }
-
-    .money-card {
-      padding: 28px;
-    }
-
-    .money-card.highlight {
-      color: #fff;
-      background: linear-gradient(135deg, #ea1d2c, #b80f20);
-      border: 0;
-      box-shadow: 0 20px 50px rgba(234,29,44,.22);
-    }
-
-    .money-card span {
-      display: block;
-      font-size: 13px;
-      font-weight: 950;
-      color: var(--muted);
-    }
-
-    .money-card.highlight span {
-      color: rgba(255,255,255,.78);
-    }
-
-    .money-card strong {
-      display: block;
-      margin-top: 10px;
-      font-size: clamp(34px, 5vw, 58px);
-      line-height: .95;
-    }
-
-    .money-card p {
-      color: var(--muted);
-      line-height: 1.5;
-    }
-
-    .money-card.highlight p {
-      color: rgba(255,255,255,.86);
     }
 
     .cta {
@@ -415,11 +497,12 @@
     }
 
     .cta-box {
-      border-radius: 30px;
+      border-radius: 32px;
       padding: 34px;
-      background: #fff;
-      border: 1px solid var(--line);
-      box-shadow: var(--shadow);
+      background:
+        linear-gradient(135deg, #ea1d2c, #b80f20);
+      color: #fff;
+      box-shadow: 0 24px 60px rgba(234,29,44,.24);
       display: grid;
       grid-template-columns: 1fr auto;
       gap: 22px;
@@ -433,30 +516,32 @@
     }
 
     .cta-box p {
+      max-width: 640px;
       margin: 12px 0 0;
-      color: var(--muted);
+      color: rgba(255,255,255,.86);
       font-size: 17px;
       line-height: 1.5;
     }
 
+    .cta-box .primary-btn {
+      background: #fff;
+      color: var(--red);
+      box-shadow: none;
+    }
+
     @media (max-width: 980px) {
       .hero,
-      .money-layout,
       .cta-box {
         grid-template-columns: 1fr;
       }
 
-      .promise-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .how-grid {
+      .cards,
+      .steps {
         grid-template-columns: 1fr 1fr;
       }
 
-      .hero-media,
-      .hero-media img {
-        min-height: 440px;
+      .rider-panel {
+        min-height: 540px;
       }
     }
 
@@ -482,30 +567,31 @@
         padding-right: 18px;
       }
 
-      .how-grid {
+      .cards,
+      .steps {
         grid-template-columns: 1fr;
       }
 
-      .rider-stats {
-        grid-template-columns: 1fr;
+      .rider-panel {
+        min-height: 520px;
+        border-radius: 28px;
       }
 
-      .hero-media,
-      .hero-media img {
-        min-height: 400px;
+      .moto {
+        transform: translateX(-50%) scale(.82);
       }
     }
   </style>
 </head>
 
 <body>
-  <main class="page">
+  <main>
     <header class="topbar">
       <a class="brand" href="./motoboy.html">
         <div class="brand-mark">C</div>
         <div>
           <strong>Cheguei Delivery</strong>
-          <span>Área do entregador</span>
+          <span>Entregador delivery</span>
         </div>
       </a>
 
@@ -517,139 +603,119 @@
 
     <section class="hero">
       <div>
-        <div class="kicker">Para entregador delivery</div>
-        <h1>Trabalhe com liberdade e receba o valor da corrida.</h1>
+        <div class="kicker">Para motoboy de delivery</div>
+        <h1>Rode com liberdade. Ganhe com clareza.</h1>
         <p class="lead">
-          No Cheguei Delivery, o motoboy fica online quando quiser, recebe pedidos próximos
-          e acompanha ganhos, entregas e pagamentos pelo app.
+          O Cheguei foi pensado para quem vive da entrega: você fica online quando quiser,
+          recebe corrida próxima, vê o valor antes de aceitar e acompanha seus ganhos no app.
         </p>
 
         <div class="hero-actions">
           <a class="primary-btn" href="./motoboy-app/index.html">Entrar ou criar conta</a>
-          <a class="ghost-btn" href="#como-funciona">Como funciona</a>
+          <a class="ghost-light" href="#ganhos">Como ganho dinheiro</a>
         </div>
       </div>
 
-      <div class="hero-media">
-        <img src="https://images.unsplash.com/photo-1616432043562-3671ea2e5242?auto=format&fit=crop&w=1200&q=80" alt="Motoboy delivery em operação">
+      <div class="rider-panel">
+        <div class="city-lines"></div>
 
-        <div class="rider-card">
-          <span>Você no controle</span>
-          <strong>Ganhe por corrida, acompanhe tudo e rode no seu ritmo.</strong>
+        <div class="app-card">
+          <span>Nova corrida disponível</span>
+          <strong>R$ 18,50</strong>
+          <p>Valor visível antes de aceitar</p>
 
-          <div class="rider-stats">
-            <div class="rider-stat">
-              <b>100%</b>
-              <small>valor da corrida</small>
-            </div>
-
-            <div class="rider-stat">
-              <b>GPS</b>
-              <small>pedidos próximos</small>
-            </div>
-
-            <div class="rider-stat">
-              <b>Segunda</b>
-              <small>pagamento semanal</small>
-            </div>
+          <div class="delivery-map">
+            <div class="pin one"></div>
+            <div class="pin two"></div>
           </div>
+        </div>
+
+        <div class="moto-scene">
+          <div class="moto">
+            <div class="delivery-box"></div>
+            <div class="rider-head"></div>
+            <div class="rider-body"></div>
+            <div class="bike-seat"></div>
+            <div class="bike-body"></div>
+            <div class="wheel back"></div>
+            <div class="wheel front"></div>
+          </div>
+          <div class="road"></div>
         </div>
       </div>
     </section>
 
-    <section class="section">
+    <section class="section" id="ganhos">
       <div class="section-title">
-        <span>Para quem roda de verdade</span>
-        <h2>Você não é refém de plataforma. Você é parceiro da cidade.</h2>
+        <span>Você no controle</span>
+        <h2>Uma operação feita para o entregador se sentir parceiro, não refém.</h2>
         <p>
-          A proposta é conectar entregadores aos comércios locais com clareza,
-          autonomia e pagamento organizado.
+          A plataforma aproxima você dos comércios da cidade e organiza o fluxo:
+          corrida, valor, entrega, histórico e pagamento semanal.
         </p>
       </div>
 
-      <div class="promise-grid">
-        <div class="promise-card">
-          <div class="promise-icon">1</div>
-          <strong>100% do lucro da corrida é seu</strong>
-          <p>O valor da entrega aparece antes de aceitar. Você sabe quanto vai receber.</p>
+      <div class="cards">
+        <div class="card">
+          <div class="card-icon">R$</div>
+          <strong>100% do valor da corrida é seu</strong>
+          <p>
+            A taxa da plataforma é cobrada do comércio. O valor da entrega fica para o motoboy.
+          </p>
         </div>
 
-        <div class="promise-card">
-          <div class="promise-icon">2</div>
-          <strong>Você controla sua rotina</strong>
-          <p>Fique online quando quiser trabalhar e receba pedidos próximos da sua localização.</p>
+        <div class="card">
+          <div class="card-icon">GPS</div>
+          <strong>Corridas próximas de você</strong>
+          <p>
+            O app usa sua localização para mostrar pedidos dentro do raio de busca.
+          </p>
         </div>
 
-        <div class="promise-card">
-          <div class="promise-icon">3</div>
+        <div class="card">
+          <div class="card-icon">SEG</div>
           <strong>Pagamento toda segunda-feira</strong>
-          <p>Ganhos acumulados, histórico financeiro e entregas pagas dentro do app.</p>
+          <p>
+            Seus ganhos ficam registrados no financeiro para conferência e pagamento.
+          </p>
         </div>
       </div>
     </section>
 
-    <section class="dark-band" id="como-funciona">
+    <section class="dark-band">
       <div class="section">
         <div class="section-title">
-          <span>Como funciona</span>
-          <h2>Simples para aceitar, rodar e receber.</h2>
+          <span>Fluxo simples</span>
+          <h2>Fique online, aceite, entregue e acompanhe seus ganhos.</h2>
           <p>
-            O app foi pensado para o entregador enxergar o que importa:
-            corrida, valor, endereço, status e ganhos.
+            Sem tela confusa. Sem valor escondido. O entregador precisa saber o que está fazendo e quanto vai receber.
           </p>
         </div>
 
-        <div class="how-grid">
-          <div class="how-card">
-            <div class="step">1</div>
+        <div class="steps">
+          <div class="step-card">
+            <div class="step-number">1</div>
             <strong>Fique online</strong>
-            <p>Com GPS ativo, você começa a receber corridas próximas.</p>
+            <p>Ative sua disponibilidade e mantenha o GPS ligado.</p>
           </div>
 
-          <div class="how-card">
-            <div class="step">2</div>
+          <div class="step-card">
+            <div class="step-number">2</div>
+            <strong>Receba corrida</strong>
+            <p>Quando houver pedido próximo, a tela chama sua atenção.</p>
+          </div>
+
+          <div class="step-card">
+            <div class="step-number">3</div>
             <strong>Veja o valor</strong>
-            <p>Antes de aceitar, você sabe quanto aquela entrega paga.</p>
+            <p>Você sabe quanto vai ganhar antes de aceitar.</p>
           </div>
 
-          <div class="how-card">
-            <div class="step">3</div>
-            <strong>Faça a entrega</strong>
-            <p>A corrida fica registrada com restaurante, endereço e status.</p>
-          </div>
-
-          <div class="how-card">
-            <div class="step">4</div>
+          <div class="step-card">
+            <div class="step-number">4</div>
             <strong>Receba semanalmente</strong>
-            <p>Seu financeiro mostra entregas abertas, pagas e histórico.</p>
+            <p>Pagamentos organizados toda segunda-feira.</p>
           </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="section-title">
-        <span>Ganhos claros</span>
-        <h2>O entregador precisa saber quanto ganhou, quando recebe e o que já foi pago.</h2>
-      </div>
-
-      <div class="money-layout">
-        <div class="money-card highlight">
-          <span>Valor da corrida</span>
-          <strong>100% para você</strong>
-          <p>
-            A taxa da plataforma é cobrada do comércio. O valor do motoboy é separado
-            para pagamento semanal.
-          </p>
-        </div>
-
-        <div class="money-card">
-          <span>Financeiro no app</span>
-          <strong>Histórico, saldo e pagamentos.</strong>
-          <p>
-            Você acompanha entregas finalizadas, valores em aberto, pagamentos recebidos
-            e informações de cada corrida para conferência.
-          </p>
         </div>
       </div>
     </section>
@@ -659,7 +725,7 @@
         <div>
           <h2>Seja parceiro dos comércios da sua cidade.</h2>
           <p>
-            Entre no app, crie seu cadastro e aguarde aprovação para começar a receber corridas.
+            Trabalhe com liberdade, receba corridas locais e acompanhe tudo pelo app do motoboy.
           </p>
         </div>
 
