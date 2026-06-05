@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>Pagamentos - Admin 2</title>
+  <title>Pagamentos - Admin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <link rel="stylesheet" href="../css/base.css">
@@ -17,9 +17,9 @@
 
   <main class="page">
     <section class="panel">
-      <h2>Pagamentos da semana</h2>
+      <h2>Pagamentos</h2>
       <p class="hint">
-        O valor principal vem do saldo atual do motoboy. Assim você paga um Pix por motoboy, sem duplicar operação.
+        O bloco "A pagar agora" mostra entregas finalizadas ainda não pagas, agrupadas por motoboy.
       </p>
 
       <div class="form-grid">
@@ -31,7 +31,7 @@
         </select>
 
         <button id="btnFiltrar" class="primary-btn" type="button">
-          Filtrar pagamentos
+          Filtrar período
         </button>
       </div>
     </section>
@@ -43,18 +43,18 @@
       </p>
 
       <div id="listaPagamentosMotoboy">
-        <div class="empty">Carregando motoboys com saldo em aberto...</div>
+        <div class="empty">Carregando pagamentos pendentes...</div>
       </div>
     </section>
 
     <section class="panel">
       <h2>Entregas do período</h2>
       <p class="hint">
-        Aqui aparecem os lançamentos encontrados no ledger dentro do período selecionado.
+        Lista de entregas finalizadas dentro do período selecionado.
       </p>
 
-      <div id="listaLedgerPeriodo">
-        <div class="empty">Carregando entregas do período...</div>
+      <div id="listaEntregasPeriodo">
+        <div class="empty">Carregando entregas...</div>
       </div>
     </section>
 
@@ -75,7 +75,7 @@
     import {
       iniciarPagamentosMotoboyAdmin,
       filtrarPagamentosMotoboyAdmin
-    } from "../js/pagamentos-motoboy.js?v=30";
+    } from "../js/pagamentos-motoboy.js?v=50";
 
     protegerPagina("admin");
 
