@@ -22,7 +22,7 @@ function dinheiro(valor) {
 }
 
 function numero(valor, padrao = 0) {
-  const n = Number(valor || padrao);
+  const n = Number(valor ?? padrao);
   return Number.isFinite(n) ? n : padrao;
 }
 
@@ -37,7 +37,6 @@ function dataTexto(timestamp) {
 
 function dataCurta(data) {
   if (!data) return "Não informado";
-
   return data.toLocaleDateString("pt-BR");
 }
 
@@ -118,26 +117,12 @@ function entregaFoiPaga(item) {
   return (
     item.statusPagamento === "pago" ||
     item.pago === true ||
-    item.pagamentoId
+    Boolean(item.pagamentoId)
   );
 }
 
-function tipoLedgerValido(item) {
-  return (
-    item.tipo === "entrega" ||
-    item.tipo === "credito_entrega" ||
-    item.tipo === "finalizacao_entrega" ||
-    !item.tipo
-  );
-}
-
-function ehLedgerPendente(item) {
-  return (
-    item.motoboyId &&
-    tipoLedgerValido(item) &&
-    numero(item.valor, 0) > 0 &&
-    !entregaFoiPaga(item)
-  );
+function ledgerTemValorMotoboy(item) {
+  return item.motoboyId && numero(item.valor, 0) > 0;
 }
 
 function nomeMotoboy(motoboyId, fallback = "") {
@@ -189,82 +174,69 @@ function atualizarSelectMotoboys() {
   select.value = valorAtual;
 }
 
-function criarGrupoBase(motoboyId, motoboyNome = "") {
-  return {
-    motoboyId,
-    motoboyNome: nomeMotoboy(motoboyId, motoboyNome),
-    telefone: telefoneMotoboy(motoboyId),
-    total: 0,
-    entregas: 0,
-    itens: [],
-    primeiraData: null,
-    ultimaData: null,
-    origem: "ledger"
-  };
+function buscarLedgersAbertosDoMotoboy(motoboyId) {
+  return ledgerCache.filter((item) => {
+    return (
+      item.motoboyId === motoboyId &&
+      ledgerTemValorMotoboy(item) &&
+      !entregaFoiPaga(item)
+    );
+  });
 }
 
-function adicionarLedgerAoGrupo(grupo, item) {
-  const valor = numero(item.valor, 0);
-  const data = dataDoLedger(item);
-
-  grupo.total += valor;
-  grupo.entregas += 1;
-  grupo.itens.push(item);
-
-  if (data) {
-    if (!grupo.primeiraData || data < grupo.primeiraData) {
-      grupo.primeiraData = data;
-    }
-
-    if (!grupo.ultimaData || data > grupo.ultimaData) {
-      grupo.ultimaData = data;
-    }
-  }
-}
-
-function agruparPendentes() {
+function buscarLedgersPeriodoDoMotoboy(motoboyId) {
   const dataInicio = parseDataInicio(document.getElementById("dataInicio")?.value);
   const dataFim = parseDataFim(document.getElementById("dataFim")?.value);
+
+  return ledgerCache.filter((item) => {
+    return (
+      item.motoboyId === motoboyId &&
+      ledgerTemValorMotoboy(item) &&
+      dentroDoPeriodo(item, dataInicio, dataFim)
+    );
+  });
+}
+
+function montarGruposAPagar() {
   const filtroMotoboy = document.getElementById("filtroMotoboy")?.value || "";
-
-  const grupos = {};
-
-  ledgerCache
-    .filter(ehLedgerPendente)
-    .filter((item) => dentroDoPeriodo(item, dataInicio, dataFim))
-    .filter((item) => !filtroMotoboy || item.motoboyId === filtroMotoboy)
-    .forEach((item) => {
-      if (!grupos[item.motoboyId]) {
-        grupos[item.motoboyId] = criarGrupoBase(item.motoboyId, item.motoboyNome);
-      }
-
-      adicionarLedgerAoGrupo(grupos[item.motoboyId], item);
-    });
+  const grupos = [];
 
   Object.entries(motoboysCache).forEach(([motoboyId, motoboy]) => {
     if (filtroMotoboy && motoboyId !== filtroMotoboy) return;
 
-    const saldo = numero(motoboy.saldo, 0);
+    const saldoAtual = numero(motoboy.saldo, 0);
+    const ledgersAbertos = buscarLedgersAbertosDoMotoboy(motoboyId);
+    const ledgersPeriodo = buscarLedgersPeriodoDoMotoboy(motoboyId);
 
-    if (saldo <= 0) return;
-    if (grupos[motoboyId]) return;
+    const totalLedgerAberto = ledgersAbertos.reduce((acc, item) => {
+      return acc + numero(item.valor, 0);
+    }, 0);
 
-    grupos[motoboyId] = {
+    const valorAPagar = saldoAtual > 0 ? saldoAtual : totalLedgerAberto;
+
+    if (valorAPagar <= 0) return;
+
+    const datas = ledgersAbertos
+      .map(dataDoLedger)
+      .filter(Boolean)
+      .sort((a, b) => a - b);
+
+    grupos.push({
       motoboyId,
       motoboyNome: motoboy.nome || "Motoboy não informado",
       telefone: motoboy.telefone || "Telefone não informado",
-      total: saldo,
-      entregas: 0,
-      itens: [],
-      primeiraData: dataInicio,
-      ultimaData: dataFim,
-      origem: "saldo"
-    };
+      saldoAtual,
+      valorAPagar,
+      totalLedgerAberto,
+      entregasAbertas: ledgersAbertos.length,
+      entregasPeriodo: ledgersPeriodo.length,
+      itens: ledgersAbertos,
+      primeiraData: datas[0] || null,
+      ultimaData: datas[datas.length - 1] || null
+    });
   });
 
-  return Object.values(grupos)
-    .filter((grupo) => numero(grupo.total, 0) > 0)
-    .sort((a, b) => b.total - a.total);
+  return grupos.sort((a, b) => b.valorAPagar - a.valorAPagar);
 }
 
 function renderizarPagamentosPendentes() {
@@ -273,30 +245,26 @@ function renderizarPagamentosPendentes() {
 
   if (!lista) return;
 
-  const grupos = agruparPendentes();
+  const grupos = montarGruposAPagar();
 
-  const totalGeral = grupos.reduce((acc, grupo) => acc + numero(grupo.total, 0), 0);
-  const totalEntregas = grupos.reduce((acc, grupo) => acc + numero(grupo.entregas, 0), 0);
+  const totalGeral = grupos.reduce((acc, grupo) => acc + numero(grupo.valorAPagar, 0), 0);
+  const totalEntregasAbertas = grupos.reduce((acc, grupo) => acc + numero(grupo.entregasAbertas, 0), 0);
 
   if (resumo) {
     resumo.innerText =
-      `${dinheiro(totalGeral)} a pagar em ${totalEntregas} entrega(s), agrupado em ${grupos.length} motoboy(s).`;
+      `${dinheiro(totalGeral)} em aberto, ${totalEntregasAbertas} entrega(s) aberta(s), agrupado em ${grupos.length} motoboy(s).`;
   }
 
   lista.innerHTML = "";
 
   if (grupos.length === 0) {
-    lista.innerHTML = `<div class="empty">Nenhum pagamento pendente neste período.</div>`;
+    lista.innerHTML = `<div class="empty">Nenhum pagamento pendente no momento.</div>`;
     return;
   }
 
   grupos.forEach((grupo) => {
     const inicio = dataCurta(grupo.primeiraData);
     const fim = dataCurta(grupo.ultimaData);
-
-    const origemTexto = grupo.origem === "saldo"
-      ? "Baseado no saldo atual do motoboy"
-      : "Baseado nas entregas finalizadas";
 
     const card = document.createElement("div");
     card.className = "list-card";
@@ -305,15 +273,18 @@ function renderizarPagamentosPendentes() {
       <div>
         <strong>${grupo.motoboyNome}</strong>
 
+        <p>Motoboy ID: ${grupo.motoboyId}</p>
         <p>Telefone: ${grupo.telefone}</p>
-        <p>Total a pagar: <b>${dinheiro(grupo.total)}</b></p>
-        <p>Entregas no período: ${grupo.entregas}</p>
-        <p>Período: ${inicio} até ${fim}</p>
-        <p>Origem: ${origemTexto}</p>
+        <p>Total a pagar agora: <b>${dinheiro(grupo.valorAPagar)}</b></p>
+        <p>Saldo atual no cadastro: ${dinheiro(grupo.saldoAtual)}</p>
+        <p>Ledger aberto encontrado: ${dinheiro(grupo.totalLedgerAberto)}</p>
+        <p>Entregas abertas: ${grupo.entregasAbertas}</p>
+        <p>Entregas no período selecionado: ${grupo.entregasPeriodo}</p>
+        <p>Período dos lançamentos abertos: ${inicio} até ${fim}</p>
 
         <div class="status-row">
           <span class="badge yellow">Pagamento pendente</span>
-          <span class="badge gray">${grupo.entregas} entrega(s)</span>
+          <span class="badge gray">${grupo.entregasAbertas} entrega(s) aberta(s)</span>
         </div>
       </div>
 
@@ -339,7 +310,7 @@ function renderizarPagamentosPendentes() {
       if (!grupo) return;
 
       const confirmar = confirm(
-        `Confirmar pagamento para ${grupo.motoboyNome}?\n\nValor: ${dinheiro(grupo.total)}\nEntregas: ${grupo.entregas}`
+        `Confirmar pagamento para ${grupo.motoboyNome}?\n\nValor: ${dinheiro(grupo.valorAPagar)}\nEntregas abertas: ${grupo.entregasAbertas}`
       );
 
       if (!confirmar) return;
@@ -357,6 +328,59 @@ function renderizarPagamentosPendentes() {
         button.innerText = "Marcar como pago";
       }
     });
+  });
+}
+
+function renderizarLedgerPeriodo() {
+  const lista = document.getElementById("listaLedgerPeriodo");
+  if (!lista) return;
+
+  const dataInicio = parseDataInicio(document.getElementById("dataInicio")?.value);
+  const dataFim = parseDataFim(document.getElementById("dataFim")?.value);
+  const filtroMotoboy = document.getElementById("filtroMotoboy")?.value || "";
+
+  const itens = ledgerCache
+    .filter(ledgerTemValorMotoboy)
+    .filter((item) => dentroDoPeriodo(item, dataInicio, dataFim))
+    .filter((item) => !filtroMotoboy || item.motoboyId === filtroMotoboy)
+    .sort((a, b) => {
+      const dataA = dataDoLedger(a)?.getTime?.() || 0;
+      const dataB = dataDoLedger(b)?.getTime?.() || 0;
+      return dataB - dataA;
+    });
+
+  lista.innerHTML = "";
+
+  if (itens.length === 0) {
+    lista.innerHTML = `<div class="empty">Nenhum lançamento encontrado neste período.</div>`;
+    return;
+  }
+
+  itens.forEach((item) => {
+    const card = document.createElement("div");
+    card.className = "list-card";
+
+    card.innerHTML = `
+      <div>
+        <strong>${nomeMotoboy(item.motoboyId, item.motoboyNome)}</strong>
+
+        <p>Valor: <b>${dinheiro(item.valor)}</b></p>
+        <p>Pedido ID: ${item.pedidoId || "Não informado"}</p>
+        <p>Motoboy ID: ${item.motoboyId || "Não informado"}</p>
+        <p>Descrição: ${item.descricao || item.tipo || "Entrega"}</p>
+        <p>Data: ${dataTexto(item.createdAt || item.entregueAt)}</p>
+
+        <div class="status-row">
+          ${
+            entregaFoiPaga(item)
+              ? `<span class="badge green">Pago</span>`
+              : `<span class="badge yellow">Aberto</span>`
+          }
+        </div>
+      </div>
+    `;
+
+    lista.appendChild(card);
   });
 }
 
@@ -399,6 +423,8 @@ function renderizarHistoricoPagamentos() {
       <div>
         <strong>${pagamento.motoboyNome || nomeMotoboy(pagamento.motoboyId)}</strong>
 
+        <p>Pagamento ID: ${pagamento.id}</p>
+        <p>Motoboy ID: ${pagamento.motoboyId || "Não informado"}</p>
         <p>Valor pago: <b>${dinheiro(valor)}</b></p>
         <p>Entregas pagas: ${pagamento.totalEntregas || pagamento.entregas || 0}</p>
         <p>Pago em: ${dataTexto(pagamento.pagoAt || pagamento.createdAt)}</p>
@@ -435,7 +461,7 @@ async function marcarGrupoComoPago(grupo) {
     const motoboy = motoboySnap.data();
 
     const saldoAtual = numero(motoboy.saldo, 0);
-    const valorPago = numero(grupo.total, 0);
+    const valorPago = numero(grupo.valorAPagar, 0);
     const novoSaldo = Math.max(0, saldoAtual - valorPago);
 
     transaction.set(pagamentoRef, {
@@ -445,13 +471,12 @@ async function marcarGrupoComoPago(grupo) {
 
       valorTotal: valorPago,
       valorTotalSemana: valorPago,
-      totalEntregas: grupo.entregas,
+      totalEntregas: grupo.entregasAbertas,
 
       periodoInicio: dataCurta(grupo.primeiraData),
       periodoFim: dataCurta(grupo.ultimaData),
 
       ledgerIds: grupo.itens.map((item) => item.id),
-      origem: grupo.origem,
 
       status: "pago",
       pago: true,
@@ -496,6 +521,12 @@ async function carregarMotoboysUmaVez() {
   atualizarSelectMotoboys();
 }
 
+function renderizarTudo() {
+  renderizarPagamentosPendentes();
+  renderizarLedgerPeriodo();
+  renderizarHistoricoPagamentos();
+}
+
 function escutarMotoboys() {
   onSnapshot(query(collection(db, "motoboys")), (snapshot) => {
     motoboysCache = {};
@@ -508,7 +539,7 @@ function escutarMotoboys() {
     });
 
     atualizarSelectMotoboys();
-    renderizarPagamentosPendentes();
+    renderizarTudo();
   });
 }
 
@@ -523,7 +554,7 @@ function escutarLedgerMotoboy() {
       });
     });
 
-    renderizarPagamentosPendentes();
+    renderizarTudo();
   });
 }
 
@@ -538,7 +569,7 @@ function escutarPagamentosMotoboy() {
       });
     });
 
-    renderizarHistoricoPagamentos();
+    renderizarTudo();
   });
 }
 
@@ -553,5 +584,5 @@ export async function iniciarPagamentosMotoboyAdmin() {
 }
 
 export function filtrarPagamentosMotoboyAdmin() {
-  renderizarPagamentosPendentes();
+  renderizarTudo();
 }
