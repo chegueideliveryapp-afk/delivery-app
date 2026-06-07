@@ -1,0 +1,8 @@
+{
+  "appId": "com.cheguei.delivery.motoboy",
+  "appName": "Cheguei Motoboy",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}
