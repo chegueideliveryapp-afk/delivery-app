@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Cheguei Delivery</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    :root {
+      --red: #ea1d2c;
+      --red-dark: #b80f20;
+      --black: #111318;
+      --text: #171923;
+      --muted: #667085;
+      --bg: #eef1f5;
+      --white: #ffffff;
+      --line: #e4e7ec;
+      --green: #12a86b;
+      --yellow: #f59e0b;
+      --shadow: 0 28px 80px rgba(17, 24, 39, .16);
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, Arial, sans-serif;
+      background:
+        radial-gradient(circle at 10% 6%, rgba(234, 29, 44, .10), transparent 30%),
+        radial-gradient(circle at 90% 12%, rgba(18, 168, 107, .10), transparent 28%),
+        linear-gradient(145deg, #f8fafc 0%, #e7ebf1 100%);
+      color: var(--text);
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .page {
+      min-height: 100vh;
+      padding: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .shell {
+      width: 100%;
+      max-width: 1220px;
+    }
+
+    .brand-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 28px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-mark {
+      width: 56px;
+      height: 56px;
+      border-radius: 18px;
+      background: var(--red);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-size: 30px;
+      font-weight: 950;
+      box-shadow: 0 18px 34px rgba(234, 29, 44, .28);
+    }
+
+    .brand strong,
+    .brand span {
+      display: block;
+    }
+
+    .brand strong {
+      font-size: 25px;
+      line-height: 1;
+    }
+
+    .brand span {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 850;
+    }
+
+    .brand-badge {
+      min-height: 38px;
+      padding: 0 14px;
+      border-radius: 999px;
+      background: #fff;
+      border: 1px solid var(--line);
+      display: inline-flex;
+      align-items: center;
+      color: #384152;
+      font-size: 13px;
+      font-weight: 900;
+      box-shadow: 0 8px 20px rgba(17, 24, 39, .05);
+    }
+
+    .intro {
+      max-width: 780px;
+      margin-bottom: 30px;
+    }
+
+    .kicker {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 0 13px;
+      border-radius: 999px;
+      background: rgba(234, 29, 44, .10);
+      color: var(--red);
+      font-size: 13px;
+      font-weight: 950;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(38px, 6vw, 72px);
+      line-height: .95;
+      letter-spacing: 0;
+    }
+
+    .intro p {
+      margin: 20px 0 0;
+      max-width: 660px;
+      color: #4f5663;
+      font-size: 19px;
+      line-height: 1.55;
+    }
+
+    .choice-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      align-items: stretch;
+    }
+
+    .choice-card {
+      position: relative;
+      min-height: 620px;
+      overflow: hidden;
+      border-radius: 34px;
+      background: #fff;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255, 255, 255, .78);
+      display: flex;
+      flex-direction: column;
+      transition: transform .18s ease, box-shadow .18s ease;
+    }
+
+    .choice-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 36px 92px rgba(17, 24, 39, .20);
+    }
+
+    .photo {
+      position: relative;
+      height: 340px;
+      overflow: hidden;
+      background: #111;
+    }
+
+    .photo img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+      transform: scale(1.02);
+      transition: transform .35s ease;
+    }
+
+    .choice-card:hover .photo img {
+      transform: scale(1.07);
+    }
+
+    .photo::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(to bottom, rgba(0,0,0,.08), rgba(0,0,0,.52)),
+        linear-gradient(135deg, rgba(234, 29, 44, .20), transparent 46%);
+    }
+
+    .photo-label {
+      position: absolute;
+      left: 22px;
+      bottom: 22px;
+      z-index: 2;
+      max-width: calc(100% - 44px);
+      display: inline-flex;
+      align-items: center;
+      min-height: 40px;
+      padding: 0 15px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.94);
+      backdrop-filter: blur(12px);
+      color: var(--black);
+      font-size: 14px;
+      font-weight: 950;
+      box-shadow: 0 12px 26px rgba(0,0,0,.18);
+    }
+
+    .content {
+      flex: 1;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .profile {
+      color: var(--red);
+      font-size: 13px;
+      font-weight: 950;
+      margin-bottom: 10px;
+    }
+
+    .content h2 {
+      margin: 0;
+      font-size: clamp(34px, 4vw, 48px);
+      line-height: .98;
+      letter-spacing: 0;
+    }
+
+    .content p {
+      margin: 16px 0 0;
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.5;
+    }
+
+    .benefits {
+      display: grid;
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .benefit {
+      min-height: 42px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: #f5f7fa;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #303846;
+      font-size: 14px;
+      font-weight: 850;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--red);
+      flex: 0 0 auto;
+    }
+
+    .choice-button {
+      width: 100%;
+      min-height: 58px;
+      margin-top: auto;
+      border: 0;
+      border-radius: 18px;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 950;
+      display: grid;
+      place-items: center;
+    }
+
+    .commerce .choice-button {
+      background: var(--red);
+      box-shadow: 0 16px 30px rgba(234, 29, 44, .24);
+    }
+
+    .driver .choice-button {
+      background: var(--black);
+      box-shadow: 0 16px 30px rgba(17, 24, 39, .24);
+    }
+
+    .commerce .photo-label {
+      color: var(--red);
+    }
+
+    .driver .profile {
+      color: var(--black);
+    }
+
+    .driver .dot {
+      background: var(--black);
+    }
+
+    .driver .photo::after {
+      background:
+        linear-gradient(to bottom, rgba(0,0,0,.08), rgba(0,0,0,.58)),
+        linear-gradient(135deg, rgba(17, 19, 24, .35), rgba(234, 29, 44, .12));
+    }
+
+    .note {
+      margin-top: 24px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 850;
+    }
+
+    @media (max-width: 980px) {
+      .choice-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .choice-card {
+        min-height: auto;
+      }
+
+      .photo {
+        height: 330px;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .page {
+        padding: 18px;
+      }
+
+      .brand-row {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .brand-badge {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .choice-card {
+        border-radius: 26px;
+      }
+
+      .photo {
+        height: 260px;
+      }
+
+      .content {
+        padding: 22px;
+      }
+
+      .content h2 {
+        font-size: 34px;
+      }
+
+      .intro p,
+      .content p {
+        font-size: 16px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="page">
+    <div class="shell">
+      <div class="brand-row">
+        <div class="brand">
+          <div class="brand-mark">C</div>
+          <div>
+            <strong>Cheguei Delivery</strong>
+            <span>Entrega local para comércio e motoboy</span>
+          </div>
+        </div>
+
+        <div class="brand-badge">
+          Plataforma local de delivery sob demanda
+        </div>
+      </div>
+
+      <section class="intro">
+        <div class="kicker">Escolha seu perfil</div>
+        <h1>Delivery local com mais controle, menos custo e mais agilidade.</h1>
+        <p>
+          Para comércios que precisam entregar melhor e para motoboys que querem receber
+          corridas próximas com valor claro.
+        </p>
+      </section>
+
+      <section class="choice-grid">
+        <a class="choice-card commerce" href="./comercio.html" onclick="escolherPerfil('comercio')">
+          <div class="photo">
+            <img
+              src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1200&q=85"
+              alt="Restaurante preparando pedido delivery"
+            >
+            <div class="photo-label">Restaurantes, lanchonetes, farmácias e lojas</div>
+          </div>
+
+          <div class="content">
+            <div class="profile">Para comércio</div>
+            <h2>Venda mais sem manter motoboy fixo.</h2>
+            <p>
+              Acione entregadores quando tiver pedido, acompanhe a corrida e controle seus gastos
+              com saldo pré-pago.
+            </p>
+
+            <div class="benefits">
+              <div class="benefit"><span class="dot"></span>Ideal para delivery, farmácia, lanchonete e loja local</div>
+              <div class="benefit"><span class="dot"></span>Menos dependência de grandes plataformas</div>
+              <div class="benefit"><span class="dot"></span>Taxa clara + valor do motoboy</div>
+            </div>
+
+            <div class="choice-button">Sou comércio</div>
+          </div>
+        </a>
+
+        <a class="choice-card driver" href="./motoboy.html" onclick="escolherPerfil('motoboy')">
+          <div class="photo">
+            <img
+              src="https://upload.wikimedia.org/wikipedia/commons/5/52/Moto_Honda_Flex_Titan_CG_150_Mix_Fuel_Injection_06_2009_Itu.jpg"
+              alt="Moto 150cc"
+            >
+            <div class="photo-label">Entregador delivery de moto</div>
+          </div>
+
+          <div class="content">
+            <div class="profile">Para motoboy</div>
+            <h2>Rode com liberdade e veja o valor antes de aceitar.</h2>
+            <p>
+              Fique online quando quiser, receba corridas próximas e acompanhe seus ganhos
+              pelo app.
+            </p>
+
+            <div class="benefits">
+              <div class="benefit"><span class="dot"></span>100% do valor da corrida é seu</div>
+              <div class="benefit"><span class="dot"></span>Corridas próximas usando GPS</div>
+              <div class="benefit"><span class="dot"></span>Pagamento organizado toda segunda-feira</div>
+            </div>
+
+            <div class="choice-button">Sou motoboy</div>
+          </div>
+        </a>
+      </section>
+
+      <p class="note">
+        Escolha o perfil para acessar uma experiência feita para sua operação.
+      </p>
+    </div>
+  </main>
+
+  <script>
+    function escolherPerfil(perfil) {
+      localStorage.setItem("chegueiPerfilSite", perfil);
+    }
+  </script>
+</body>
+</html>
