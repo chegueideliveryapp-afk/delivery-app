@@ -19,11 +19,22 @@ let pedidosCache = [];
 let pagamentosCache = [];
 let ledgerCache = [];
 
+const PRIVACIDADE_VALORES_KEY = "chegueiMotoboyOcultarValores";
+let privacidadeConfigurada = false;
+
 function dinheiro(valor) {
   return Number(valor || 0).toLocaleString("pt-BR", {
     style: "currency",
     currency: "BRL"
   });
+}
+
+function valoresOcultos() {
+  return localStorage.getItem(PRIVACIDADE_VALORES_KEY) === "true";
+}
+
+function textoValorPrivado(texto) {
+  return valoresOcultos() ? "R$ •••••" : texto;
 }
 
 function numero(valor, padrao = 0) {
@@ -34,6 +45,53 @@ function numero(valor, padrao = 0) {
 function setText(id, texto) {
   const el = document.getElementById(id);
   if (el) el.innerText = texto;
+}
+
+function setPrivateText(id, texto) {
+  const el = document.getElementById(id);
+  if (!el) return;
+
+  el.innerText = textoValorPrivado(texto);
+  el.classList.toggle("valor-oculto", valoresOcultos());
+}
+
+function atualizarBotaoPrivacidade() {
+  const btn = document.getElementById("btnToggleValores");
+  if (!btn) return;
+
+  const oculto = valoresOcultos();
+  btn.classList.toggle("is-hidden", oculto);
+  btn.setAttribute("aria-label", oculto ? "Mostrar valores" : "Ocultar valores");
+  btn.setAttribute("title", oculto ? "Mostrar valores" : "Ocultar valores");
+}
+
+function configurarPrivacidadeValores() {
+  if (privacidadeConfigurada) return;
+
+  privacidadeConfigurada = true;
+
+  const btn = document.getElementById("btnToggleValores");
+
+  if (btn) {
+    btn.addEventListener("click", () => {
+      localStorage.setItem(
+        PRIVACIDADE_VALORES_KEY,
+        valoresOcultos() ? "false" : "true"
+      );
+
+      atualizarBotaoPrivacidade();
+      renderizarTudo();
+    });
+  }
+
+  window.addEventListener("storage", (event) => {
+    if (event.key === PRIVACIDADE_VALORES_KEY) {
+      atualizarBotaoPrivacidade();
+      renderizarTudo();
+    }
+  });
+
+  atualizarBotaoPrivacidade();
 }
 
 function setHtml(id, html) {
@@ -289,14 +347,14 @@ function renderizarResumo() {
     ? Math.min(100, (ganhosSemana / Math.max(maiorEntrega * 10, 1)) * 100)
     : 0;
 
-  setText("valorAbertoMotoboy", dinheiro(valorAbertoSemana));
+  setPrivateText("valorAbertoMotoboy", dinheiro(valorAbertoSemana));
   setText("proximoPagamento", proximaSegundaTexto());
-  setText("totalRecebidoMotoboy", dinheiro(totalRecebido));
-  setText("mediaEntregaMotoboy", dinheiro(media));
+  setPrivateText("totalRecebidoMotoboy", dinheiro(totalRecebido));
+  setPrivateText("mediaEntregaMotoboy", dinheiro(media));
   setText("totalEntregasAbertas", entregasAbertasSemana.length);
   setText("totalEntregasPagas", entregasPagas.length);
-  setText("ritmoGanhosTexto", `${dinheiro(ganhosSemana)} esta semana`);
-  setText("maiorEntregaTexto", dinheiro(maiorEntrega));
+  setText("ritmoGanhosTexto", valoresOcultos() ? "R$ ••••• esta semana" : `${dinheiro(ganhosSemana)} esta semana`);
+  setPrivateText("maiorEntregaTexto", dinheiro(maiorEntrega));
 
   const barra = document.getElementById("barraGanhosSemana");
   if (barra) barra.style.width = `${percentual}%`;
@@ -326,7 +384,7 @@ function renderizarEntregasAReceber() {
         <div class="finance-item">
           <strong>${pedido.restauranteNome || "Restaurante"}</strong>
           <p><b>Pedido:</b> ${pedido.id}</p>
-          <p><b>Valor:</b> ${dinheiro(pedido.valorMotoboy)}</p>
+          <p><b>Valor:</b> ${textoValorPrivado(dinheiro(pedido.valorMotoboy))}</p>
           <p><b>Finalizada em:</b> ${dataTexto(pedido.entregueAt)}</p>
           <span class="status-pill pendente">A receber</span>
         </div>
@@ -358,7 +416,7 @@ function renderizarPagamentosRecebidos() {
     pagamentos.map((pagamento) => {
       return `
         <div class="finance-item">
-          <strong>${dinheiro(valorPagamento(pagamento))}</strong>
+          <strong>${textoValorPrivado(dinheiro(valorPagamento(pagamento)))}</strong>
           <p><b>Pagamento:</b> ${pagamento.id}</p>
           <p><b>Pago em:</b> ${dataTexto(pagamento.pagoAt || pagamento.createdAt)}</p>
           <p><b>Entregas pagas:</b> ${totalEntregasPagamento(pagamento)}</p>
@@ -394,7 +452,7 @@ function renderizarEntregasPagas() {
         <div class="finance-item">
           <strong>${pedido.restauranteNome || "Restaurante"}</strong>
           <p><b>Pedido:</b> ${pedido.id}</p>
-          <p><b>Valor pago:</b> ${dinheiro(pedido.valorMotoboy)}</p>
+          <p><b>Valor pago:</b> ${textoValorPrivado(dinheiro(pedido.valorMotoboy))}</p>
           <p><b>Aceitou em:</b> ${dataTexto(pedido.aceitoAt)}</p>
           <p><b>Finalizou em:</b> ${dataTexto(pedido.entregueAt)}</p>
           <span class="status-pill aprovada">Pago</span>
@@ -429,7 +487,7 @@ function renderizarEntregasEstornadas() {
         <div class="finance-item refund">
           <strong>${pedido.restauranteNome || "Restaurante"}</strong>
           <p><b>Pedido:</b> ${pedido.id}</p>
-          <p><b>Valor removido:</b> ${dinheiro(pedido.valorMotoboy)}</p>
+          <p><b>Valor removido:</b> ${textoValorPrivado(dinheiro(pedido.valorMotoboy))}</p>
           <p><b>Motivo:</b> ${pedido.motivoEstorno || "Motivo não informado"}</p>
           <p><b>Entregue em:</b> ${dataTexto(pedido.entregueAt)}</p>
           <p><b>Estornado em:</b> ${dataTexto(pedido.estornadoAt)}</p>
@@ -563,6 +621,7 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
 
+  configurarPrivacidadeValores();
   configurarFiltros();
   renderizarTudo();
   escutarPedidosMotoboy();
