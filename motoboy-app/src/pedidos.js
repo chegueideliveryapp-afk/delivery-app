@@ -31,11 +31,21 @@ let alertaNovaCorridaAtivo = false;
 let alertaNovaCorridaTimer = null;
 let alertaNovaCorridaPedidoId = null;
 
+const PRIVACIDADE_VALORES_KEY = "chegueiMotoboyOcultarValores";
+
 function dinheiro(valor) {
   return Number(valor || 0).toLocaleString("pt-BR", {
     style: "currency",
     currency: "BRL"
   });
+}
+
+function valoresOcultos() {
+  return localStorage.getItem(PRIVACIDADE_VALORES_KEY) === "true";
+}
+
+function textoValorPrivado(texto) {
+  return valoresOcultos() ? "R$ •••••" : texto;
 }
 
 function textoPagamento(valor) {
@@ -321,8 +331,9 @@ function mostrarModalNovaCorrida(pedido) {
   document.getElementById("modalRestauranteNome").innerText =
     pedido.restauranteNome || "Restaurante";
 
-  document.getElementById("modalValorMotoboy").innerText =
-    dinheiro(pedido.valorMotoboy);
+  const modalValorMotoboy = document.getElementById("modalValorMotoboy");
+  modalValorMotoboy.innerText = textoValorPrivado(dinheiro(pedido.valorMotoboy));
+  modalValorMotoboy.classList.toggle("valor-oculto", valoresOcultos());
 
   document.getElementById("modalEnderecoEntrega").innerText =
     pedido.enderecoEntrega || "Endereço não informado";
@@ -373,7 +384,7 @@ function renderizarCorridaAtual() {
       <span class="current-order-label">Corrida em andamento</span>
       <strong>${corridaAtual.restauranteNome || "Restaurante"}</strong>
 
-      <p><b>Valor:</b> ${dinheiro(corridaAtual.valorMotoboy)}</p>
+      <p><b>Valor:</b> ${textoValorPrivado(dinheiro(corridaAtual.valorMotoboy))}</p>
       <p><b>Entrega:</b> ${corridaAtual.enderecoEntrega || "Endereço não informado"}</p>
       <p><b>Status:</b> Aceito</p>
       <p><b>Pagamento:</b> ${textoPagamento(corridaAtual.formaPagamento)}</p>
@@ -502,7 +513,7 @@ function renderizarPedidosDisponiveis() {
           <strong>${pedido.restauranteNome || "Restaurante"}</strong>
         </div>
 
-        <b>${dinheiro(pedido.valorMotoboy)}</b>
+        <b>${textoValorPrivado(dinheiro(pedido.valorMotoboy))}</b>
       </div>
 
       <p><b>Entrega:</b> ${pedido.enderecoEntrega || "Endereço não informado"}</p>
@@ -789,6 +800,32 @@ function escutarMotoboy() {
   });
 }
 
+function atualizarPrivacidadePedidos() {
+  renderizarCorridaAtual();
+  renderizarPedidosDisponiveis();
+
+  if (pedidoModalAtual) {
+    const modalValorMotoboy = document.getElementById("modalValorMotoboy");
+
+    if (modalValorMotoboy) {
+      modalValorMotoboy.innerText = textoValorPrivado(
+        dinheiro(pedidoModalAtual.valorMotoboy)
+      );
+      modalValorMotoboy.classList.toggle("valor-oculto", valoresOcultos());
+    }
+  }
+}
+
+function configurarPrivacidadePedidos() {
+  window.addEventListener("cheguei:privacidade-valores-alterada", atualizarPrivacidadePedidos);
+
+  window.addEventListener("storage", (event) => {
+    if (event.key === PRIVACIDADE_VALORES_KEY) {
+      atualizarPrivacidadePedidos();
+    }
+  });
+}
+
 function configurarModal() {
   const btnAceitar = document.getElementById("btnModalAceitar");
   const btnRecusar = document.getElementById("btnModalRecusar");
@@ -823,6 +860,7 @@ onAuthStateChanged(auth, async (user) => {
   };
 
   configurarModal();
+  configurarPrivacidadePedidos();
   escutarMotoboy();
   escutarPedidosEmBusca();
   escutarPedidosDoMotoboy();
