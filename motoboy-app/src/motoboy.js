@@ -20,6 +20,12 @@ let uid = null;
 let motoboyAtual = null;
 let watchId = null;
 let onlineSolicitado = false;
+let botoesConfigurados = false;
+let notificacoesConfiguradas = false;
+let privacidadeConfigurada = false;
+let ultimoSaldoMotoboyTexto = "R$ 0,00";
+
+const PRIVACIDADE_VALORES_KEY = "chegueiMotoboyOcultarValores";
 
 function dinheiro(valor) {
   return Number(valor || 0).toLocaleString("pt-BR", {
@@ -31,6 +37,70 @@ function dinheiro(valor) {
 function setText(id, texto) {
   const el = document.getElementById(id);
   if (el) el.innerText = texto;
+}
+
+function valoresOcultos() {
+  return localStorage.getItem(PRIVACIDADE_VALORES_KEY) === "true";
+}
+
+function textoValorPrivado(texto) {
+  return valoresOcultos() ? "R$ •••••" : texto;
+}
+
+function setPrivateText(id, texto) {
+  const el = document.getElementById(id);
+  if (!el) return;
+
+  el.innerText = textoValorPrivado(texto);
+  el.classList.toggle("valor-oculto", valoresOcultos());
+}
+
+function atualizarBotaoPrivacidade() {
+  const btn = document.getElementById("btnToggleValores");
+  if (!btn) return;
+
+  const oculto = valoresOcultos();
+  btn.classList.toggle("is-hidden", oculto);
+  btn.setAttribute("aria-label", oculto ? "Mostrar valores" : "Ocultar valores");
+  btn.setAttribute("title", oculto ? "Mostrar valores" : "Ocultar valores");
+}
+
+function aplicarPrivacidadeTelaMotoboy() {
+  if (motoboyAtual) {
+    ultimoSaldoMotoboyTexto = dinheiro(motoboyAtual.saldo);
+  }
+
+  setPrivateText("saldoMotoboy", ultimoSaldoMotoboyTexto);
+
+  atualizarBotaoPrivacidade();
+  window.dispatchEvent(new CustomEvent("cheguei:privacidade-valores-alterada"));
+}
+
+function configurarPrivacidadeValores() {
+  if (privacidadeConfigurada) return;
+
+  privacidadeConfigurada = true;
+
+  const btn = document.getElementById("btnToggleValores");
+
+  if (btn) {
+    btn.addEventListener("click", () => {
+      localStorage.setItem(
+        PRIVACIDADE_VALORES_KEY,
+        valoresOcultos() ? "false" : "true"
+      );
+
+      aplicarPrivacidadeTelaMotoboy();
+    });
+  }
+
+  window.addEventListener("storage", (event) => {
+    if (event.key === PRIVACIDADE_VALORES_KEY) {
+      aplicarPrivacidadeTelaMotoboy();
+    }
+  });
+
+  atualizarBotaoPrivacidade();
 }
 
 function podeFicarOnline(motoboy) {
@@ -62,7 +132,8 @@ function atualizarTela(motoboy) {
   motoboyAtual = motoboy;
 
   setText("nomeMotoboy", motoboy.nome || "Motoboy");
-  setText("saldoMotoboy", dinheiro(motoboy.saldo));
+  ultimoSaldoMotoboyTexto = dinheiro(motoboy.saldo);
+  setPrivateText("saldoMotoboy", ultimoSaldoMotoboyTexto);
   setText("totalEntregas", motoboy.totalEntregas || 0);
   setText("totalRecusas", motoboy.totalRecusas || 0);
   setText("onlineTexto", motoboy.online ? "Online" : "Offline");
@@ -221,7 +292,9 @@ function mostrarNotificacaoEstorno(notificacao) {
 }
 
 function escutarNotificacoesMotoboy() {
-  if (!uid) return;
+  if (!uid || notificacoesConfiguradas) return;
+
+  notificacoesConfiguradas = true;
 
   const q = query(
     collection(db, "notificacoes_motoboy"),
@@ -249,7 +322,23 @@ function escutarNotificacoesMotoboy() {
   );
 }
 
+async function iniciarPushSeguro() {
+  try {
+    const modulo = await import("./push.js");
+
+    if (modulo && typeof modulo.iniciarPushMotoboy === "function") {
+      await modulo.iniciarPushMotoboy();
+    }
+  } catch (erro) {
+    console.warn("Push não iniciado. O app seguirá funcionando sem push por enquanto.", erro);
+  }
+}
+
 function configurarBotoes() {
+  if (botoesConfigurados) return;
+
+  botoesConfigurados = true;
+
   const btnOnline = document.getElementById("btnOnline");
   const btnSair = document.getElementById("btnSair");
 
@@ -280,6 +369,8 @@ function configurarBotoes() {
   });
 }
 
+configurarPrivacidadeValores();
+
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
     window.location.href = "./index.html";
@@ -288,26 +379,44 @@ onAuthStateChanged(auth, async (user) => {
 
   uid = user.uid;
 
-  const userSnap = await getDoc(doc(db, "users", uid));
+  try {
+    const userSnap = await getDoc(doc(db, "users", uid));
 
-  if (!userSnap.exists() || userSnap.data().role !== "motoboy") {
-    await signOut(auth);
-    window.location.href = "./index.html";
-    return;
-  }
-
-  const motoboyRef = doc(db, "motoboys", uid);
-
-  onSnapshot(motoboyRef, (snap) => {
-    if (!snap.exists()) {
-      signOut(auth);
+    if (!userSnap.exists() || userSnap.data().role !== "motoboy") {
+      await signOut(auth);
       window.location.href = "./index.html";
       return;
     }
 
-    atualizarTela(snap.data());
-  });
+    const motoboyRef = doc(db, "motoboys", uid);
 
-  configurarBotoes();
-  escutarNotificacoesMotoboy();
+    onSnapshot(
+      motoboyRef,
+      (snap) => {
+        if (!snap.exists()) {
+          signOut(auth);
+          window.location.href = "./index.html";
+          return;
+        }
+
+        atualizarTela(snap.data());
+      },
+      (erro) => {
+        console.error("Erro ao carregar motoboy:", erro);
+        setText("nomeMotoboy", "Erro ao carregar");
+        setText("statusConta", "Erro");
+        setText("statusDescricao", "Não foi possível carregar os dados da conta.");
+      }
+    );
+
+    configurarBotoes();
+    configurarPrivacidadeValores();
+    escutarNotificacoesMotoboy();
+
+    iniciarPushSeguro();
+  } catch (erro) {
+    console.error("Erro ao validar motoboy:", erro);
+    await signOut(auth);
+    window.location.href = "./index.html";
+  }
 });
