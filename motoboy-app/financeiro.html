@@ -5,7 +5,7 @@
   <title>Financeiro - Cheguei Motoboy</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <link rel="stylesheet" href="./css/app.css?v=260">
+  <link rel="stylesheet" href="./css/app.css?v=261">
 
   <style>
     .earn-hero {
@@ -263,7 +263,32 @@
 
     <section class="earn-hero">
       <span>A receber na próxima rodada</span>
-      <strong id="valorAbertoMotoboy">R$ 0,00</strong>
+
+      <div class="earn-value-row">
+        <strong id="valorAbertoMotoboy">R$ 0,00</strong>
+
+        <button
+          id="btnToggleValores"
+          class="value-privacy-btn light"
+          type="button"
+          aria-label="Ocultar valores"
+          title="Ocultar valores"
+          data-toggle-valores
+        >
+          <svg class="eye-open" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+
+          <svg class="eye-closed" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 14c2.2 2.1 4.8 3.1 8 3.1s5.8-1 8-3.1"></path>
+            <path d="M7.2 16.4 5.8 19"></path>
+            <path d="M12 17.1V20"></path>
+            <path d="M16.8 16.4 18.2 19"></path>
+          </svg>
+        </button>
+      </div>
+
       <p>Esse é o valor das entregas finalizadas que ainda não foram pagas.</p>
 
       <div class="earn-next-row">
@@ -368,6 +393,6 @@
     </section>
   </main>
 
-  <script type="module" src="./src/financeiro.js?v=270"></script>
+  <script type="module" src="./src/financeiro.js?v=271"></script>
 </body>
 </html>
